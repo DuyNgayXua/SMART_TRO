@@ -1,0 +1,189 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "rooms": "Room Management",
+    "users": "User Management",
+    "posts": "Post Management",
+    "reports": "Revenue Reports",
+    "vouchers": "Voucher Management",
+    "settings": "Settings",
+    "logout": "Logout",
+    "adminPanel": "SMART TRO Admin Panel"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "subtitle": "SMART TRO Room Management System Overview",
+    "stats": {
+      "totalRooms": "Total Rooms",
+      "occupiedRooms": "Occupied Rooms",
+      "availableRooms": "Available Rooms",
+      "monthlyRevenue": "Monthly Revenue",
+      "comparedToLastMonth": "{{value}} compared to last month"
+    },
+    "charts": {
+      "monthlyRevenue": "Monthly Revenue",
+      "last6Months": "Last 6 months",
+      "1Year": "1 year",
+      "all": "All time",
+      "revenueChartPlaceholder": "Revenue chart will be displayed here",
+      "occupancyRate": "Occupancy Rate",
+      "roomOccupancyRate": "Room Occupancy Rate"
+    },
+    "activity": {
+      "recentActivity": "Recent Activity",
+      "systemNotifications": "System Notifications",
+      "booking": "{{name}} booked room {{room}}",
+      "payment": "{{name}} paid for room {{room}}",
+      "maintenance": "{{name}} requested maintenance for {{room}}",
+      "checkout": "{{name}} checked out from room {{room}}",
+      "systemMaintenance": "System maintenance at 2:00 AM tomorrow",
+      "contractExpiring": "5 contracts expiring this week",
+      "reportGenerated": "August report has been generated",
+      "timeAgo": "{{time}}",
+      "status": {
+        "new": "New",
+        "completed": "Completed",
+        "pending": "Pending",
+        "warning": "Warning",
+        "upcoming": "Upcoming"
+      }
+    },
+    "quickActions": {
+      "title": "Quick Actions",
+      "addRoom": {
+        "title": "Add New Room",
+        "desc": "Create a new room in the system"
+      },
+      "addTenant": {
+        "title": "Add Tenant",
+        "desc": "Register a new tenant"
+      },
+      "createInvoice": {
+        "title": "Create Invoice",
+        "desc": "Generate room payment invoice"
+      },
+      "viewReports": {
+        "title": "View Reports",
+        "desc": "Detailed statistics and reports"
+      }
+    }
+  },
+  "rooms": {
+    "title": "Room Management",
+    "addNew": "Add New Room",
+    "search": "Search",
+    "searchPlaceholder": "Room name, description...",
+    "roomType": "Room Type",
+    "allTypes": "All Types",
+    "types": {
+      "single": "Single Room",
+      "double": "Double Room",
+      "suite": "Suite Room"
+    },
+    "priceFrom": "Price From (VND)",
+    "priceTo": "Price To (VND)",
+    "reset": "Reset",
+    "status": {
+      "all": "All",
+      "available": "Available",
+      "occupied": "Occupied",
+      "maintenance": "Maintenance",
+      "reserved": "Reserved"
+    },
+    "noRoomsFound": "No rooms found",
+    "noRoomsDescription": "Try changing filters or add new rooms",
+    "month": "month",
+    "floor": "Floor",
+    "amenities": "amenities",
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "confirmDelete": "Are you sure you want to delete this room?",
+    "pagination": {
+      "page": "Page",
+      "rooms": "rooms"
+    }
+  },
+  "common": {
+    "yes": "Yes",
+    "no": "No",
+    "cancel": "Cancel",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "view": "View",
+    "add": "Add",
+    "search": "Search",
+    "filter": "Filter",
+    "reset": "Reset",
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "close": "Close",
+    "submit": "Submit",
+    "update": "Update",
+    "create": "Create",
+    "select": "Select",
+    "all": "All",
+    "none": "None",
+    "actions": "Actions"
+  },
+  "settings": {
+    "title": "Settings",
+    "language": "Language",
+    "languageDesc": "Choose display language",
+    "vietnamese": "Vietnamese",
+    "english": "English",
+    "general": "General Settings",
+    "account": "Account",
+    "security": "Security",
+    "securityDesc": "Manage security and login sessions",
+    "notifications": "Notifications",
+    "appearance": "Appearance",
+    "appearanceDesc": "Customize system interface and theme",
+    "system": "System",
+    "logout": "Logout",
+    "logoutDesc": "End current session and return to login page",
+    "logoutButton": "Logout Now",
+    "lightTheme": "Light Theme",
+    "lightThemeDesc": "Light interface with white background, easy to view in bright environments",
+    "darkTheme": "Dark Theme",
+    "darkThemeDesc": "Dark interface with black background, reduces eye strain in low-light environments"
+  },
+  "auth": {
+    "login": "Login",
+    "logout": "Logout",
+    "register": "Register",
+    "forgotPassword": "Forgot Password",
+    "email": "Email",
+    "password": "Password",
+    "confirmPassword": "Confirm Password",
+    "fullName": "Full Name",
+    "rememberMe": "Remember Me",
+    "loginError": "Login failed",
+    "registerSuccess": "Registration successful",
+    "administrator": "Administrator"
+  },
+  "status": {
+    "new": "New",
+    "completed": "Completed",
+    "pending": "Pending",
+    "warning": "Warning",
+    "upcoming": "Upcoming"
+  },
+  "time": {
+    "minutesAgo": "minutes ago",
+    "hoursAgo": "hours ago",
+    "daysAgo": "days ago",
+    "weeksAgo": "weeks ago",
+    "monthsAgo": "months ago"
+  }
+}

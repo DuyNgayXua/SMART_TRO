@@ -1,0 +1,189 @@
+{
+  "sidebar": {
+    "dashboard": "Bảng điều khiển",
+    "rooms": "Quản lý phòng trọ",
+    "users": "Quản lý người dùng",
+    "posts": "Quản lý bài đăng",
+    "reports": "Báo cáo doanh thu",
+    "vouchers": "Quản lý khuyến mãi",
+    "settings": "Cài đặt",
+    "logout": "Đăng xuất",
+    "adminPanel": "SMART TRO Admin Panel"
+  },
+  "dashboard": {
+    "title": "Bảng điều khiển",
+    "subtitle": "Tổng quan hệ thống quản lý phòng trọ SMART TRO",
+    "stats": {
+      "totalRooms": "Tổng số phòng",
+      "occupiedRooms": "Phòng đã thuê",
+      "availableRooms": "Phòng trống",
+      "monthlyRevenue": "Doanh thu tháng",
+      "comparedToLastMonth": "{{value}} so với tháng trước"
+    },
+    "charts": {
+      "monthlyRevenue": "Doanh thu theo tháng",
+      "last6Months": "6 tháng gần nhất",
+      "1Year": "1 năm",
+      "all": "Tất cả",
+      "revenueChartPlaceholder": "Biểu đồ doanh thu sẽ hiển thị ở đây",
+      "occupancyRate": "Tỷ lệ lấp đầy",
+      "roomOccupancyRate": "Tỷ lệ lấp đầy phòng"
+    },
+    "activity": {
+      "recentActivity": "Hoạt động gần đây",
+      "systemNotifications": "Thông báo hệ thống",
+      "booking": "{{name}} đã đặt phòng {{room}}",
+      "payment": "{{name}} đã thanh toán tiền phòng {{room}}",
+      "maintenance": "{{name}} yêu cầu sửa chữa {{room}}",
+      "checkout": "{{name}} đã trả phòng {{room}}",
+      "systemMaintenance": "Bảo trì hệ thống vào 2:00 AM ngày mai",
+      "contractExpiring": "5 hợp đồng sắp hết hạn trong tuần này",
+      "reportGenerated": "Báo cáo tháng 8 đã được tạo",
+      "timeAgo": "{{time}}",
+      "status": {
+        "new": "Mới",
+        "completed": "Hoàn thành",
+        "pending": "Chờ xử lý",
+        "warning": "Cảnh báo",
+        "upcoming": "Sắp tới"
+      }
+    },
+    "quickActions": {
+      "title": "Thao tác nhanh",
+      "addRoom": {
+        "title": "Thêm phòng mới",
+        "desc": "Tạo phòng trọ mới trong hệ thống"
+      },
+      "addTenant": {
+        "title": "Thêm khách thuê",
+        "desc": "Đăng ký khách thuê mới"
+      },
+      "createInvoice": {
+        "title": "Tạo hóa đơn",
+        "desc": "Lập hóa đơn thu tiền phòng"
+      },
+      "viewReports": {
+        "title": "Xem báo cáo",
+        "desc": "Thống kê và báo cáo chi tiết"
+      }
+    }
+  },
+  "rooms": {
+    "title": "Quản lý phòng trọ",
+    "addNew": "Thêm phòng mới",
+    "search": "Tìm kiếm",
+    "searchPlaceholder": "Tên phòng, mô tả...",
+    "roomType": "Loại phòng",
+    "allTypes": "Tất cả loại",
+    "types": {
+      "single": "Phòng đơn",
+      "double": "Phòng đôi",
+      "suite": "Phòng suite"
+    },
+    "priceFrom": "Giá từ (VNĐ)",
+    "priceTo": "Giá đến (VNĐ)",
+    "reset": "Đặt lại",
+    "status": {
+      "all": "Tất cả",
+      "available": "Còn trống",
+      "occupied": "Đã thuê",
+      "maintenance": "Bảo trì",
+      "reserved": "Đã đặt"
+    },
+    "noRoomsFound": "Không tìm thấy phòng nào",
+    "noRoomsDescription": "Thử thay đổi bộ lọc hoặc thêm phòng mới",
+    "month": "tháng",
+    "floor": "Tầng",
+    "amenities": "tiện ích",
+    "actions": {
+      "view": "Xem",
+      "edit": "Sửa",
+      "delete": "Xóa"
+    },
+    "confirmDelete": "Bạn có chắc chắn muốn xóa phòng này?",
+    "pagination": {
+      "page": "Trang",
+      "rooms": "phòng"
+    }
+  },
+  "common": {
+    "yes": "Có",
+    "no": "Không",
+    "cancel": "Hủy",
+    "save": "Lưu",
+    "edit": "Sửa",
+    "delete": "Xóa",
+    "view": "Xem",
+    "add": "Thêm",
+    "search": "Tìm kiếm",
+    "filter": "Lọc",
+    "reset": "Đặt lại",
+    "loading": "Đang tải...",
+    "error": "Có lỗi xảy ra",
+    "success": "Thành công",
+    "warning": "Cảnh báo",
+    "info": "Thông tin",
+    "confirm": "Xác nhận",
+    "back": "Quay lại",
+    "next": "Tiếp theo",
+    "previous": "Trước",
+    "close": "Đóng",
+    "submit": "Gửi",
+    "update": "Cập nhật",
+    "create": "Tạo",
+    "select": "Chọn",
+    "all": "Tất cả",
+    "none": "Không có",
+    "actions": "Thao tác"
+  },
+  "settings": {
+    "title": "Cài đặt",
+    "language": "Ngôn ngữ",
+    "languageDesc": "Chọn ngôn ngữ hiển thị",
+    "vietnamese": "Tiếng Việt",
+    "english": "Tiếng Anh",
+    "general": "Cài đặt chung",
+    "account": "Tài khoản",
+    "security": "Bảo mật",
+    "securityDesc": "Quản lý bảo mật và phiên đăng nhập",
+    "notifications": "Thông báo",
+    "appearance": "Giao diện",
+    "appearanceDesc": "Tùy chỉnh giao diện và theme của hệ thống",
+    "system": "Hệ thống",
+    "logout": "Đăng xuất",
+    "logoutDesc": "Kết thúc phiên đăng nhập hiện tại và quay về trang đăng nhập",
+    "logoutButton": "Đăng xuất ngay",
+    "lightTheme": "Giao diện sáng",
+    "lightThemeDesc": "Giao diện sáng với màu nền trắng, dễ nhìn trong môi trường có ánh sáng",
+    "darkTheme": "Giao diện tối",
+    "darkThemeDesc": "Giao diện tối với màu nền đen, giảm mỏi mắt khi sử dụng trong môi trường thiếu sáng"
+  },
+  "auth": {
+    "login": "Đăng nhập",
+    "logout": "Đăng xuất",
+    "register": "Đăng ký",
+    "forgotPassword": "Quên mật khẩu",
+    "email": "Email",
+    "password": "Mật khẩu",
+    "confirmPassword": "Xác nhận mật khẩu",
+    "fullName": "Họ và tên",
+    "rememberMe": "Ghi nhớ đăng nhập",
+    "loginError": "Đăng nhập thất bại",
+    "registerSuccess": "Đăng ký thành công",
+    "administrator": "Quản trị viên"
+  },
+  "status": {
+    "new": "Mới",
+    "completed": "Hoàn thành",
+    "pending": "Chờ xử lý",
+    "warning": "Cảnh báo",
+    "upcoming": "Sắp tới"
+  },
+  "time": {
+    "minutesAgo": "phút trước",
+    "hoursAgo": "giờ trước",
+    "daysAgo": "ngày trước",
+    "weeksAgo": "tuần trước",
+    "monthsAgo": "tháng trước"
+  }
+}

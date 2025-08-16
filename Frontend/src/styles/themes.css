@@ -1,0 +1,236 @@
+/* Theme CSS Variables */
+:root {
+  /* Light Theme Colors */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --bg-sidebar: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  
+  --text-primary: #1a202c;
+  --text-secondary: #718096;
+  --text-tertiary: #a0aec0;
+  --text-sidebar: #ffffff;
+  
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e0;
+  
+  --accent-primary: #3b82f6;
+  --accent-success: #10b981;
+  --accent-warning: #f59e0b;
+  --accent-danger: #ef4444;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  
+  --transition: all 0.3s ease;
+}
+
+/* Dark Theme Colors */
+[data-theme="dark"] {
+  --bg-primary: #1a202c;
+  --bg-secondary: #2d3748;
+  --bg-tertiary: #4a5568;
+  --bg-card: #2d3748;
+  --bg-sidebar: linear-gradient(135deg, #2d3748 0%, #4a5568 100%);
+  
+  --text-primary: #f7fafc;
+  --text-secondary: #cbd5e0;
+  --text-tertiary: #a0aec0;
+  --text-sidebar: #ffffff;
+  
+  --border-primary: #4a5568;
+  --border-secondary: #718096;
+  
+  --accent-primary: #63b3ed;
+  --accent-success: #68d391;
+  --accent-warning: #fbb042;
+  --accent-danger: #fc8181;
+  
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+}
+
+/* Apply theme variables to common elements */
+body {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: var(--transition);
+}
+
+/* Admin containers with theme support */
+.dashboard-container,
+.rooms-container,
+.settings-container,
+.users-container,
+.reports-container,
+.vouchers-container {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.dashboard-content,
+.rooms-content,
+.settings-content {
+  background-color: var(--bg-secondary);
+}
+
+/* Cards and sections */
+.stat-card,
+.chart-card,
+.room-card,
+.settings-section {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  box-shadow: var(--shadow-md);
+}
+
+/* Text colors */
+.dashboard-title,
+.rooms-title,
+.settings-title {
+  color: var(--text-primary);
+}
+
+.dashboard-subtitle,
+.section-description {
+  color: var(--text-secondary);
+}
+
+.stat-number {
+  color: var(--text-primary);
+}
+
+.stat-label {
+  color: var(--text-secondary);
+}
+
+/* Buttons */
+.add-room-btn,
+.search-btn,
+.reset-btn,
+.logout-button {
+  background: var(--accent-primary);
+  color: white;
+  border: none;
+  transition: var(--transition);
+}
+
+.add-room-btn:hover,
+.search-btn:hover,
+.reset-btn:hover {
+  background: var(--accent-primary);
+  filter: brightness(1.1);
+}
+
+/* Sidebar theme */
+.sidebar-drawer {
+  background: var(--bg-sidebar) !important;
+}
+
+/* Form elements */
+.settings-tab {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.settings-tab.active {
+  background-color: var(--accent-primary);
+  color: white;
+}
+
+/* Language options */
+.language-option {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+  color: var(--text-primary);
+}
+
+.language-option.active {
+  border-color: var(--accent-primary);
+  background-color: var(--bg-tertiary);
+}
+
+/* Coming soon placeholder */
+.coming-soon {
+  color: var(--text-secondary);
+}
+
+/* Filters */
+.filters {
+  background-color: var(--bg-card);
+  border-color: var(--border-primary);
+}
+
+/* Room status indicators */
+.status-available {
+  background-color: var(--accent-success);
+}
+
+.status-occupied {
+  background-color: var(--accent-warning);
+}
+
+.status-maintenance {
+  background-color: var(--accent-danger);
+}
+
+/* Smooth transitions for theme switching */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Dark theme specific adjustments */
+[data-theme="dark"] .stat-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .room-card:hover {
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+/* Only fix text that's specifically problematic in dark theme */
+[data-theme="dark"] .settings-title,
+[data-theme="dark"] .section-title,
+[data-theme="dark"] .language-name,
+[data-theme="dark"] .theme-name {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .section-description,
+[data-theme="dark"] .language-code,
+[data-theme="dark"] .theme-description {
+  color: var(--text-secondary) !important;
+}
+
+/* Dashboard specific dark theme fixes */
+[data-theme="dark"] .dashboard-title,
+[data-theme="dark"] .stat-number,
+[data-theme="dark"] .chart-title {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .dashboard-subtitle,
+[data-theme="dark"] .stat-label,
+[data-theme="dark"] .chart-period {
+  color: var(--text-secondary) !important;
+}
+
+/* Rooms specific dark theme fixes */
+[data-theme="dark"] .rooms-title,
+[data-theme="dark"] .room-name {
+  color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .room-detail,
+[data-theme="dark"] .room-description {
+  color: var(--text-secondary) !important;
+}
+
+/* Theme toggle animation */
+.theme-transition {
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}

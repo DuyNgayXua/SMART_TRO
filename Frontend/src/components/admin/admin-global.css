@@ -1,0 +1,242 @@
+/* Admin Global CSS - Apply Inter font to all admin pages */
+
+/* Base font family for all admin pages */
+.admin-container,
+.dashboard-container,
+.rooms-container,
+.settings-container,
+.users-container,
+.reports-container,
+.vouchers-container {
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Apply Inter font to all child elements in admin pages, but exclude icon fonts */
+.admin-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]),
+.dashboard-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]),
+.rooms-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]),
+.settings-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]),
+.users-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]),
+.reports-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]),
+.vouchers-container *:not([class*="fa-"]):not([class*="fas"]):not([class*="far"]):not([class*="fab"]):not([class*="fal"]) {
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Noto Sans', -apple-system, BlinkMacSystemFont, sans-serif !important;
+}
+
+/* Keep FontAwesome icons working properly */
+[class*="fa-"],
+[class*="fas"],
+[class*="far"], 
+[class*="fab"],
+[class*="fal"],
+.fa,
+.fas,
+.far,
+.fab,
+.fal,
+i[class*="fa-"],
+i[class*="fas"],
+i[class*="far"],
+i[class*="fab"],
+i[class*="fal"] {
+  font-family: "Font Awesome 6 Free", "Font Awesome 6 Pro", "Font Awesome 6 Brands", "FontAwesome" !important;
+  font-weight: 900 !important;
+  font-style: normal !important;
+  line-height: 1 !important;
+  text-decoration: none !important;
+  text-transform: none !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+}
+
+/* Override heavy font weights for better readability with Inter */
+.dashboard-container .stat-number,
+.rooms-container .room-name,
+.settings-container .section-title {
+  font-weight: 600 !important;
+}
+
+.dashboard-container .stat-label,
+.rooms-container .room-price,
+.settings-container .section-description {
+  font-weight: 400 !important;
+}
+
+/* Reduce font weights for better Vietnamese text rendering */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600 !important;
+}
+
+strong, b {
+  font-weight: 600 !important;
+}
+
+.font-bold {
+  font-weight: 600 !important;
+}
+
+.font-semibold {
+  font-weight: 500 !important;
+}
+
+.font-medium {
+  font-weight: 500 !important;
+}
+
+.font-normal {
+  font-weight: 400 !important;
+}
+
+.font-light {
+  font-weight: 300 !important;
+}
+
+/* Common styles for all admin page titles */
+.admin-title,
+.dashboard-title,
+.rooms-title,
+.settings-title,
+.users-title,
+.reports-title,
+.vouchers-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+/* Common styles for all admin page subtitles */
+.admin-subtitle,
+.dashboard-subtitle,
+.rooms-subtitle,
+.settings-subtitle,
+.users-subtitle,
+.reports-subtitle,
+.vouchers-subtitle {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Button styles with Inter font */
+.admin-btn,
+.admin-button,
+button[class*="admin"],
+button[class*="dashboard"],
+button[class*="rooms"],
+button[class*="settings"] {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Form elements with Inter font */
+.admin-input,
+.admin-select,
+.admin-textarea,
+input[class*="admin"],
+select[class*="admin"],
+textarea[class*="admin"] {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+}
+
+/* Label styles */
+.admin-label,
+label[class*="admin"] {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+}
+
+/* Table styles */
+.admin-table,
+table[class*="admin"] {
+  font-family: 'Inter', sans-serif;
+}
+
+.admin-table th,
+table[class*="admin"] th {
+  font-weight: 600;
+}
+
+.admin-table td,
+table[class*="admin"] td {
+  font-weight: 400;
+}
+
+/* Card and section titles */
+.section-title,
+.card-title,
+.modal-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Description and helper text */
+.section-description,
+.card-description,
+.helper-text {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+/* Stats and numbers */
+.stat-number,
+.metric-value,
+.count-display {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Status badges and tags */
+.status-badge,
+.tag,
+.chip {
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  font-size: 0.875rem;
+}
+
+/* Responsive font adjustments */
+@media (max-width: 768px) {
+  .admin-title,
+  .dashboard-title,
+  .rooms-title,
+  .settings-title {
+    font-size: 24px;
+  }
+  
+  .admin-subtitle,
+  .dashboard-subtitle,
+  .rooms-subtitle,
+  .settings-subtitle {
+    font-size: 14px;
+  }
+}
+
+/* Accessibility improvements */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .admin-container,
+  .dashboard-container,
+  .rooms-container,
+  .settings-container {
+    font-weight: 500;
+  }
+}

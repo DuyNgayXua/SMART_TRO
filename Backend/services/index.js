@@ -1,0 +1,54 @@
+/**
+ * Main Router - Tích hợp tất cả service routes
+ */
+import express from 'express';
+import userRoutes from './user-service/routes/userRoutes.js';
+import propertyRoutes from './property-service/routes/propertyRoutes.js';
+// import roomRoutes from './room-service/routes/roomRoutes.js';
+// import paymentRoutes from './payment-service/routes/paymentRoutes.js';
+// import contractRoutes from './contract-service/routes/contractRoutes.js';
+
+const router = express.Router();
+
+// Service routes
+router.use('/api/users', userRoutes);
+router.use('/api/properties', propertyRoutes);
+// router.use('/api/rooms', roomRoutes);
+// router.use('/api/payments', paymentRoutes);
+// router.use('/api/contracts', contractRoutes);
+
+// API documentation route
+router.get('/api', (req, res) => {
+    res.json({
+        message: 'Rental Management API',
+        version: '1.0.0',
+        services: {
+            users: '/api/users',
+            properties: '/api/properties',
+            rooms: '/api/rooms',
+            payments: '/api/payments',
+            contracts: '/api/contracts'
+        },
+        documentation: {
+            users: {
+                'POST /api/users/register': 'Đăng ký user mới',
+                'POST /api/users/login': 'Đăng nhập',
+                'GET /api/users/profile': 'Lấy thông tin profile (require auth)',
+                'PUT /api/users/profile': 'Cập nhật profile (require auth)',
+                'GET /api/users': 'Lấy danh sách users (admin only)',
+                'GET /api/users/:id': 'Lấy user theo ID (admin only)'
+            },
+            properties: {
+                'GET /api/properties/search': 'Tìm kiếm properties',
+                'GET /api/properties/:id': 'Lấy property theo ID',
+                'POST /api/properties': 'Tạo property mới (landlord only)',
+                'GET /api/properties/my/properties': 'Lấy properties của tôi (landlord only)',
+                'PUT /api/properties/:id': 'Cập nhật property (owner only)',
+                'DELETE /api/properties/:id': 'Xóa property (owner only)',
+                'POST /api/properties/:id/rate': 'Đánh giá property (require auth)'
+            }
+        }
+    });
+});
+
+export default router;

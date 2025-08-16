@@ -1,0 +1,56 @@
+.auth {
+  background: #f8f8f8;
+  padding: 80px 0;
+  font-family: 'Open Sans', sans-serif;
+}
+
+.form-box {
+  max-width: 400px;
+  margin: auto;
+  background: #fff;
+  padding: 40px 30px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+  border-radius: 10px;
+}
+
+.form-box h2 {
+  text-align: center;
+  margin-bottom: 25px;
+  color: #2d3436;
+}
+
+.form-box form input {
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 18px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  outline: none;
+  font-size: 16px;
+}
+
+.btn-primary {
+  width: 100%;
+  padding: 14px;
+  background-color: #27ae60;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.btn-primary:hover {
+  background-color: #219150;
+}
+
+.form-links {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.form-links a {
+  color: #27ae60;
+  font-weight: 500;
+}
