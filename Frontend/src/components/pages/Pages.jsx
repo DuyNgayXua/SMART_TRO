@@ -14,6 +14,7 @@ import ForgotPassword from "../auth/ForgotPassword"
 import VerifyEmail from "../auth/VerifyEmail"
 import Dashboard from "../admin/dashboard/Dashboard"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
+import AmenitiesManagement from "../admin/amenities/AmenitiesManagement"
 import Tenants from "../admin/tenants/TenantsManagement"
 import Contracts from "../admin/contracts/ContractsManagement"
 import Settings from "../admin/settings/Settings"
@@ -143,6 +144,7 @@ const Pages = () => {
           {/* Admin pages without Header and Footer */}
           <Route path='/admin/dashboard' element={<Dashboard />} />
           <Route path='/admin/rooms' element={<RoomsManagement />} />
+          <Route path='/admin/amenities' element={<AmenitiesManagement />} />
           <Route path='/admin/settings' element={<Settings />} />
           <Route path='/admin/tenants' element={<Tenants />} />
           <Route path='/admin/contracts' element={<Contracts />} />

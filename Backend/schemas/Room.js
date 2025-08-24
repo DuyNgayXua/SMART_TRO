@@ -3,21 +3,6 @@
  */
 import mongoose from 'mongoose';
 
-// Danh sách tiện ích chuẩn (enum)
-export const AMENITY_VALUES = [
-    'full_furniture',      // Đầy đủ nội thất
-    'air_conditioner',     // Máy lạnh
-    'refrigerator',        // Tủ lạnh
-    'washing_machine',     // Máy giặt
-    'water_heater',        // Máy nước nóng
-    'wardrobe',            // Tủ quần áo
-    'bed',                 // Giường
-    'desk',                // Bàn học / bàn làm việc
-    'wifi',                // Wi-Fi
-    'parking',             // Chỗ để xe
-    'kitchen',             // Khu bếp
-    'balcony'              // Ban công
-];
 
 const roomSchema = new mongoose.Schema({
     property: {
@@ -47,18 +32,31 @@ const roomSchema = new mongoose.Schema({
         required: true,
         min: 0
     },
+    // Các khoản phí
+    electricityPrice: {
+        type: Number,
+        default: 3500, // VND/kWh
+        min: 0
+    },
+    waterPrice: {
+        type: Number,
+        default: 25000, // VND/m³
+        min: 0
+    },
+    servicePrice: {
+        type: Number,
+        default: 150000, // VND/tháng (phí dịch vụ: internet, vệ sinh, bảo trì...)
+        min: 0
+    },
     area: { type: Number, min: 0 }, // m²
-    floor: { type: Number, min: 0 },
-    roomType: { type: String, enum: ['single', 'double', 'suite', 'dorm'], default: 'single' },
-    // Sức chứa (số người). Tự động gán theo roomType nếu không truyền.
-    capacity: { type: Number, min: 1, default: function() {
-        const map = { single: 1, double: 2, suite: 3, dorm: 4 };
-        return map[this.roomType] || 1;
-    } },
-    amenities: { 
-        type: [{ type: String, enum: AMENITY_VALUES }],
-        default: []
-    }, // Danh sách tiện ích chuẩn
+    // Sức chứa (số người)
+    capacity: { type: Number, min: 1, default: 1 },
+    // Số lượng xe có thể để
+    vehicleCount: { type: Number, min: 0, default: 0 },
+    amenities: [{ 
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Amenity'
+    }], // Reference to Amenity documents
     images: { type: [String], default: [] }, // URLs của hình ảnh phòng
     status: {
         type: String,
@@ -122,10 +120,10 @@ roomSchema.index(
 // Index owner để tìm kiếm nhanh theo chủ trọ
 roomSchema.index({ owner: 1 });
 
-// Loại bỏ tiện ích trùng / không hợp lệ trước khi lưu
+// Loại bỏ tiện ích trùng trước khi lưu
 roomSchema.pre('save', function(next) {
     if (Array.isArray(this.amenities)) {
-        this.amenities = [...new Set(this.amenities.filter(a => AMENITY_VALUES.includes(a)))];
+        this.amenities = [...new Set(this.amenities)];
     }
     // Nếu chưa có capacity hoặc capacity < 1 thì set lại theo roomType
     if (!this.capacity || this.capacity < 1) {
@@ -134,8 +132,5 @@ roomSchema.pre('save', function(next) {
     }
     next();
 });
-
-// Thêm method tiện ích hợp lệ
-roomSchema.statics.getAmenityValues = () => AMENITY_VALUES;
 
 export default mongoose.model('Room', roomSchema);

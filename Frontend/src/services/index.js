@@ -7,6 +7,7 @@ import bookingsAPI from './bookingsAPI';
 import paymentsAPI from './paymentsAPI';
 import reportsAPI from './reportsAPI';
 import propertiesAPI from './propertiesAPI';
+import amenitiesAPI from './amenitiesAPI';
 
 // Export tất cả services để dễ dàng import
 export {
@@ -18,6 +19,7 @@ export {
   bookingsAPI,
   paymentsAPI,
   reportsAPI,
+  amenitiesAPI,
   propertiesAPI
 };
 

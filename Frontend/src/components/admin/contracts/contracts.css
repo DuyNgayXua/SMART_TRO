@@ -1,27 +1,27 @@
 /* Contracts management styles similar to tenants/rooms */
 .contracts-container { display:flex; }
-.contracts-content { flex:1; padding:24px 34px 60px; }
+.contracts-content { flex:1; padding:24px 34px 60px; background: var(--bg-secondary, #f8fafc); transition: var(--transition, all 0.3s ease); }
 .contracts-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; }
 .contracts-title { font-size:30px; font-weight:700; letter-spacing:.5px; background:linear-gradient(90deg,#1e3a8a,#9333ea); -webkit-background-clip:text; background-clip:text; color:transparent; }
 .add-contract-btn { background:linear-gradient(90deg,#6366f1,#8b5cf6); color:#fff; border:none; padding:10px 18px; font-size:14px; font-weight:600; border-radius:10px; cursor:pointer; display:flex; align-items:center; gap:8px; box-shadow:0 4px 12px -2px rgba(99,102,241,.4); transition:.25s; }
 .add-contract-btn:hover { transform:translateY(-2px); box-shadow:0 8px 22px -4px rgba(99,102,241,.55); }
 
-.contracts-filters { background:#fff; padding:16px 20px 10px; border-radius:16px; box-shadow:0 4px 16px -4px rgba(0,0,0,.08); margin-bottom:22px; border:1px solid #eef2f7; }
+.contracts-filters { background: var(--bg-card, #fff); padding:16px 20px 10px; border-radius:16px; box-shadow: var(--shadow-md, 0 4px 16px -4px rgba(0,0,0,.08)); margin-bottom:22px; border:1px solid var(--border-primary, #eef2f7); transition: var(--transition, all 0.3s ease); }
 .contracts-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:22px; }
-.contract-card { background:#fff; border-radius:18px; padding:18px 18px 16px; box-shadow:0 6px 22px -6px rgba(15,23,42,.18); border:1px solid #eef2f7; display:flex; flex-direction:column; gap:10px; position:relative; }
-.contract-status { position:absolute; top:14px; right:14px; font-size:11px; font-weight:600; padding:4px 10px; border-radius:30px; letter-spacing:.5px; background:#10b981; color:#fff; }
-.contract-status.expired { background:#f59e0b; }
-.contract-status.terminated { background:#ef4444; }
-.contract-meta { font-size:12px; color:#475569; line-height:1.5; }
+.contract-card { background: var(--bg-card, #fff); border-radius:18px; padding:18px 18px 16px; box-shadow: var(--shadow-md, 0 6px 22px -6px rgba(15,23,42,.18)); border:1px solid var(--border-primary, #eef2f7); display:flex; flex-direction:column; gap:10px; position:relative; transition: var(--transition, all 0.3s ease); }
+.contract-status { position:absolute; top:14px; right:14px; font-size:11px; font-weight:600; padding:4px 10px; border-radius:30px; letter-spacing:.5px; background: var(--accent-success, #10b981); color:#fff; }
+.contract-status.expired { background: var(--accent-warning, #f59e0b); }
+.contract-status.terminated { background: var(--accent-danger, #ef4444); }
+.contract-meta { font-size:12px; color: var(--text-secondary, #475569); line-height:1.5; transition: var(--transition, all 0.3s ease); }
 .contract-amount { font-weight:700; color:#1e3a8a; font-size:15px; }
 .contract-actions { display:flex; gap:8px; margin-top:auto; }
-.contract-actions .action-btn { flex:1; background:#f1f5f9; border:none; padding:8px 10px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; color:#334155; transition:.25s; justify-content:center; }
+.contract-actions .action-btn { flex:1; background: var(--bg-tertiary, #f1f5f9); border:none; padding:8px 10px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; color: var(--text-primary, #334155); transition:.25s; justify-content:center; }
 .contract-actions .action-btn:hover { background:#6366f1; color:#fff; box-shadow:0 6px 18px -4px rgba(99,102,241,.45); transform:translateY(-2px); }
 
 .pagination { margin-top:30px; display:flex; align-items:center; justify-content:center; gap:18px; }
-.pagination-btn { width:44px; height:44px; display:flex; align-items:center; justify-content:center; background:#fff; border:1px solid #e2e8f0; border-radius:14px; cursor:pointer; color:#334155; font-size:16px; box-shadow:0 4px 12px -4px rgba(0,0,0,.08); transition:.25s; }
+.pagination-btn { width:44px; height:44px; display:flex; align-items:center; justify-content:center; background: var(--bg-card, #fff); border:1px solid var(--border-primary, #e2e8f0); border-radius:14px; cursor:pointer; color: var(--text-primary, #334155); font-size:16px; box-shadow: var(--shadow-sm, 0 4px 12px -4px rgba(0,0,0,.08)); transition:.25s; }
 .pagination-btn:disabled { opacity:.4; cursor:not-allowed; }
 .pagination-btn:not(:disabled):hover { background:#6366f1; color:#fff; border-color:#6366f1; transform:translateY(-2px); box-shadow:0 10px 24px -6px rgba(99,102,241,.4); }
-.pagination-info { font-size:13px; font-weight:600; color:#475569; }
+.pagination-info { font-size:13px; font-weight:600; color: var(--text-secondary, #475569); transition: var(--transition, all 0.3s ease); }
 
 /* Modal reuse rooms modal classes for consistency */

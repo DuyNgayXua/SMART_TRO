@@ -4,27 +4,8 @@ import SideBar from "../../common/adminSidebar";
 import "../admin-global.css";
 import "./rooms.css";
 import roomsAPI from '../../../services/roomsAPI';
+import amenitiesAPI from '../../../services/amenitiesAPI';
 import api from '../../../services/api';
-// property không còn bắt buộc; bỏ import propertiesAPI
-
-// Amenity keys; labels will be pulled from i18n
-const AMENITY_OPTIONS = [
-  'full_furniture',
-  'air_conditioner',
-  'refrigerator',
-  'washing_machine',
-  'water_heater',
-  'wardrobe',
-  'bed',
-  'desk',
-  'wifi',
-  'parking',
-  'kitchen',
-  'balcony'
-].map(k => ({ value: k }));
-const FULL_FURNITURE_CHILDREN = [
-  'air_conditioner','refrigerator','washing_machine','water_heater','wardrobe','bed','desk','wifi'
-];
 
 const RoomsManagement = () => {
   const { t } = useTranslation();
@@ -36,8 +17,7 @@ const RoomsManagement = () => {
     search: '',
     status: '',
     priceMin: '',
-    priceMax: '',
-    roomType: ''
+    priceMax: ''
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
@@ -58,10 +38,12 @@ const RoomsManagement = () => {
     roomNumber: '',
     price: '',
     deposit: '',
+    electricityPrice: 3500,
+    waterPrice: 25000,
+    servicePrice: 150000,
     area: '',
-    floor: '',
-    roomType: 'single',
     capacity: '',
+    vehicleCount: '',
     description: '',
     amenities: []
   });
@@ -76,10 +58,12 @@ const RoomsManagement = () => {
     roomNumber: '',
     price: '',
     deposit: '',
+    electricityPrice: 3500,
+    waterPrice: 25000,
+    servicePrice: 150000,
     area: '',
-    floor: '',
-    roomType: 'single',
     capacity: '',
+    vehicleCount: '',
     description: '',
     amenities: [],
     images: []
@@ -102,9 +86,8 @@ const RoomsManagement = () => {
           status: res.data.status,
           price: res.data.price,
           area: res.data.area,
-            floor: res.data.floor,
-            roomType: res.data.roomType,
             capacity: res.data.capacity,
+            vehicleCount: res.data.vehicleCount,
             description: res.data.description,
             images: res.data.images || [],
             amenities: res.data.amenities || []
@@ -116,7 +99,25 @@ const RoomsManagement = () => {
     } catch(e) { console.error('refreshRoomInList error', e); }
   };
   const [editFormErrors, setEditFormErrors] = useState({});
+  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [availableAmenities, setAvailableAmenities] = useState([]);
   // Bỏ danh sách properties vì không cần
+
+  // Load amenities from API
+  const loadAmenities = useCallback(async () => {
+    try {
+      const response = await amenitiesAPI.getActiveAmenities();
+      if (response.success) {
+        setAvailableAmenities(response.data);
+      }
+    } catch (error) {
+      console.error('Error loading amenities:', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAmenities();
+  }, [loadAmenities]);
 
   const statusLabels = {
     all: t('rooms.status.all'),
@@ -130,7 +131,6 @@ const RoomsManagement = () => {
       const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        roomType: searchFilters.roomType || undefined,
         minPrice: searchFilters.priceMin || undefined,
         maxPrice: searchFilters.priceMax || undefined,
         search: searchFilters.search || undefined,
@@ -144,9 +144,8 @@ const RoomsManagement = () => {
             status: r.status,
             price: r.price,
             area: r.area,
-            floor: r.floor,
-            roomType: r.roomType,
             capacity: r.capacity,
+            vehicleCount: r.vehicleCount,
             description: r.description,
             images: r.images || [],
             amenities: r.amenities || []
@@ -192,8 +191,7 @@ const RoomsManagement = () => {
       search: '',
       status: '',
       priceMin: '',
-      priceMax: '',
-      roomType: ''
+      priceMax: ''
     });
   };
 
@@ -221,12 +219,34 @@ const RoomsManagement = () => {
             roomNumber: r.roomNumber || '',
             price: r.price ?? '',
             deposit: r.deposit ?? '',
+            electricityPrice: r.electricityPrice ?? 3500,
+            waterPrice: r.waterPrice ?? 25000,
+            servicePrice: r.servicePrice ?? 150000,
+            electricityMeter: {
+              enabled: r.electricityMeter?.enabled ?? true,
+              lastReading: r.electricityMeter?.lastReading ?? 0,
+              unit: r.electricityMeter?.unit ?? 'kWh'
+            },
+            waterMeter: {
+              enabled: r.waterMeter?.enabled ?? true,
+              lastReading: r.waterMeter?.lastReading ?? 0,
+              unit: r.waterMeter?.unit ?? 'm³'
+            },
+            paymentConfig: {
+              electricityIncluded: r.paymentConfig?.electricityIncluded ?? false,
+              waterIncluded: r.paymentConfig?.waterIncluded ?? false,
+              serviceIncluded: r.paymentConfig?.serviceIncluded ?? true,
+              paymentDay: r.paymentConfig?.paymentDay ?? 1,
+              advancePayment: r.paymentConfig?.advancePayment ?? 1
+            },
             area: r.area ?? '',
-            floor: r.floor ?? '',
-            roomType: r.roomType || 'single',
             capacity: r.capacity ?? '',
+            vehicleCount: r.vehicleCount ?? '',
             description: r.description || '',
-            amenities: Array.isArray(r.amenities) ? r.amenities : [],
+            amenities: Array.isArray(r.amenities) ? r.amenities.map(amenity => {
+              // If amenity is populated object, extract ID, otherwise use as is
+              return typeof amenity === 'object' && amenity._id ? amenity._id : amenity;
+            }) : [],
             images: Array.isArray(r.images) ? r.images : []
           });
           setEditFormErrors({});
@@ -270,17 +290,24 @@ const RoomsManagement = () => {
     return texts[status];
   };
 
-  const getRoomTypeText = (type) => {
-    const types = {
-      single: t('rooms.types.single'),
-      double: t('rooms.types.double'),
-      suite: t('rooms.types.suite')
-    };
-    return types[type];
-  };
-
   const openCreateModal = async () => { setShowCreateModal(true); };
-  const closeCreateModal = () => { setShowCreateModal(false); setFormErrors({}); };
+  const closeCreateModal = () => { 
+    setShowCreateModal(false); 
+    setFormErrors({}); 
+    setFormData({
+      roomNumber: '',
+      price: '',
+      deposit: '',
+      electricityPrice: 3500,
+      waterPrice: 25000,
+      servicePrice: 150000,
+      area: '',
+      capacity: '',
+      vehicleCount: '',
+      description: '',
+      amenities: []
+    });
+  };
   const handleFormChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -371,24 +398,10 @@ const RoomsManagement = () => {
       let nextAmenities = [...prev.amenities];
       const has = nextAmenities.includes(val);
 
-      if (val === 'full_furniture') {
-        if (has) {
-          // Bỏ full_furniture và nhóm con
-            nextAmenities = nextAmenities.filter(a => a !== 'full_furniture' && !FULL_FURNITURE_CHILDREN.includes(a));
-        } else {
-          // Thêm full_furniture + nhóm con
-          nextAmenities = Array.from(new Set([...nextAmenities, 'full_furniture', ...FULL_FURNITURE_CHILDREN]));
-        }
+      if (has) {
+        nextAmenities = nextAmenities.filter(a => a !== val);
       } else {
-        if (has) {
-          nextAmenities = nextAmenities.filter(a => a !== val);
-        } else {
-          nextAmenities.push(val);
-        }
-        // Nếu bỏ 1 tiện ích con và full_furniture đang bật -> cũng bỏ full_furniture để tránh không đồng nhất
-        if (FULL_FURNITURE_CHILDREN.includes(val) && nextAmenities.includes('full_furniture')) {
-          nextAmenities = nextAmenities.filter(a => a !== 'full_furniture');
-        }
+        nextAmenities.push(val);
       }
       return { ...prev, amenities: nextAmenities };
     });
@@ -397,21 +410,11 @@ const RoomsManagement = () => {
     setEditFormData(prev => {
       let nextAmenities = [...prev.amenities];
       const has = nextAmenities.includes(val);
-      if (val === 'full_furniture') {
-        if (has) {
-          nextAmenities = nextAmenities.filter(a => a !== 'full_furniture' && !FULL_FURNITURE_CHILDREN.includes(a));
-        } else {
-          nextAmenities = Array.from(new Set([...nextAmenities, 'full_furniture', ...FULL_FURNITURE_CHILDREN]));
-        }
+      
+      if (has) {
+        nextAmenities = nextAmenities.filter(a => a !== val);
       } else {
-        if (has) {
-          nextAmenities = nextAmenities.filter(a => a !== val);
-        } else {
-          nextAmenities.push(val);
-        }
-        if (FULL_FURNITURE_CHILDREN.includes(val) && nextAmenities.includes('full_furniture')) {
-          nextAmenities = nextAmenities.filter(a => a !== 'full_furniture');
-        }
+        nextAmenities.push(val);
       }
       return { ...prev, amenities: nextAmenities };
     });
@@ -435,10 +438,12 @@ const RoomsManagement = () => {
           roomNumber: formData.roomNumber,
           price: Number(formData.price),
           deposit: Number(formData.deposit),
+          electricityPrice: Number(formData.electricityPrice) || 3500,
+          waterPrice: Number(formData.waterPrice) || 25000,
+          servicePrice: Number(formData.servicePrice) || 150000,
           area: formData.area ? Number(formData.area) : undefined,
-          floor: formData.floor ? Number(formData.floor) : undefined,
-          roomType: formData.roomType,
           capacity: formData.capacity ? Number(formData.capacity) : undefined,
+          vehicleCount: formData.vehicleCount ? Number(formData.vehicleCount) : undefined,
           description: formData.description,
           amenities: formData.amenities
         };
@@ -453,7 +458,7 @@ const RoomsManagement = () => {
           finally { setUploadingImages(false); }
         }
         closeCreateModal();
-        setFormData({ roomNumber:'', price:'', deposit:'', area:'', floor:'', roomType:'single', description:'', amenities:[] });
+        setFormData({ roomNumber:'', price:'', deposit:'', area:'', capacity:'', vehicleCount:'', description:'', amenities:[] });
         setSelectedImages([]);
         fetchRooms();
       } else {
@@ -481,10 +486,12 @@ const RoomsManagement = () => {
         roomNumber: editFormData.roomNumber,
         price: Number(editFormData.price),
         deposit: Number(editFormData.deposit),
+        electricityPrice: Number(editFormData.electricityPrice) || 3500,
+        waterPrice: Number(editFormData.waterPrice) || 25000,
+        servicePrice: Number(editFormData.servicePrice) || 150000,
         area: editFormData.area ? Number(editFormData.area) : undefined,
-        floor: editFormData.floor ? Number(editFormData.floor) : undefined,
-        roomType: editFormData.roomType,
         capacity: editFormData.capacity ? Number(editFormData.capacity) : undefined,
+        vehicleCount: editFormData.vehicleCount ? Number(editFormData.vehicleCount) : undefined,
         description: editFormData.description,
         amenities: editFormData.amenities
       };
@@ -506,7 +513,25 @@ const RoomsManagement = () => {
     finally { setSavingEdit(false); }
   };
   const closeViewModal = () => { setShowViewModal(false); setViewRoom(null); setViewCarouselIndex(0); };
-  const closeEditModal = () => { setShowEditModal(false); setEditingRoomId(null); setNewEditImages([]); };
+  const closeEditModal = () => { 
+    setShowEditModal(false); 
+    setEditingRoomId(null); 
+    setNewEditImages([]);
+    setEditFormData({
+      roomNumber: '',
+      price: '',
+      deposit: '',
+      electricityPrice: 3500,
+      waterPrice: 25000,
+      servicePrice: 150000,
+      area: '',
+      capacity: '',
+      vehicleCount: '',
+      description: '',
+      amenities: [],
+      images: []
+    });
+  };
 
   return (
     <>
@@ -516,10 +541,28 @@ const RoomsManagement = () => {
         {/* Header */}
         <div className="rooms-header">
           <h1 className="rooms-title">{t('rooms.title')}</h1>
-          <button className="add-room-btn" onClick={openCreateModal}>
-            <i className="fas fa-plus"></i>
-            {t('rooms.addNew')}
-          </button>
+          <div className="header-actions">
+            <div className="view-toggle">
+              <button 
+                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                onClick={() => setViewMode('grid')}
+                title="Grid View"
+              >
+                <i className="fas fa-th"></i>
+              </button>
+              <button 
+                className={`view-toggle-btn ${viewMode === 'list' ? 'active' : ''}`}
+                onClick={() => setViewMode('list')}
+                title="List View"
+              >
+                <i className="fas fa-list"></i>
+              </button>
+            </div>
+            <button className="add-room-btn" onClick={openCreateModal}>
+              <i className="fas fa-plus"></i>
+              {t('rooms.addNew')}
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -534,20 +577,6 @@ const RoomsManagement = () => {
                 value={searchFilters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
               />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.roomType')}</label>
-              <select
-                className="filter-select"
-                value={searchFilters.roomType}
-                onChange={(e) => handleFilterChange('roomType', e.target.value)}
-              >
-                <option value="">{t('rooms.allTypes')}</option>
-                <option value="single">{t('rooms.form.roomTypes.single')}</option>
-                <option value="double">{t('rooms.form.roomTypes.double')}</option>
-                <option value="suite">{t('rooms.form.roomTypes.suite')}</option>
-                <option value="dorm">{t('rooms.form.roomTypes.dorm')}</option>
-              </select>
             </div>
             <div className="filter-group">
               <label className="filter-label">{t('rooms.priceFrom')}</label>
@@ -609,104 +638,240 @@ const RoomsManagement = () => {
             <p className="empty-description">{t('rooms.noRoomsDescription')}</p>
           </div>
         ) : (
-          <div className="rooms-grid">
-            {rooms.map(room => {
-              const imgs = room.images || [];
-              const activeIdx = (carouselIndex[room.id] ?? 0) % (imgs.length || 1);
-              const showIcon = imgs.length === 0;
-              return (
-              <div key={room.id} className="room-card">
-                <div className={`room-image ${imgs.length? 'has-images':''}`}
-                  onMouseEnter={()=>{
-                    if (!(room.id in carouselIndex) && imgs.length) setCarouselIndex(prev=>({...prev,[room.id]:0}));
-                  }}
-                >
-                  {showIcon && <i className="fas fa-home" style={{ fontSize: '48px' }}></i>}
-                  {!showIcon && (
-                    <div className="room-image-wrapper">
-                      {imgs.map((src,idx)=>(
-                        <div key={idx} className={`room-slide ${idx===activeIdx?'active':''}`}>
-                          <img src={src} alt={`room-${room.name}-${idx}`} />
-                        </div>
-                      ))}
-                      {imgs.length>1 && (
-                        <>
-                          <button type="button" className="nav-btn prev" onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]: ( ( (p[room.id]??0) -1 + imgs.length) % imgs.length)}));}}>
-                            <i className="fas fa-chevron-left"></i>
-                          </button>
-                          <button type="button" className="nav-btn next" onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]: ( ( (p[room.id]??0) +1) % imgs.length)}));}}>
-                            <i className="fas fa-chevron-right"></i>
-                          </button>
-                          <div className="image-indicators">
-                            {imgs.map((_,i)=>(
-                              <span key={i} className={i===activeIdx?'active':''} onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]:i}));}} />
-                            ))}
+          <div className={`rooms-${viewMode}`}>
+            {viewMode === 'grid' ? (
+              rooms.map(room => {
+                const imgs = room.images || [];
+                const activeIdx = (carouselIndex[room.id] ?? 0) % (imgs.length || 1);
+                const showIcon = imgs.length === 0;
+                return (
+                <div key={room.id} className="room-card">
+                  <div className={`room-image ${imgs.length? 'has-images':''}`}
+                    onMouseEnter={()=>{
+                      if (!(room.id in carouselIndex) && imgs.length) setCarouselIndex(prev=>({...prev,[room.id]:0}));
+                    }}
+                  >
+                    {showIcon && <i className="fas fa-home" style={{ fontSize: '48px' }}></i>}
+                    {!showIcon && (
+                      <div className="room-image-wrapper">
+                        {imgs.map((src,idx)=>(
+                          <div key={idx} className={`room-slide ${idx===activeIdx?'active':''}`}>
+                            <img src={src} alt={`room-${room.name}-${idx}`} />
                           </div>
-                        </>
+                        ))}
+                        {imgs.length>1 && (
+                          <>
+                            <button type="button" className="nav-btn prev" onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]: ( ( (p[room.id]??0) -1 + imgs.length) % imgs.length)}));}}>
+                              <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <button type="button" className="nav-btn next" onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]: ( ( (p[room.id]??0) +1) % imgs.length)}));}}>
+                              <i className="fas fa-chevron-right"></i>
+                            </button>
+                            <div className="image-indicators">
+                              {imgs.map((_,i)=>(
+                                <span key={i} className={i===activeIdx?'active':''} onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]:i}));}} />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <span className={getStatusBadgeClass(room.status)}>
+                      {getStatusText(room.status)}
+                    </span>
+                  </div>
+                  <div className="room-info">
+                    <div className="room-header">
+                      <h3 className="room-name">{room.name}</h3>
+                      <div className="room-price">{formatPrice(room.price)}/{t('rooms.month')}</div>
+                    </div>
+                    
+                    <div className="room-details">
+                      <div className="room-detail">
+                        <i className="fas fa-expand-arrows-alt"></i>
+                        <span>{room.area}m²</span>
+                      </div>
+                      <div className="room-detail">
+                        <i className="fas fa-user-friends"></i>
+                        <span>{room.capacity || 1} {t('rooms.persons')}</span>
+                      </div>
+                      <div className="room-detail">
+                        <i className="fas fa-motorcycle"></i>
+                        <span>{room.vehicleCount || 0} {t('rooms.vehicles')}</span>
+                      </div>
+                      <div className="room-detail">
+                        <i className="fas fa-star"></i>
+                        <span>{room.amenities?.length || 0} {t('rooms.amenities')}</span>
+                      </div>
+                    </div>
+                    
+                    <p className="room-description">{room.description}</p>
+                    
+                    <div className="room-actions">
+                      <button 
+                        className="action-btn btn-view"
+                        onClick={() => handleViewRoom(room.id)}
+                      >
+                        <i className="fas fa-eye"></i>
+                        {t('rooms.actions.view')}
+                      </button>
+                      <button 
+                        className="action-btn btn-edit"
+                        onClick={() => handleEditRoom(room.id)}
+                      >
+                        <i className="fas fa-edit"></i>
+                        {t('rooms.actions.edit')}
+                      </button>
+                      <button 
+                        className="action-btn btn-delete"
+                        onClick={() => handleDeleteRoom(room.id)}
+                      >
+                        <i className="fas fa-trash"></i>
+                        {t('rooms.actions.delete')}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )})
+            ) : (
+              /* List View */
+              rooms.map(room => {
+                const imgs = room.images || [];
+                const activeIdx = (carouselIndex[room.id] ?? 0) % (imgs.length || 1);
+                const showIcon = imgs.length === 0;
+                return (
+                <div key={room.id} className="room-list-item">
+                  <div className={`room-list-image ${imgs.length? 'has-images':''}`}
+                    onMouseEnter={()=>{
+                      if (!(room.id in carouselIndex) && imgs.length) setCarouselIndex(prev=>({...prev,[room.id]:0}));
+                    }}
+                  >
+                    {showIcon && <i className="fas fa-home" style={{ fontSize: '32px' }}></i>}
+                    {!showIcon && (
+                      <div className="room-image-wrapper">
+                        {imgs.map((src,idx)=>(
+                          <div key={idx} className={`room-slide ${idx===activeIdx?'active':''}`}>
+                            <img src={src} alt={`room-${room.name}-${idx}`} />
+                          </div>
+                        ))}
+                        {imgs.length>1 && (
+                          <>
+                            <button type="button" className="nav-btn prev" onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]: ( ( (p[room.id]??0) -1 + imgs.length) % imgs.length)}));}}>
+                              <i className="fas fa-chevron-left"></i>
+                            </button>
+                            <button type="button" className="nav-btn next" onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]: ( ( (p[room.id]??0) +1) % imgs.length)}));}}>
+                              <i className="fas fa-chevron-right"></i>
+                            </button>
+                            <div className="image-indicators">
+                              {imgs.map((_,i)=>(
+                                <span key={i} className={i===activeIdx?'active':''} onClick={(e)=>{e.stopPropagation(); setCarouselIndex(p=>({...p,[room.id]:i}));}} />
+                              ))}
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    <span className={getStatusBadgeClass(room.status)}>
+                      {getStatusText(room.status)}
+                    </span>
+                  </div>
+                  
+                  <div className="room-list-content">
+                    <div className="room-list-header">
+                      <div className="room-list-title">
+                        <h3 className="room-name">{room.name}</h3>
+                        <span className="room-capacity-badge">{room.capacity || 1} {t('rooms.persons')}</span>
+                      </div>
+                      <div className="room-list-price">
+                        <div className="price-main">{formatPrice(room.price)}</div>
+                        <div className="price-period">/{t('rooms.month')}</div>
+                      </div>
+                    </div>
+                    
+                    <div className="room-list-details">
+                      <div className="detail-row">
+                        <div className="detail-group">
+                          <i className="fas fa-expand-arrows-alt"></i>
+                          <span>{room.area}m²</span>
+                        </div>
+                        <div className="detail-group">
+                          <i className="fas fa-user-friends"></i>
+                          <span>{room.capacity || 1} {t('rooms.persons')}</span>
+                        </div>
+                        <div className="detail-group">
+                          <i className="fas fa-motorcycle"></i>
+                          <span>{room.vehicleCount || 0} {t('rooms.vehicles')}</span>
+                        </div>
+                        <div className="detail-group">
+                          <i className="fas fa-star"></i>
+                          <span>{room.amenities?.length || 0} {t('rooms.amenities')}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {room.description && (
+                      <p className="room-list-description">{room.description}</p>
+                    )}
+                    
+                    <div className="room-list-amenities">
+                      {room.amenities?.slice(0, 5).map(amenity => {
+                        // Handle both populated amenities and ID-only amenities
+                        if (typeof amenity === 'object' && amenity.name) {
+                          // Populated amenity object
+                          return (
+                            <span key={amenity._id} className="amenity-tag">
+                              <i className={amenity.icon} style={{marginRight: '4px', fontSize: '12px'}}></i>
+                              {amenity.name}
+                            </span>
+                          );
+                        } else {
+                          // ID-only amenity - find in availableAmenities
+                          const amenityId = typeof amenity === 'string' ? amenity : amenity._id;
+                          const foundAmenity = availableAmenities.find(a => a._id === amenityId);
+                          return foundAmenity ? (
+                            <span key={amenityId} className="amenity-tag">
+                              <i className={foundAmenity.icon} style={{marginRight: '4px', fontSize: '12px'}}></i>
+                              {foundAmenity.name}
+                            </span>
+                          ) : (
+                            <span key={amenityId} className="amenity-tag">
+                              {t('common.unknown')}
+                            </span>
+                          );
+                        }
+                      })}
+                      {room.amenities?.length > 5 && (
+                        <span className="amenity-tag more">+{room.amenities.length - 5}</span>
                       )}
                     </div>
-                  )}
-                  <span className={getStatusBadgeClass(room.status)}>
-                    {getStatusText(room.status)}
-                  </span>
-                </div>
-                <div className="room-info">
-                  <div className="room-header">
-                    <h3 className="room-name">{room.name}</h3>
-                    <div className="room-price">{formatPrice(room.price)}/{t('rooms.month')}</div>
                   </div>
                   
-                  <div className="room-details">
-                    <div className="room-detail">
-                      <i className="fas fa-expand-arrows-alt"></i>
-                      <span>{room.area}m²</span>
-                    </div>
-                    <div className="room-detail">
-                      <i className="fas fa-layer-group"></i>
-                      <span>{t('rooms.floor')} {room.floor}</span>
-                    </div>
-                    <div className="room-detail">
-                      <i className="fas fa-bed"></i>
-                      <span>{getRoomTypeText(room.roomType)}</span>
-                    </div>
-                    <div className="room-detail">
-                      <i className="fas fa-user-friends"></i>
-                      <span>{room.capacity || (room.roomType==='single'?1:room.roomType==='double'?2:room.roomType==='suite'?3:4)} {t('rooms.persons')}</span>
-                    </div>
-                    <div className="room-detail">
-                      <i className="fas fa-star"></i>
-                      <span>{room.amenities?.length || 0} {t('rooms.amenities')}</span>
-                    </div>
-                  </div>
-                  
-                  <p className="room-description">{room.description}</p>
-                  
-                  <div className="room-actions">
+                  <div className="room-list-actions">
                     <button 
                       className="action-btn btn-view"
                       onClick={() => handleViewRoom(room.id)}
+                      title={t('rooms.actions.view')}
                     >
                       <i className="fas fa-eye"></i>
-                      {t('rooms.actions.view')}
                     </button>
                     <button 
                       className="action-btn btn-edit"
                       onClick={() => handleEditRoom(room.id)}
+                      title={t('rooms.actions.edit')}
                     >
                       <i className="fas fa-edit"></i>
-                      {t('rooms.actions.edit')}
                     </button>
                     <button 
                       className="action-btn btn-delete"
                       onClick={() => handleDeleteRoom(room.id)}
+                      title={t('rooms.actions.delete')}
                     >
                       <i className="fas fa-trash"></i>
-                      {t('rooms.actions.delete')}
                     </button>
                   </div>
                 </div>
-              </div>
-            )})}
+              )})
+            )}
           </div>
         )}
 
@@ -768,28 +933,69 @@ const RoomsManagement = () => {
                 placeholder="0" />
               {formErrors.deposit && <div className="error-text">{formErrors.deposit}</div>}
             </div>
+            
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.electricityPrice')}</label>
+              <input 
+                type="text" 
+                className="room-form-input" 
+                value={formData.electricityPrice === '' ? '' : formatWithCommas(formData.electricityPrice)}
+                onChange={e=>handleMoneyInlineChange('electricityPrice', e.target.value)}
+                onKeyDown={e=>handleMoneyInlineKey(e,'electricityPrice')}
+                placeholder="3,500" 
+              />
+              <span className="form-helper-text">{t('rooms.form.electricityPriceUnit')}</span>
+            </div>
+            
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.waterPrice')}</label>
+              <input 
+                type="text" 
+                className="room-form-input" 
+                value={formData.waterPrice === '' ? '' : formatWithCommas(formData.waterPrice)}
+                onChange={e=>handleMoneyInlineChange('waterPrice', e.target.value)}
+                onKeyDown={e=>handleMoneyInlineKey(e,'waterPrice')}
+                placeholder="25,000" 
+              />
+              <span className="form-helper-text">{t('rooms.form.waterPriceUnit')}</span>
+            </div>
+            
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.servicePrice')}</label>
+              <input 
+                type="text" 
+                className="room-form-input" 
+                value={formData.servicePrice === '' ? '' : formatWithCommas(formData.servicePrice)}
+                onChange={e=>handleMoneyInlineChange('servicePrice', e.target.value)}
+                onKeyDown={e=>handleMoneyInlineKey(e,'servicePrice')}
+                placeholder="150,000" 
+              />
+              <span className="form-helper-text">{t('rooms.form.servicePriceUnit')}</span>
+            </div>
+            
             <div className="room-form-group">
               <label className="room-form-label">{t('rooms.form.area')}</label>
               <input type="number" className="room-form-input" value={formData.area} onChange={e=>handleFormChange('area', e.target.value)} />
             </div>
             <div className="room-form-group">
-              <label className="room-form-label">{t('rooms.form.floor')}</label>
-              <input type="number" min="0" step="1" className="room-form-input" value={formData.floor} onChange={e=>{
+              <label className="room-form-label">{t('rooms.form.capacity')}</label>
+              <input type="number" min="1" step="1" className="room-form-input" value={formData.capacity} onChange={e=>{
                 const v = e.target.value;
-                if (v==='') return handleFormChange('floor','');
-                const num = Math.max(0, parseInt(v,10)||0);
-                handleFormChange('floor', String(num));
+                if (v==='') return handleFormChange('capacity','');
+                const num = Math.max(1, parseInt(v,10)||1);
+                handleFormChange('capacity', String(num));
               }} />
             </div>
             <div className="room-form-group">
-              <label className="room-form-label">{t('rooms.form.roomType')}</label>
-              <select className="room-form-select" value={formData.roomType} onChange={e=>handleFormChange('roomType', e.target.value)}>
-                <option value="single">{t('rooms.form.roomTypes.single')}</option>
-                <option value="double">{t('rooms.form.roomTypes.double')}</option>
-                <option value="suite">{t('rooms.form.roomTypes.suite')}</option>
-                <option value="dorm">{t('rooms.form.roomTypes.dorm')}</option>
-              </select>
+              <label className="room-form-label">{t('rooms.form.vehicleCount')}</label>
+              <input type="number" min="0" step="1" className="room-form-input" value={formData.vehicleCount} onChange={e=>{
+                const v = e.target.value;
+                if (v==='') return handleFormChange('vehicleCount','');
+                const num = Math.max(0, parseInt(v,10)||0);
+                handleFormChange('vehicleCount', String(num));
+              }} />
             </div>
+            
             <div className="room-form-group full">
               <label className="room-form-label">{t('rooms.form.description')}</label>
               <textarea className="room-form-textarea" value={formData.description} onChange={e=>handleFormChange('description', e.target.value)} />
@@ -797,24 +1003,20 @@ const RoomsManagement = () => {
             <div className="room-form-group full">
               <label className="room-form-label">{t('rooms.form.amenities')}</label>
               <div className="amenities-list" style={{gap:'12px'}}>
-                {AMENITY_OPTIONS
-                  .filter(opt => {
-                    if (formData.amenities.includes('full_furniture') && FULL_FURNITURE_CHILDREN.includes(opt.value)) return false; // hide base amenities when full furniture selected
-                    return true;
-                  })
-                  .map(opt => (
-                   <label key={opt.value} style={{display:'flex',alignItems:'center',gap:'6px',background:'#f8fafc',padding:'8px 12px',borderRadius:'10px',border:'1px solid #e2e8f0',cursor:'pointer'}}>
+                {availableAmenities.map(amenity => (
+                   <label key={amenity._id} style={{display:'flex',alignItems:'center',gap:'6px',background:'#f8fafc',padding:'8px 12px',borderRadius:'10px',border:'1px solid #e2e8f0',cursor:'pointer'}}>
                      <input
                        type="checkbox"
-                       checked={formData.amenities.includes(opt.value)}
-                       onChange={()=>toggleAmenity(opt.value)}
+                       checked={formData.amenities.includes(amenity._id)}
+                       onChange={()=>toggleAmenity(amenity._id)}
                      />
-                     <span style={{fontSize:'13px',fontWeight:600}}>{t(`rooms.amenityLabels.${opt.value}`)}</span>
+                     <i className={amenity.icon} style={{fontSize:'14px',color:'#667eea',width:'16px'}}></i>
+                     <span style={{fontSize:'13px',fontWeight:600}}>{amenity.name}</span>
                    </label>
                 ))}
-                {formData.amenities.includes('full_furniture') && (
-                  <div style={{flexBasis:'100%', fontSize:'12px', color:'#475569', marginTop:'4px'}}>
-                    {t('rooms.form.fullFurnitureIncludes')}
+                {availableAmenities.length === 0 && (
+                  <div style={{fontSize:'12px', color:'#475569', padding:'8px'}}>
+                    Chưa có tiện ích nào. Hãy thêm tiện ích trong phần quản lý tiện ích.
                   </div>
                 )}
                </div>
@@ -897,8 +1099,12 @@ const RoomsManagement = () => {
                 <div className="room-view-detail-value">{viewRoom.roomNumber}</div>
               </div>
               <div>
-                <div className="room-view-detail-label">{t('rooms.form.roomType')}</div>
-                <div className="room-view-detail-value">{getRoomTypeText(viewRoom.roomType)}</div>
+                <div className="room-view-detail-label">{t('rooms.form.capacity')}</div>
+                <div className="room-view-detail-value">{viewRoom.capacity || 1} {t('rooms.persons')}</div>
+              </div>
+              <div>
+                <div className="room-view-detail-label">{t('rooms.form.vehicleCount')}</div>
+                <div className="room-view-detail-value">{viewRoom.vehicleCount || 0} {t('rooms.vehicles')}</div>
               </div>
               <div>
                 <div className="room-view-detail-label">{t('rooms.form.price')}</div>
@@ -912,18 +1118,21 @@ const RoomsManagement = () => {
                 <div className="room-view-detail-label">{t('rooms.form.area')}</div>
                 <div className="room-view-detail-value">{viewRoom.area ?? '-'}</div>
               </div>
-              <div>
-                <div className="room-view-detail-label">{t('rooms.form.floor')}</div>
-                <div className="room-view-detail-value">{viewRoom.floor ?? '-'}</div>
-              </div>
-              <div>
-                <div className="room-view-detail-label">{t('rooms.form.capacity') || 'Capacity'}</div>
-                <div className="room-view-detail-value">{viewRoom.capacity ?? '-'}</div>
-              </div>
               <div style={{gridColumn:'1/-1'}}>
                 <div className="room-view-detail-label">{t('rooms.form.amenities')}</div>
                 <div className="room-view-detail-value" style={{fontWeight:400}}>
-                  {(viewRoom.amenities||[]).length ? viewRoom.amenities.map(a=>t(`rooms.amenityLabels.${a}`)).join(', ') : t('common.none')}
+                  {(viewRoom.amenities||[]).length ? (viewRoom.amenities||[]).map(amenity => {
+                    // Handle both populated amenities and ID-only amenities
+                    if (typeof amenity === 'object' && amenity.name) {
+                      // Populated amenity object
+                      return amenity.name;
+                    } else {
+                      // ID-only amenity - find in availableAmenities
+                      const amenityId = typeof amenity === 'string' ? amenity : amenity._id;
+                      const foundAmenity = availableAmenities.find(a => a._id === amenityId);
+                      return foundAmenity ? foundAmenity.name : t('common.unknown');
+                    }
+                  }).join(', ') : t('common.none')}
                 </div>
               </div>
               {viewRoom.description && (
@@ -971,32 +1180,68 @@ const RoomsManagement = () => {
                 placeholder="0" />
               {editFormErrors.deposit && <div className="error-text">{editFormErrors.deposit}</div>}
             </div>
+            
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.electricityPrice')}</label>
+              <input 
+                type="text" 
+                className="room-form-input" 
+                value={editFormData.electricityPrice === '' ? '' : formatWithCommas(editFormData.electricityPrice)}
+                onChange={e=>handleMoneyInlineChange('electricityPrice', e.target.value, true)}
+                onKeyDown={e=>handleMoneyInlineKey(e,'electricityPrice', true)}
+                placeholder="3,500" 
+              />
+              <span className="form-helper-text">{t('rooms.form.electricityPriceUnit')}</span>
+            </div>
+            
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.waterPrice')}</label>
+              <input 
+                type="text" 
+                className="room-form-input" 
+                value={editFormData.waterPrice === '' ? '' : formatWithCommas(editFormData.waterPrice)}
+                onChange={e=>handleMoneyInlineChange('waterPrice', e.target.value, true)}
+                onKeyDown={e=>handleMoneyInlineKey(e,'waterPrice', true)}
+                placeholder="25,000" 
+              />
+              <span className="form-helper-text">{t('rooms.form.waterPriceUnit')}</span>
+            </div>
+            
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.servicePrice')}</label>
+              <input 
+                type="text" 
+                className="room-form-input" 
+                value={editFormData.servicePrice === '' ? '' : formatWithCommas(editFormData.servicePrice)}
+                onChange={e=>handleMoneyInlineChange('servicePrice', e.target.value, true)}
+                onKeyDown={e=>handleMoneyInlineKey(e,'servicePrice', true)}
+                placeholder="150,000" 
+              />
+              <span className="form-helper-text">{t('rooms.form.servicePriceUnit')}</span>
+            </div>
+            
             <div className="room-form-group">
               <label className="room-form-label">{t('rooms.form.area')}</label>
               <input type="number" className="room-form-input" value={editFormData.area} onChange={e=>setEditFormData(p=>({...p,area:e.target.value}))} />
             </div>
             <div className="room-form-group">
-              <label className="room-form-label">{t('rooms.form.floor')}</label>
-              <input type="number" min="0" step="1" className="room-form-input" value={editFormData.floor} onChange={e=>{
+              <label className="room-form-label">{t('rooms.form.capacity')}</label>
+              <input type="number" min="1" step="1" className="room-form-input" value={editFormData.capacity} onChange={e=>{
                 const v = e.target.value;
-                if (v==='') return setEditFormData(p=>({...p,floor:''}));
-                const num = Math.max(0, parseInt(v,10)||0);
-                setEditFormData(p=>({...p,floor:String(num)}));
+                if (v==='') return setEditFormData(p=>({...p,capacity:''}));
+                const num = Math.max(1, parseInt(v,10)||1);
+                setEditFormData(p=>({...p,capacity:String(num)}));
               }} />
-            </div>
-            <div className="room-form-group">
-              <label className="room-form-label">{t('rooms.form.roomType')}</label>
-              <select className="room-form-select" value={editFormData.roomType} onChange={e=>setEditFormData(p=>({...p,roomType:e.target.value}))}>
-                <option value="single">{t('rooms.form.roomTypes.single')}</option>
-                <option value="double">{t('rooms.form.roomTypes.double')}</option>
-                <option value="suite">{t('rooms.form.roomTypes.suite')}</option>
-                <option value="dorm">{t('rooms.form.roomTypes.dorm')}</option>
-              </select>
-            </div>
-            <div className="room-form-group">
-              <label className="room-form-label">{t('rooms.form.capacity') || 'Capacity'}</label>
-              <input type="number" className="room-form-input" value={editFormData.capacity} onChange={e=>setEditFormData(p=>({...p,capacity:e.target.value}))} />
               {editFormErrors.capacity && <div className="error-text">{editFormErrors.capacity}</div>}
+            </div>
+            <div className="room-form-group">
+              <label className="room-form-label">{t('rooms.form.vehicleCount')}</label>
+              <input type="number" min="0" step="1" className="room-form-input" value={editFormData.vehicleCount} onChange={e=>{
+                const v = e.target.value;
+                if (v==='') return setEditFormData(p=>({...p,vehicleCount:''}));
+                const num = Math.max(0, parseInt(v,10)||0);
+                setEditFormData(p=>({...p,vehicleCount:String(num)}));
+              }} />
             </div>
             <div className="room-form-group full">
               <label className="room-form-label">{t('rooms.form.description')}</label>
@@ -1005,24 +1250,20 @@ const RoomsManagement = () => {
             <div className="room-form-group full">
               <label className="room-form-label">{t('rooms.form.amenities')}</label>
               <div className="amenities-list" style={{gap:'12px'}}>
-                {AMENITY_OPTIONS
-                  .filter(opt => {
-                    if (editFormData.amenities.includes('full_furniture') && FULL_FURNITURE_CHILDREN.includes(opt.value)) return false;
-                    return true;
-                  })
-                  .map(opt => (
-                   <label key={opt.value} style={{display:'flex',alignItems:'center',gap:'6px',background:'#f8fafc',padding:'8px 12px',borderRadius:'10px',border:'1px solid #e2e8f0',cursor:'pointer'}}>
+                {availableAmenities.map(amenity => (
+                   <label key={amenity._id} style={{display:'flex',alignItems:'center',gap:'6px',background:'#f8fafc',padding:'8px 12px',borderRadius:'10px',border:'1px solid #e2e8f0',cursor:'pointer'}}>
                      <input
                        type="checkbox"
-                       checked={editFormData.amenities.includes(opt.value)}
-                       onChange={()=>toggleEditAmenity(opt.value)}
+                       checked={editFormData.amenities.includes(amenity._id)}
+                       onChange={()=>toggleEditAmenity(amenity._id)}
                      />
-                     <span style={{fontSize:'13px',fontWeight:600}}>{t(`rooms.amenityLabels.${opt.value}`)}</span>
+                     <i className={amenity.icon} style={{fontSize:'14px',color:'#667eea',width:'16px'}}></i>
+                     <span style={{fontSize:'13px',fontWeight:600}}>{amenity.name}</span>
                    </label>
                 ))}
-                {editFormData.amenities.includes('full_furniture') && (
-                  <div style={{flexBasis:'100%', fontSize:'12px', color:'#475569', marginTop:'4px'}}>
-                    {t('rooms.form.fullFurnitureIncludes')}
+                {availableAmenities.length === 0 && (
+                  <div style={{fontSize:'12px', color:'#475569', padding:'8px'}}>
+                    Chưa có tiện ích nào. Hãy thêm tiện ích trong phần quản lý tiện ích.
                   </div>
                 )}
                </div>

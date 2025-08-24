@@ -20,8 +20,8 @@ import {
   Settings,
   House,
   People,
-  DocumentScanner,
-  EditDocument
+  EditDocument,
+  Category
 } from "@mui/icons-material";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -32,6 +32,7 @@ const fontFamily = "'Inter', 'Segoe UI', 'Roboto', 'Noto Sans', -apple-system, B
 
 // Simple module-level cache so profile only fetched once per token during session
 let __cachedUserProfile = null; // { fullName, avatar, role, token }
+let __isLoading = false; // Prevent multiple concurrent fetches
 
 const SideBar = () => {
   const navigate = useNavigate();
@@ -46,76 +47,69 @@ const SideBar = () => {
   const menuItems = useMemo(() => [
     { text: t('sidebar.dashboard'), icon: <Dashboard />, path: "/admin/dashboard" },
     { text: t('sidebar.rooms'), icon: <House />, path: "/admin/rooms" },
+    { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities" },
     { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants" },
     { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts" },
-    // {
-    //   text: t('sidebar.posts'),
-    //   icon: <Receipt />,
-    //   isParent: true,
-    //   subMenus: [
-    //     // { text: "Chờ xác nhận", path: "/admin/orders/pending" },
-    //     // { text: "Đang giao", path: "/admin/orders/shipping" },
-    //     // { text: "Đã giao", path: "/admin/orders/delivered" },
-    //     // { text: "Đã hủy", path: "/admin/orders/canceled" },
-    //   ],
-    // },
-    // { text: t('sidebar.reports'), icon: <BarChart />, path: "/admin/report" },
-    // {
-    //   text: t('sidebar.vouchers'),
-    //   icon: <CardGiftcardIcon />,
-    //   path: "/admin/voucher",
-    // },
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings" }
   ], [t]);
 
-  // Load current user profile
+  // Load current user profile - only once per token
   useEffect(() => {
-    let cancelled = false;
+    const token = localStorage.getItem('token') || null;
+    
+    // If we have cached data for this token, use it immediately
+    if (__cachedUserProfile && __cachedUserProfile.token === token) {
+      const { fullName: cName, avatar: cAvatar, role: cRole } = __cachedUserProfile;
+      setFullName(cName);
+      setAvatar(cAvatar);
+      setRole(cRole);
+      setLoadingUser(false);
+      return;
+    }
+    
+    // If already loading, don't start another fetch
+    if (__isLoading) {
+      return;
+    }
+    
+    // Start loading
+    __isLoading = true;
+    setLoadingUser(true);
+    
     (async () => {
-      const token = localStorage.getItem('token') || null;
-      // Serve from cache if same token and cached data exists
-      if (__cachedUserProfile && __cachedUserProfile.token === token) {
-        const { fullName: cName, avatar: cAvatar, role: cRole } = __cachedUserProfile;
-        setFullName(cName);
-        setAvatar(cAvatar);
-        setRole(cRole);
-        setLoadingUser(false);
-        return; // skip fetch
-      }
       try {
-        if (!token) {
-          // default / fallback only once
-            const defRes = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/default`);
-            if (defRes.ok) {
-              const defData = await defRes.json();
-              if (defData.success && defData.data && !cancelled) {
+        // Always try to call API, even without token (for bypass mode)
+        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`, {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        
+        if (!res.ok) {
+          // If we had a token but request failed, try without token
+          if (token) {
+            const fallbackRes = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`);
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              if (fallbackData.success && fallbackData.data) {
                 const u = {
-                  fullName: defData.data.fullName || 'Landlord',
-                  avatar: defData.data.avatar || '',
-                  role: defData.data.role || 'landlord',
+                  fullName: fallbackData.data.fullName || 'User',
+                  avatar: fallbackData.data.avatar || '',
+                  role: fallbackData.data.role || '',
                   token: null
                 };
                 __cachedUserProfile = u;
                 setFullName(u.fullName);
                 setAvatar(u.avatar);
                 setRole(u.role);
-              }
-            } else {
-              const fallbackName = localStorage.getItem('fallbackFullName') || 'Landlord';
-              const fallbackRole = localStorage.getItem('role') || 'landlord';
-              if (!cancelled) {
-                setFullName(fallbackName);
-                setRole(fallbackRole);
+                setLoadingUser(false);
+                return;
               }
             }
-          return;
+          }
+          throw new Error('Failed profile');
         }
-        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!res.ok) throw new Error('Failed profile');
+        
         const data = await res.json();
-        if (data.success && data.data && !cancelled) {
+        if (data.success && data.data) {
           const u = {
             fullName: data.data.fullName || 'User',
             avatar: data.data.avatar || '',
@@ -128,16 +122,19 @@ const SideBar = () => {
           setRole(u.role);
         }
       } catch (e) {
-        if (!cancelled) {
-          setFullName(prev => prev === '...' ? 'User' : prev);
-          setRole(r => r || '');
-        }
+        console.warn('Failed to load user profile:', e.message);
+        // Use fallback data
+        const fallbackName = localStorage.getItem('fallbackFullName') || 'Landlord';
+        const fallbackRole = localStorage.getItem('role') || 'landlord';
+        
+        setFullName(fallbackName);
+        setRole(fallbackRole);
       } finally {
-        if (!cancelled) setLoadingUser(false);
+        setLoadingUser(false);
+        __isLoading = false;
       }
     })();
-    return () => { cancelled = true; };
-  }, []);
+  }, []); // Empty dependency array - only run once when component mounts
 
   // Auto expand menu based on current path
   useEffect(() => {
@@ -453,28 +450,6 @@ const SideBar = () => {
         borderRadius: 2,
         boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
       }}>
-        <Box sx={{ textAlign: "center", mb: 2 }}>
-          <Typography variant="h6" sx={{ 
-            fontFamily: fontFamily,
-            fontWeight: 600,
-            background: "linear-gradient(45deg, #ffffff, #f0f0f0)",
-            backgroundClip: "text",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            mb: 1,
-            letterSpacing: 0.5
-          }}>
-            {t('sidebar.adminPanel')}
-          </Typography>
-          <Box sx={{
-            width: 40,
-            height: 3,
-            background: "linear-gradient(90deg, #667eea, #764ba2)",
-            borderRadius: 2,
-            mx: "auto",
-            mb: 1
-          }} />
-        </Box>
         <Typography variant="caption" sx={{ 
           fontFamily: fontFamily,
           opacity: 0.7, 

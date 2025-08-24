@@ -2,6 +2,7 @@
   "sidebar": {
     "dashboard": "Dashboard",
     "rooms": "Room Management",
+    "amenities": "Amenity Management",
     "users": "User Management",
     "tenants": "Tenant Management",
   "contracts": "Contract Management",
@@ -96,8 +97,8 @@
     "noRoomsFound": "No rooms found",
     "noRoomsDescription": "Try changing filters or add new rooms",
     "month": "month",
-    "floor": "Floor",
     "persons": "persons",
+    "vehicles": "vehicles",
     "amenities": "amenities",
     "actions": {
       "view": "View",
@@ -118,8 +119,8 @@
       "price": "Price (VND)",
       "deposit": "Deposit (VND)",
       "area": "Area (m²)",
-      "floor": "Floor",
       "capacity": "Capacity",
+      "vehicleCount": "Vehicle Count",
       "capacityPlaceholder": "Auto by room type",
       "roomType": "Room Type",
       "description": "Description",
@@ -144,7 +145,27 @@
       "imagesAddNew": "Add New Images (max {{count}})",
       "deleteImageConfirm": "Delete this image?",
       "uploading": "Uploading...",
-      "imagesNone": "No images"
+      "imagesNone": "No images",
+      "utilityPrices": "Utility Prices & Services",
+      "electricityPrice": "Electricity Price (VND/kWh)",
+      "electricityPriceUnit": "VND/kWh",
+      "waterPrice": "Water Price (VND/m³)",
+      "waterPriceUnit": "VND/m³",
+      "servicePrice": "Service Fee (VND/month)",
+      "servicePriceUnit": "VND/month",
+      "meterConfig": "Meter Configuration",
+      "electricityMeterEnabled": "Use electricity meter",
+      "electricityLastReading": "Last electricity reading (kWh)",
+      "waterMeterEnabled": "Use water meter",
+      "waterLastReading": "Last water reading (m³)",
+      "paymentConfig": "Payment Configuration",
+      "electricityIncluded": "Electricity included in rent",
+      "waterIncluded": "Water included in rent",
+      "serviceIncluded": "Service included in rent",
+      "paymentDay": "Monthly payment day",
+      "paymentDayHelper": "Day 1-31 of the month",
+      "advancePayment": "Advance payment months",
+      "advancePaymentHelper": "At least 1 month"
     },
     "validation": {
       "propertyRequired": "Select a property",
@@ -198,7 +219,8 @@
     "create": "Create",
     "select": "Select",
     "all": "All",
-    "none": "None",
+    "none": "None", 
+    "unknown": "Unknown",
     "actions": "Actions"
   },
   "settings": {
@@ -489,6 +511,68 @@
           "Support contact: 1900-xxxx"
         ]
       }
+    }
+  },
+  "amenities": {
+    "title": "Amenities Management",
+    "addNew": "Add Amenity",
+    "search": "Search",
+    "searchPlaceholder": "Search by name, key or description...",
+    "category": "Category",
+    "allCategories": "All Categories",
+    "status": "Status",
+    "allStatuses": "All Statuses",
+    "active": "Active",
+    "inactive": "Inactive",
+    "reset": "Reset",
+    "loading": "Loading amenities...",
+    "noAmenitiesFound": "No amenities found",
+    "noAmenitiesDescription": "Add new amenities to get started.",
+    "confirmDelete": "Are you sure you want to delete this amenity?",
+    "categories": {
+      "all": "All",
+      "furniture": "Furniture",
+      "appliance": "Appliance",
+      "utility": "Utility",
+      "service": "Service",
+      "other": "Other"
+    },
+    "table": {
+      "amenity": "Amenity",
+      "category": "Category",
+      "status": "Status",
+      "order": "Order",
+      "actions": "Actions"
+    },
+    "actions": {
+      "edit": "Edit",
+      "delete": "Delete"
+    },
+    "form": {
+      "createTitle": "Add New Amenity",
+      "editTitle": "Edit Amenity",
+      "name": "Amenity Name",
+      "key": "Key (identifier)",
+      "icon": "Icon (FontAwesome class)",
+      "category": "Category",
+      "description": "Description",
+      "displayOrder": "Display Order",
+      "status": "Status",
+      "cancel": "Cancel",
+      "create": "Create",
+      "creating": "Creating...",
+      "update": "Update",
+      "updating": "Updating..."
+    },
+    "validation": {
+      "nameRequired": "Amenity name is required",
+      "keyRequired": "Key is required",
+      "keyDuplicate": "This key already exists",
+      "checking": "Checking..."
+    },
+    "pagination": {
+      "page": "Page",
+      "items": "amenities"
     }
   }
 }

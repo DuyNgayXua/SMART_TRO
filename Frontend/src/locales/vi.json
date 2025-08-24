@@ -2,6 +2,7 @@
   "sidebar": {
     "dashboard": "Bảng điều khiển",
     "rooms": "Quản lý phòng trọ",
+    "amenities": "Quản lý tiện ích",
     "users": "Quản lý người dùng",
     "tenants": "Quản lý khách thuê",
   "contracts": "Quản lý hợp đồng",
@@ -96,8 +97,8 @@
     "noRoomsFound": "Không tìm thấy phòng nào",
     "noRoomsDescription": "Thử thay đổi bộ lọc hoặc thêm phòng mới",
     "month": "tháng",
-    "floor": "Tầng",
     "persons": "người",
+    "vehicles": "xe",
     "amenities": "tiện ích",
     "actions": {
       "view": "Xem",
@@ -118,8 +119,8 @@
       "price": "Giá (VND)",
       "deposit": "Tiền cọc (VND)",
       "area": "Diện tích (m²)",
-      "floor": "Tầng",
       "capacity": "Sức chứa",
+      "vehicleCount": "Số lượng xe",
       "capacityPlaceholder": "Tự động theo loại phòng",
       "roomType": "Loại phòng",
       "description": "Mô tả",
@@ -144,7 +145,27 @@
       "imagesAddNew": "Thêm ảnh mới (tối đa {{count}})",
       "deleteImageConfirm": "Xóa ảnh này?",
       "uploading": "Đang tải lên...",
-      "imagesNone": "Chưa có ảnh"
+      "imagesNone": "Chưa có ảnh",
+      "utilityPrices": "Giá điện nước và dịch vụ",
+      "electricityPrice": "Giá điện (VND/kWh)",
+      "electricityPriceUnit": "VND/kWh",
+      "waterPrice": "Giá nước (VND/m³)",
+      "waterPriceUnit": "VND/m³",
+      "servicePrice": "Phí dịch vụ (VND/tháng)",
+      "servicePriceUnit": "VND/tháng",
+      "meterConfig": "Cấu hình đồng hồ",
+      "electricityMeterEnabled": "Sử dụng đồng hồ điện",
+      "electricityLastReading": "Chỉ số điện cuối (kWh)",
+      "waterMeterEnabled": "Sử dụng đồng hồ nước",
+      "waterLastReading": "Chỉ số nước cuối (m³)",
+      "paymentConfig": "Cấu hình thanh toán",
+      "electricityIncluded": "Điện bao gồm trong giá thuê",
+      "waterIncluded": "Nước bao gồm trong giá thuê",
+      "serviceIncluded": "Dịch vụ bao gồm trong giá thuê",
+      "paymentDay": "Ngày thanh toán hàng tháng",
+      "paymentDayHelper": "Ngày 1-31 trong tháng",
+      "advancePayment": "Số tháng thanh toán trước",
+      "advancePaymentHelper": "Ít nhất 1 tháng"
     },
     "validation": {
       "propertyRequired": "Chọn bất động sản",
@@ -199,6 +220,7 @@
     "select": "Chọn",
     "all": "Tất cả",
     "none": "Không có",
+    "unknown": "Không xác định",
     "actions": "Thao tác"
   },
   "settings": {
@@ -489,6 +511,68 @@
           "Liên hệ hỗ trợ: 1900-xxxx"
         ]
       }
+    }
+  },
+  "amenities": {
+    "title": "Quản lý Tiện ích",
+    "addNew": "Thêm tiện ích",
+    "search": "Tìm kiếm",
+    "searchPlaceholder": "Tìm tên, key hoặc mô tả tiện ích...",
+    "category": "Danh mục",
+    "allCategories": "Tất cả danh mục",
+    "status": "Trạng thái",
+    "allStatuses": "Tất cả trạng thái",
+    "active": "Hoạt động",
+    "inactive": "Không hoạt động",
+    "reset": "Đặt lại",
+    "loading": "Đang tải danh sách tiện ích...",
+    "noAmenitiesFound": "Không tìm thấy tiện ích nào",
+    "noAmenitiesDescription": "Hãy thêm tiện ích mới để bắt đầu quản lý.",
+    "confirmDelete": "Bạn có chắc chắn muốn xóa tiện ích này?",
+    "categories": {
+      "all": "Tất cả",
+      "furniture": "Nội thất",
+      "appliance": "Thiết bị điện",
+      "utility": "Tiện ích",
+      "service": "Dịch vụ",
+      "other": "Khác"
+    },
+    "table": {
+      "amenity": "Tiện ích",
+      "category": "Danh mục",
+      "status": "Trạng thái",
+      "order": "Thứ tự",
+      "actions": "Thao tác"
+    },
+    "actions": {
+      "edit": "Sửa",
+      "delete": "Xóa"
+    },
+    "form": {
+      "createTitle": "Thêm tiện ích mới",
+      "editTitle": "Chỉnh sửa tiện ích",
+      "name": "Tên tiện ích",
+      "key": "Key (mã định danh)",
+      "icon": "Icon (FontAwesome class)",
+      "category": "Danh mục",
+      "description": "Mô tả",
+      "displayOrder": "Thứ tự hiển thị",
+      "status": "Trạng thái",
+      "cancel": "Hủy",
+      "create": "Tạo mới",
+      "creating": "Đang tạo...",
+      "update": "Cập nhật",
+      "updating": "Đang cập nhật..."
+    },
+    "validation": {
+      "nameRequired": "Tên tiện ích là bắt buộc",
+      "keyRequired": "Key là bắt buộc",
+      "keyDuplicate": "Key này đã tồn tại",
+      "checking": "Đang kiểm tra..."
+    },
+    "pagination": {
+      "page": "Trang",
+      "items": "tiện ích"
     }
   }
 }

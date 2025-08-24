@@ -18,7 +18,8 @@ class RoomRepository {
         try {
             return await Room.findById(id)
                 .populate('property', 'title address owner')
-                .populate('tenant', 'fullName email phone');
+                .populate('tenant', 'fullName email phone')
+                .populate('amenities', 'name icon');
         } catch (error) {
             throw new Error('Error finding room by id: ' + error.message);
         }
@@ -62,7 +63,8 @@ class RoomRepository {
                 .limit(parseInt(limit))
                 .sort({ createdAt: -1 })
                 .populate('property', 'title address')
-                .populate('tenant', 'fullName');
+                .populate('tenant', 'fullName')
+                .populate('amenities', 'name icon');
             const total = await Room.countDocuments(query);
             return {
                 rooms,
@@ -82,7 +84,8 @@ class RoomRepository {
         try {
             return await Room.findByIdAndUpdate(id, data, { new: true, runValidators: true })
                 .populate('property', 'title address')
-                .populate('tenant', 'fullName');
+                .populate('tenant', 'fullName')
+                .populate('amenities', 'name icon');
         } catch (error) {
             throw new Error('Error updating room: ' + error.message);
         }

@@ -1,7 +1,6 @@
 /**
  * Validation Middleware - Validate request data
  */
-import { AMENITY_VALUES } from '../../../schemas/Room.js';
 
 // Regex pattern cho mật khẩu mạnh
 const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
@@ -207,9 +206,8 @@ class ValidationMiddleware {
         if (deposit == null || deposit < 0) errors.push('Tiền cọc không hợp lệ');
         if (area != null && area < 0) errors.push('Diện tích không hợp lệ');
         if (roomType && !['single','double','suite','dorm'].includes(roomType)) errors.push('Loại phòng không hợp lệ');
-        if (amenities) {
-            const invalid = amenities.filter(a => !AMENITY_VALUES.includes(a));
-            if (invalid.length) errors.push('Tiện ích không hợp lệ: ' + invalid.join(', '));
+        if (amenities && !Array.isArray(amenities)) {
+            errors.push('Danh sách tiện ích phải là một mảng');
         }
 
         if (errors.length) {
@@ -232,10 +230,9 @@ class ValidationMiddleware {
         if (area != null && area < 0) errors.push('Diện tích không hợp lệ');
         if (roomType && !['single','double','suite','dorm'].includes(roomType)) errors.push('Loại phòng không hợp lệ');
         if (status && !['available','rented','maintenance','reserved'].includes(status)) errors.push('Trạng thái phòng không hợp lệ');
-        if (amenities) {
-                const invalid = amenities.filter(a => !AMENITY_VALUES.includes(a));
-                if (invalid.length) errors.push('Tiện ích không hợp lệ: ' + invalid.join(', '));
-            }
+        if (amenities && !Array.isArray(amenities)) {
+            errors.push('Danh sách tiện ích phải là một mảng');
+        }
 
             if (errors.length) {
                 return res.status(400).json({ success: false, message: 'Dữ liệu không hợp lệ', errors });

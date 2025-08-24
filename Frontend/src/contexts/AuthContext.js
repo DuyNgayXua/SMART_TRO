@@ -11,6 +11,10 @@ export const useAuth = () => {
   return context;
 };
 
+// Cache to prevent multiple auth checks
+let __authCheckDone = false;
+let __authCheckPromise = null;
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -18,6 +22,8 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     apiUtils.clearAuthData();
     setUser(null);
+    __authCheckDone = false; // Reset auth check when logout
+    __authCheckPromise = null;
   };
 
   // Set up global logout handler
@@ -25,26 +31,43 @@ export const AuthProvider = ({ children }) => {
     setGlobalLogoutHandler(logout);
   }, []);
 
-  // Kiểm tra trạng thái đăng nhập khi khởi tạo
+  // Kiểm tra trạng thái đăng nhập khi khởi tạo - chỉ một lần
   useEffect(() => {
+    // If auth check already done, use cached result
+    if (__authCheckDone) {
+      setLoading(false);
+      return;
+    }
+    
+    // If auth check is in progress, wait for it
+    if (__authCheckPromise) {
+      __authCheckPromise.then(() => setLoading(false));
+      return;
+    }
+    
+    // Start auth check
     const checkAuthStatus = async () => {
       const token = apiUtils.getToken();
-      if (token) {
-        try {
-          const response = await authAPI.getProfile();
-          if (response.data && response.data.success) {
-            setUser(response.data.data);
-          }
-        } catch (error) {
-          // Token không hợp lệ, xóa auth data
-          apiUtils.clearAuthData();
-          setUser(null);
+      
+      try {
+        // Always try to get profile, even without token (for bypass mode)
+        const response = await authAPI.getProfile();
+        if (response.data && response.data.success) {
+          setUser(response.data.data);
         }
+      } catch (error) {
+        // If we had a token but it's invalid, clear it
+        if (token) {
+          apiUtils.clearAuthData();
+        }
+        setUser(null);
       }
+      
+      __authCheckDone = true;
       setLoading(false);
     };
     
-    checkAuthStatus();
+    __authCheckPromise = checkAuthStatus();
   }, []);
 
   const login = async (credentials, remember = false) => {

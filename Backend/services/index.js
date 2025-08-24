@@ -9,6 +9,7 @@ import tenantRoutes from './tenant-service/routes/tenantRoutes.js';
 // import paymentRoutes from './payment-service/routes/paymentRoutes.js';
 import contractRoutes from './contract-service/routes/contractRoutes.js';
 import authRoutes from './auth-service/routes/authRoutes.js';
+import amenityRoutes from './amenity-service/routes/amenityRoutes.js';
 
 const router = express.Router();
 
@@ -20,6 +21,7 @@ router.use('/api/tenants', tenantRoutes);
 // router.use('/api/payments', paymentRoutes);
 router.use('/api/contracts', contractRoutes);
 router.use('/api/auth', authRoutes);
+router.use('/api/amenities', amenityRoutes);
 
 // API documentation route
 router.get('/api', (req, res) => {
