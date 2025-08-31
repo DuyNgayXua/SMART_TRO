@@ -4,12 +4,15 @@ import SideBar from '../../common/adminSidebar';
 import '../admin-global.css';
 import './contracts.css';
 import contractsAPI from '../../../services/contractsAPI';
+import depositContractsAPI from '../../../services/depositContractsAPI';
 import roomsAPI from '../../../services/roomsAPI';
 import tenantsAPI from '../../../services/tenantsAPI';
 
 const ContractsManagement = () => {
   const { t } = useTranslation();
   const [contracts, setContracts] = useState([]);
+  const [depositContracts, setDepositContracts] = useState([]);
+  const [activeTab, setActiveTab] = useState('rental'); // 'rental' or 'deposit'
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -17,6 +20,13 @@ const ContractsManagement = () => {
   const [errors, setErrors] = useState({});
   const [pagination, setPagination] = useState({ currentPage:1, totalPages:1, totalItems:0, itemsPerPage:12 });
   const [filters, setFilters] = useState({ status:'', search:'' });
+  const [statusCounts, setStatusCounts] = useState({ 
+    all: 0,
+    active: 0, 
+    pending: 0, 
+    expired: 0, 
+    terminated: 0 
+  });
   const [roomOptions, setRoomOptions] = useState([]);
   const [tenantOptions, setTenantOptions] = useState([]);
   const [viewing, setViewing] = useState(null);
@@ -33,28 +43,85 @@ const ContractsManagement = () => {
   const fetchContracts = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { page: pagination.currentPage, limit: pagination.itemsPerPage, status: filters.status||undefined, search: filters.search||undefined };
-      const res = await contractsAPI.searchContracts(params); // expected { success, data:{ items, pagination } }
-      if (res.success) {
-        const list = (res.data?.items || res.data?.contracts || []).map(c => ({
-          id: c._id,
-          room: c.room?.roomNumber || c.roomNumber || c.room,
-          tenant: c.tenant?.fullName || c.tenantName || c.tenant,
-          startDate: c.startDate,
-          endDate: c.endDate,
-          monthlyRent: c.monthlyRent,
-          deposit: c.deposit,
-          status: c.status,
-          signedDate: c.signedDate,
-          notes: c.notes
-        }));
-        setContracts(list);
-        const pag = res.data?.pagination || { total:list.length, pages:1 };
-        setPagination(p=>({ ...p, totalItems: pag.total, totalPages: pag.pages||1 }));
+      if (activeTab === 'rental') {
+        const params = { page: pagination.currentPage, limit: pagination.itemsPerPage, status: filters.status||undefined, search: filters.search||undefined };
+        const res = await contractsAPI.searchContracts(params); // expected { success, data:{ items, pagination } }
+        if (res.success) {
+          const list = (res.data?.items || res.data?.contracts || []).map(c => ({
+            id: c._id,
+            room: c.room?.roomNumber || c.roomNumber || c.room,
+            tenant: c.tenant?.fullName || c.tenantName || c.tenant,
+            startDate: c.startDate,
+            endDate: c.endDate,
+            monthlyRent: c.monthlyRent,
+            deposit: c.deposit,
+            status: c.status,
+            signedDate: c.signedDate,
+            notes: c.notes
+          }));
+          setContracts(list);
+          const pag = res.data?.pagination || { total:list.length, pages:1 };
+          setPagination(p=>({ ...p, totalItems: pag.total, totalPages: pag.pages||1 }));
+        }
+        
+        // Fetch status counts for rental contracts
+        try {
+          const allParams = { ...params, status: undefined };
+          const allRes = await contractsAPI.searchContracts(allParams);
+          if (allRes.success) {
+            const allContracts = allRes.data?.items || allRes.data?.contracts || [];
+            const counts = {
+              all: allContracts.length,
+              active: allContracts.filter(c => c.status === 'active').length,
+              pending: allContracts.filter(c => c.status === 'pending').length,
+              expired: allContracts.filter(c => c.status === 'expired').length,
+              terminated: allContracts.filter(c => c.status === 'terminated').length
+            };
+            setStatusCounts(counts);
+          }
+        } catch (e) { console.error('Error fetching status counts:', e); }
+        
+      } else if (activeTab === 'deposit') {
+        const params = { page: pagination.currentPage, limit: pagination.itemsPerPage, status: filters.status||undefined };
+        const res = await depositContractsAPI.getDepositContracts(params);
+        if (res.success) {
+          const list = (res.data || []).map(c => ({
+            id: c._id,
+            room: c.room?.roomNumber || c.roomNumber,
+            tenant: c.tenantName,
+            tenantPhone: c.tenantPhone,
+            depositDate: c.depositDate,
+            expectedMoveInDate: c.expectedMoveInDate,
+            depositAmount: c.depositAmount,
+            roomPrice: c.roomPrice,
+            status: c.status,
+            notes: c.notes
+          }));
+          setDepositContracts(list);
+          const pag = res.pagination || { total:list.length, pages:1 };
+          setPagination(p=>({ ...p, totalItems: pag.total, totalPages: pag.pages||1 }));
+        }
+        
+        // Fetch status counts for deposit contracts
+        try {
+          const allParams = { ...params, status: undefined };
+          const allRes = await depositContractsAPI.getDepositContracts(allParams);
+          if (allRes.success) {
+            const allContracts = allRes.data || [];
+            const counts = {
+              all: allContracts.length,
+              active: allContracts.filter(c => c.status === 'active').length,
+              pending: allContracts.filter(c => c.status === 'pending').length,
+              expired: allContracts.filter(c => c.status === 'expired').length,
+              terminated: allContracts.filter(c => c.status === 'terminated').length
+            };
+            setStatusCounts(counts);
+          }
+        } catch (e) { console.error('Error fetching deposit status counts:', e); }
       }
     } catch(e){ console.error(e); }
     finally { setLoading(false); }
-  }, [filters, pagination.currentPage, pagination.itemsPerPage]);
+  }, [activeTab, filters, pagination.currentPage, pagination.itemsPerPage]);
 
   useEffect(()=>{ fetchContracts(); }, [fetchContracts]);
   useEffect(()=>{ fetchOptions(); }, [fetchOptions]);
@@ -98,56 +165,226 @@ const ContractsManagement = () => {
           <button className="add-contract-btn" onClick={openCreate}><i className="fas fa-file-contract" /> {t('contracts.addNew')}</button>
         </div>
 
+        {/* Contract Type Tabs */}
+        <div className="contract-tabs">
+          <button 
+            className={`tab-btn ${activeTab === 'rental' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('rental');
+              setPagination(p => ({ ...p, currentPage: 1 }));
+              setFilters({ status: '', search: '' });
+              setStatusCounts({ all: 0, active: 0, pending: 0, expired: 0, terminated: 0 });
+            }}
+          >
+            <i className="fas fa-file-contract"></i>
+            {t('contracts.tabs.rental') || 'Hợp đồng thuê'}
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'deposit' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('deposit');
+              setPagination(p => ({ ...p, currentPage: 1 }));
+              setFilters({ status: '', search: '' });
+              setStatusCounts({ all: 0, active: 0, pending: 0, expired: 0, terminated: 0 });
+            }}
+          >
+            <i className="fas fa-hand-holding-usd"></i>
+            {t('contracts.tabs.deposit') || 'Hợp đồng đặt cọc'}
+          </button>
+        </div>
+
+        {/* Filters */}
         <div className="contracts-filters">
           <div className="filters-grid">
             <div className="filter-group">
               <label className="filter-label">{t('common.search')}</label>
-              <input className="filter-input" value={filters.search} onChange={e=>{ setFilters(f=>({...f,search:e.target.value})); setPagination(p=>({...p,currentPage:1})); }} placeholder={t('contracts.searchPlaceholder')} />
+              <input 
+                className="filter-input" 
+                value={filters.search} 
+                onChange={e=>{ setFilters(f=>({...f,search:e.target.value})); setPagination(p=>({...p,currentPage:1})); }} 
+                placeholder={t('contracts.searchPlaceholder')} 
+              />
             </div>
             <div className="filter-group">
               <label className="filter-label">{t('common.filter')}</label>
-              <select className="filter-select" value={filters.status} onChange={e=>{ setFilters(f=>({...f,status:e.target.value})); setPagination(p=>({...p,currentPage:1})); }}>
+              <select 
+                className="filter-select" 
+                value={filters.status} 
+                onChange={e=>{ setFilters(f=>({...f,status:e.target.value})); setPagination(p=>({...p,currentPage:1})); }}
+              >
                 <option value="">{t('common.all')}</option>
                 <option value="active">{t('contracts.status.active')}</option>
+                <option value="pending">{t('contracts.status.pending')}</option>
                 <option value="expired">{t('contracts.status.expired')}</option>
                 <option value="terminated">{t('contracts.status.terminated')}</option>
               </select>
             </div>
             <div className="filter-group">
-              <button className="search-btn" onClick={fetchContracts}><i className="fas fa-search" /> {t('common.search')}</button>
+              <button className="search-btn" onClick={fetchContracts}>
+                <i className="fas fa-search" /> {t('common.search')}
+              </button>
             </div>
             <div className="filter-group">
-              <button className="reset-btn" onClick={()=>{ setFilters({ status:'', search:'' }); setPagination(p=>({...p,currentPage:1})); }}><i className="fas fa-redo" /> {t('common.reset')}</button>
+              <button className="reset-btn" onClick={()=>{ setFilters({ status:'', search:'' }); setPagination(p=>({...p,currentPage:1})); }}>
+                <i className="fas fa-redo" /> {t('common.reset')}
+              </button>
             </div>
           </div>
         </div>
 
+        {/* Status Filter Tabs */}
+        <div className="contracts-status-tabs">
+          <button 
+            className={`contracts-status-tab ${filters.status === '' ? 'active' : ''}`}
+            onClick={() => {
+              setFilters(prev => ({ ...prev, status: '' }));
+              setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }}
+          >
+            {t('common.all') || 'Tất cả'}
+            <span className="tab-count">{statusCounts.all}</span>
+          </button>
+          <button 
+            className={`contracts-status-tab ${filters.status === 'active' ? 'active' : ''}`}
+            onClick={() => {
+              setFilters(prev => ({ ...prev, status: 'active' }));
+              setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }}
+          >
+            {t('contracts.status.active') || 'Hiệu lực'}
+            <span className="tab-count">{statusCounts.active}</span>
+          </button>
+          <button 
+            className={`contracts-status-tab ${filters.status === 'pending' ? 'active' : ''}`}
+            onClick={() => {
+              setFilters(prev => ({ ...prev, status: 'pending' }));
+              setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }}
+          >
+            {t('contracts.status.pending') || 'Chờ xử lý'}
+            <span className="tab-count">{statusCounts.pending}</span>
+          </button>
+          <button 
+            className={`contracts-status-tab ${filters.status === 'expired' ? 'active' : ''}`}
+            onClick={() => {
+              setFilters(prev => ({ ...prev, status: 'expired' }));
+              setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }}
+          >
+            {t('contracts.status.expired') || 'Hết hạn'}
+            <span className="tab-count">{statusCounts.expired}</span>
+          </button>
+          <button 
+            className={`contracts-status-tab ${filters.status === 'terminated' ? 'active' : ''}`}
+            onClick={() => {
+              setFilters(prev => ({ ...prev, status: 'terminated' }));
+              setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }}
+          >
+            {t('contracts.status.terminated') || 'Đã chấm dứt'}
+            <span className="tab-count">{statusCounts.terminated}</span>
+          </button>
+        </div>
+
         {loading ? (
           <div className="loading-container"><div className="loading-spinner" /> <p>{t('common.loading')}</p></div>
-        ) : contracts.length === 0 ? (
+        ) : (activeTab === 'rental' ? contracts : depositContracts).length === 0 ? (
           <div className="empty-container">
             <div className="empty-icon">📄</div>
-            <h3 className="empty-text">{t('contracts.empty')}</h3>
-            <p className="empty-description">{t('contracts.emptyDescription')}</p>
+            <h3 className="empty-text">{activeTab === 'rental' ? t('contracts.empty') : (t('contracts.deposit.empty') || 'Chưa có hợp đồng đặt cọc nào')}</h3>
+            <p className="empty-description">{activeTab === 'rental' ? t('contracts.emptyDescription') : (t('contracts.deposit.emptyDescription') || 'Các hợp đồng đặt cọc sẽ hiển thị ở đây')}</p>
           </div>
         ) : (
-          <div className="contracts-grid">
-            {contracts.map(c => (
-              <div key={c.id} className="contract-card">
-                <div className={`contract-status ${c.status}`}>{t(`contracts.status.${c.status}`, { defaultValue:c.status })}</div>
-                <h3 className="tenant-name">{c.room} • {c.tenant}</h3>
-                <div className="contract-meta">{t('contracts.startDate')}: {new Date(c.startDate).toLocaleDateString()}<br />{t('contracts.endDate')}: {new Date(c.endDate).toLocaleDateString()}</div>
-                <div className="contract-amount">{c.monthlyRent?.toLocaleString()} VND / {t('rooms.month')}</div>
-                <div className="contract-meta">{t('contracts.deposit')}: {c.deposit?.toLocaleString()} VND</div>
-                <div className="contract-actions">
-                  <button className="action-btn" onClick={()=>setViewing(c)}><i className="fas fa-eye" /> {t('common.view')}</button>
-                </div>
-              </div>
-            ))}
+          <div className="contracts-table-container">
+            <table className="contracts-table">
+              <thead>
+                <tr>
+                  {activeTab === 'rental' ? (
+                    <>
+                      <th>{t('contracts.room')}</th>
+                      <th>{t('contracts.tenant')}</th>
+                      <th>{t('contracts.startDate')}</th>
+                      <th>{t('contracts.endDate')}</th>
+                      <th>{t('contracts.monthlyRent')}</th>
+                      <th>{t('contracts.status.label')}</th>
+                      <th>{t('common.actions')}</th>
+                    </>
+                  ) : (
+                    <>
+                      <th>{t('contracts.room')}</th>
+                      <th>{t('contracts.deposit.tenant')}</th>
+                      <th>{t('contracts.deposit.phone')}</th>
+                      <th>{t('contracts.deposit.depositDate')}</th>
+                      <th>{t('contracts.deposit.expectedMoveIn')}</th>
+                      <th>{t('contracts.deposit.amount')}</th>
+                      <th>{t('contracts.status.label')}</th>
+                      <th>{t('common.actions')}</th>
+                    </>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {(activeTab === 'rental' ? contracts : depositContracts).map(c => (
+                  <tr key={c.id}>
+                    {activeTab === 'rental' ? (
+                      <>
+                        <td>{c.room}</td>
+                        <td>{c.tenant}</td>
+                        <td>{new Date(c.startDate).toLocaleDateString('vi-VN')}</td>
+                        <td>{new Date(c.endDate).toLocaleDateString('vi-VN')}</td>
+                        <td>{c.monthlyRent?.toLocaleString('vi-VN')} VNĐ</td>
+                        <td>
+                          <span className={`status-badge status-${c.status}`}>
+                            {t(`contracts.status.${c.status}`, { defaultValue: c.status })}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            className="action-btn view-btn"
+                            onClick={() => setViewing(c)}
+                            title={t('common.view')}
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td>{c.room}</td>
+                        <td>{c.tenant}</td>
+                        <td>{c.tenantPhone}</td>
+                        <td>{new Date(c.depositDate).toLocaleDateString('vi-VN')}</td>
+                        <td>{new Date(c.expectedMoveInDate).toLocaleDateString('vi-VN')}</td>
+                        <td>
+                          <div className="price-info">
+                            <div className="price-main">{c.depositAmount?.toLocaleString('vi-VN')} VNĐ</div>
+                            <div className="price-sub">{t('contracts.deposit.roomPrice')}: {c.roomPrice?.toLocaleString('vi-VN')} VNĐ</div>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`status-badge status-${c.status}`}>
+                            {t(`contracts.status.${c.status}`, { defaultValue: c.status })}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            className="action-btn view-btn"
+                            onClick={() => setViewing(c)}
+                            title={t('common.view')}
+                          >
+                            <i className="fas fa-eye"></i>
+                          </button>
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         )}
 
-        {contracts.length>0 && (
+        {(activeTab === 'rental' ? contracts : depositContracts).length>0 && (
           <div className="pagination">
             <button className="pagination-btn" disabled={pagination.currentPage===1} onClick={()=>setPagination(p=>({...p,currentPage:p.currentPage-1}))}><i className="fas fa-chevron-left" /></button>
             <span className="pagination-info">{t('rooms.pagination.page')} {pagination.currentPage} / {pagination.totalPages} ({pagination.totalItems})</span>

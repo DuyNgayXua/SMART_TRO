@@ -101,10 +101,19 @@
     "persons": "người",
     "vehicles": "xe",
     "amenities": "tiện ích",
+    "table": {
+      "room": "Phòng",
+      "status": "Trạng thái",
+      "price": "Giá thuê",
+      "details": "Chi tiết",
+      "amenities": "Tiện ích",
+      "actions": "Thao tác"
+    },
     "actions": {
       "view": "Xem",
       "edit": "Sửa",
-      "delete": "Xóa"
+      "delete": "Xóa",
+      "createContract": "Tạo hợp đồng"
     },
     "confirmDelete": "Bạn có chắc chắn muốn xóa phòng này?",
     "pagination": {
@@ -191,6 +200,9 @@
       "parking": "Chỗ để xe",
       "kitchen": "Khu bếp",
       "balcony": "Ban công"
+    },
+    "info": {
+      "title": "Thông tin phòng"
     }
   },
   "common": {
@@ -222,7 +234,9 @@
     "all": "Tất cả",
     "none": "Không có",
     "unknown": "Không xác định",
-    "actions": "Thao tác"
+    "actions": "Thao tác",
+    "unauthorized": "Bạn cần đăng nhập lại",
+    "networkError": "Lỗi kết nối mạng"
   },
   "settings": {
     "title": "Cài đặt",
@@ -294,21 +308,77 @@
     "emptyDescription": "Tạo hợp đồng mới để bắt đầu.",
     "createTitle": "Tạo hợp đồng",
     "detailTitle": "Chi tiết hợp đồng",
+    "tabs": {
+      "rental": "Hợp đồng thuê",
+      "deposit": "Hợp đồng đặt cọc"
+    },
+    "deposit": {
+      "empty": "Chưa có hợp đồng đặt cọc nào",
+      "emptyDescription": "Các hợp đồng đặt cọc sẽ hiển thị ở đây",
+      "tenant": "Người thuê",
+      "phone": "Số điện thoại",
+      "depositDate": "Ngày cọc",
+      "expectedMoveIn": "Dự kiến vào ở",
+      "amount": "Tiền cọc",
+      "roomPrice": "Giá phòng"
+    },
     "room": "Phòng",
     "tenant": "Khách thuê",
     "startDate": "Ngày bắt đầu",
     "endDate": "Ngày kết thúc",
     "monthlyRent": "Tiền thuê hàng tháng",
-    "deposit": "Tiền cọc",
+    "depositAmount": "Tiền cọc",
     "electricPrice": "Giá điện",
     "waterPrice": "Giá nước",
     "servicePrice": "Phí dịch vụ",
     "rules": "Nội quy",
     "notes": "Ghi chú",
     "creating": "Đang lưu...",
+    "create": {
+      "selectType": "Chọn loại hợp đồng",
+      "selectTypeDesc": "Bạn muốn tạo loại hợp đồng nào cho phòng này?",
+      "depositTitle": "Tạo hợp đồng cọc"
+    },
+    "types": {
+      "rental": "Hợp đồng thuê",
+      "rentalDesc": "Tạo hợp đồng thuê phòng dài hạn",
+      "deposit": "Hợp đồng đặt cọc",
+      "depositDesc": "Tạo hợp đồng đặt cọc giữ chỗ"
+    },
+    "form": {
+      "depositDate": "Ngày cọc",
+      "expectedMoveInDate": "Ngày dự kiến vào ở",
+      "tenantName": "Tên người thuê",
+      "tenantNamePlaceholder": "Nhập tên người thuê",
+      "tenantPhone": "Số điện thoại",
+      "tenantPhonePlaceholder": "Nhập số điện thoại",
+      "depositAmount": "Số tiền cọc",
+      "depositAmountHelper": "Số tiền người thuê đặt cọc để giữ chỗ",
+      "notes": "Ghi chú",
+      "notesPlaceholder": "Ghi chú thêm về hợp đồng cọc...",
+      "creating": "Đang tạo...",
+      "createDeposit": "Tạo hợp đồng cọc"
+    },
+    "validation": {
+      "tenantNameRequired": "Tên người thuê là bắt buộc",
+      "tenantPhoneRequired": "Số điện thoại là bắt buộc",
+      "tenantPhoneInvalid": "Số điện thoại không hợp lệ (10-11 số)",
+      "expectedMoveInDateRequired": "Ngày dự kiến vào ở là bắt buộc",
+      "depositAmountRequired": "Số tiền cọc không hợp lệ",
+      "moveInDateMustBeAfterDeposit": "Ngày vào ở phải sau ngày cọc"
+    },
+    "success": {
+      "depositCreated": "Hợp đồng cọc đã được tạo thành công!"
+    },
+    "error": {
+      "createFailed": "Có lỗi xảy ra khi tạo hợp đồng cọc",
+      "roomNotFound": "Phòng không tồn tại",
+      "invalidData": "Dữ liệu không hợp lệ"
+    },
     "status": {
       "label": "Trạng thái",
       "active": "Hiệu lực",
+      "pending": "Chờ xử lý",
       "expired": "Hết hạn",
       "terminated": "Chấm dứt"
     }

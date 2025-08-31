@@ -9,6 +9,7 @@ import Contract from './Contract.js';
 import OTP from './OTP.js';
 import EmailVerification from './EmailVerification.js';
 import Amenity from './Amenity.js';
+import DepositContract from './DepositContract.js';
 
 export default {
     User,
@@ -18,7 +19,8 @@ export default {
     Contract,
     OTP,
     EmailVerification,
-    Amenity
+    Amenity,
+    DepositContract
 };
 
 export {
@@ -28,5 +30,7 @@ export {
     Payment,
     Contract,
     OTP,
-    EmailVerification
+    EmailVerification,
+    Amenity,
+    DepositContract
 };

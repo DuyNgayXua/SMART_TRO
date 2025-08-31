@@ -64,7 +64,25 @@ export const roomsAPI = {
       return response.data;
     } catch (error) {
       console.error('Lỗi khi tìm kiếm phòng:', error);
-      throw error;
+      // Fallback về getAllRooms nếu search API chưa có
+      try {
+        const fallbackResponse = await api.get('/rooms', { params: searchParams });
+        const rooms = fallbackResponse.data.data || fallbackResponse.data;
+        return {
+          success: true,
+          data: {
+            rooms: Array.isArray(rooms) ? rooms : [],
+            pagination: {
+              total: Array.isArray(rooms) ? rooms.length : 0,
+              pages: 1,
+              page: 1,
+              limit: searchParams.limit || 12
+            }
+          }
+        };
+      } catch (fallbackError) {
+        throw error;
+      }
     }
   },
 
