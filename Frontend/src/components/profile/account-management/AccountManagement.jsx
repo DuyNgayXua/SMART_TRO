@@ -54,7 +54,7 @@ const AccountManagement = () => {
   // Load user data when component mounts
   useEffect(() => {
     if (user) {
-      console.log('User avatar URL:', user.avatar); // Debug log
+      // Load user avatar if exists
       setFormData({
         fullName: user.fullName || '',
         phone: user.phone || '',
@@ -217,12 +217,9 @@ const AccountManagement = () => {
   const loadActiveSessions = async () => {
     setLoadingSessions(true);
     try {
-      console.log('Loading active sessions...'); // Debug log
       const response = await usersAPI.getActiveSessions();
-      console.log('Sessions response:', response.data); // Debug log
       if (response.data.success) {
         setSessions(response.data.data);
-        console.log('Sessions loaded:', response.data.data); // Debug log
       }
     } catch (error) {
       console.error('Load sessions error:', error);

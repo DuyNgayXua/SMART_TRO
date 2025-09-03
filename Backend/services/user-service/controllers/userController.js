@@ -105,8 +105,6 @@ class UserController {
                         error: process.env.NODE_ENV === 'development' ? uploadError.message : undefined
                     });
                 }
-            } else {
-                console.log('No file received in request');
             }
 
             // Kiểm tra email đã tồn tại
@@ -838,7 +836,7 @@ class UserController {
             const sessions = await LoginSession.getActiveSessions(userId);
             console.log('Found sessions:', sessions.length);
             sessions.forEach(session => {
-                console.log(`Session ${session._id}: ${session.sessionToken}, isCurrent: ${session.sessionToken === currentSessionToken}`);
+                // Session logging removed for cleaner output
             });
 
             const formattedSessions = sessions.map(session => ({

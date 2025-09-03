@@ -12,6 +12,7 @@ import authRoutes from './auth-service/routes/authRoutes.js';
 import amenityRoutes from './amenity-service/routes/amenityRoutes.js';
 import locationRoutes from './location-service/routes/locationRoutes.js';
 import myPropertiesRoutes from './property-service/routes/myPropertiesRoutes.js';
+import depositContractRoutes from '../routes/depositContractRoutes.js';
 
 const router = express.Router();
 
@@ -26,6 +27,7 @@ router.use('/api/auth', authRoutes);
 router.use('/api/amenities', amenityRoutes);
 router.use('/api/locations', locationRoutes);
 router.use('/api/my-properties', myPropertiesRoutes);
+router.use('/api/deposit-contracts', depositContractRoutes);
 
 
 // API documentation route

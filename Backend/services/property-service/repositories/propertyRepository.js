@@ -196,6 +196,35 @@ class PropertyRepository {
             throw new Error(`Error updating rating: ${error.message}`);
         }
     }
+
+    // Find user rating for a property
+    async findUserRating(propertyId, userId) {
+        try {
+            // Since we don't have a separate Rating model yet, 
+            // we'll return null for now (user can always rate)
+            return null;
+        } catch (error) {
+            throw new Error(`Error finding user rating: ${error.message}`);
+        }
+    }
+
+    // Create a rating
+    async createRating(ratingData) {
+        try {
+            // For now, we'll just update the property's rating average
+            // In a real app, you'd want a separate Rating collection
+            const { propertyId, rating } = ratingData;
+            
+            await this.updateRating(propertyId, rating);
+            
+            return {
+                ...ratingData,
+                id: Date.now().toString() // Temporary ID
+            };
+        } catch (error) {
+            throw new Error(`Error creating rating: ${error.message}`);
+        }
+    }
 }
 
 export default new PropertyRepository();

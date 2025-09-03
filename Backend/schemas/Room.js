@@ -60,7 +60,7 @@ const roomSchema = new mongoose.Schema({
     images: { type: [String], default: [] }, // URLs của hình ảnh phòng
     status: {
         type: String,
-        enum: ['available', 'rented'],
+        enum: ['available', 'rented', 'occupied', 'maintenance', 'reserved'],
         default: 'available'
     },
     tenant: { // liên kết record Tenant đang thuê (nếu còn active)

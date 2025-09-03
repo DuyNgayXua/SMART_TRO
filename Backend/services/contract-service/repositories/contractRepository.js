@@ -21,6 +21,10 @@ class ContractRepository {
       .populate('landlord', 'fullName email');
   }
 
+  async delete(id) {
+    return Contract.findByIdAndDelete(id);
+  }
+
   async list({ page=1, limit=12, status, search, landlord }) {
     const query = {};
     if (status) query.status = status;

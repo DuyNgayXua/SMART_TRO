@@ -229,7 +229,7 @@ class ValidationMiddleware {
         if (deposit != null && deposit < 0) errors.push('Tiền cọc không hợp lệ');
         if (area != null && area < 0) errors.push('Diện tích không hợp lệ');
         if (roomType && !['single','double','suite','dorm'].includes(roomType)) errors.push('Loại phòng không hợp lệ');
-        if (status && !['available','rented','maintenance','reserved'].includes(status)) errors.push('Trạng thái phòng không hợp lệ');
+        if (status && !['available','rented','occupied','maintenance','reserved'].includes(status)) errors.push('Trạng thái phòng không hợp lệ');
         if (amenities && !Array.isArray(amenities)) {
             errors.push('Danh sách tiện ích phải là một mảng');
         }
@@ -243,7 +243,7 @@ class ValidationMiddleware {
     // Validate update room status
     validateRoomStatus(req, res, next) {
         const { status } = req.body;
-        if (!status || !['available','rented','maintenance','reserved'].includes(status)) {
+        if (!status || !['available','rented','occupied','maintenance','reserved'].includes(status)) {
             return res.status(400).json({ success: false, message: 'Trạng thái phòng không hợp lệ' });
         }
         next();

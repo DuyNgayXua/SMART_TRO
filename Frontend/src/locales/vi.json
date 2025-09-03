@@ -101,10 +101,19 @@
     "persons": "người",
     "vehicles": "xe",
     "amenities": "tiện ích",
+    "table": {
+      "room": "Phòng",
+      "status": "Trạng thái",
+      "price": "Giá thuê",
+      "details": "Chi tiết",
+      "amenities": "Tiện ích",
+      "actions": "Thao tác"
+    },
     "actions": {
       "view": "Xem",
       "edit": "Sửa",
-      "delete": "Xóa"
+      "delete": "Xóa",
+      "createContract": "Tạo hợp đồng"
     },
     "confirmDelete": "Bạn có chắc chắn muốn xóa phòng này?",
     "pagination": {
@@ -191,6 +200,9 @@
       "parking": "Chỗ để xe",
       "kitchen": "Khu bếp",
       "balcony": "Ban công"
+    },
+    "info": {
+      "title": "Thông tin phòng"
     }
   },
   "common": {
@@ -222,7 +234,9 @@
     "all": "Tất cả",
     "none": "Không có",
     "unknown": "Không xác định",
-    "actions": "Thao tác"
+    "actions": "Thao tác",
+    "unauthorized": "Bạn cần đăng nhập lại",
+    "networkError": "Lỗi kết nối mạng"
   },
   "settings": {
     "title": "Cài đặt",
@@ -294,23 +308,159 @@
     "emptyDescription": "Tạo hợp đồng mới để bắt đầu.",
     "createTitle": "Tạo hợp đồng",
     "detailTitle": "Chi tiết hợp đồng",
+    "tabs": {
+      "rental": "Hợp đồng thuê",
+      "deposit": "Hợp đồng đặt cọc"
+    },
+    "deposit": {
+      "empty": "Chưa có hợp đồng đặt cọc nào",
+      "emptyDescription": "Các hợp đồng đặt cọc sẽ hiển thị ở đây",
+      "tenant": "Người thuê",
+      "phone": "Số điện thoại",
+      "depositDate": "Ngày cọc",
+      "expectedMoveIn": "Dự kiến vào ở",
+      "amount": "Tiền cọc",
+      "roomPrice": "Giá phòng"
+    },
     "room": "Phòng",
     "tenant": "Khách thuê",
     "startDate": "Ngày bắt đầu",
     "endDate": "Ngày kết thúc",
     "monthlyRent": "Tiền thuê hàng tháng",
-    "deposit": "Tiền cọc",
+    "depositAmount": "Tiền cọc",
     "electricPrice": "Giá điện",
     "waterPrice": "Giá nước",
     "servicePrice": "Phí dịch vụ",
     "rules": "Nội quy",
     "notes": "Ghi chú",
     "creating": "Đang lưu...",
+    "create": {
+      "selectType": "Chọn loại hợp đồng",
+      "selectTypeDesc": "Bạn muốn tạo loại hợp đồng nào cho phòng này?",
+      "depositTitle": "Tạo hợp đồng cọc"
+    },
+    "types": {
+      "rental": "Hợp đồng thuê",
+      "rentalDesc": "Tạo hợp đồng thuê phòng dài hạn",
+      "deposit": "Hợp đồng đặt cọc",
+      "depositDesc": "Tạo hợp đồng đặt cọc giữ chỗ"
+    },
+    "form": {
+      "depositDate": "Ngày cọc",
+      "expectedMoveInDate": "Ngày dự kiến vào ở",
+      "tenantName": "Tên người thuê",
+      "tenantNamePlaceholder": "Nhập tên người thuê",
+      "tenantPhone": "Số điện thoại",
+      "tenantPhonePlaceholder": "Nhập số điện thoại",
+      "depositAmount": "Số tiền cọc",
+      "depositAmountHelper": "Số tiền người thuê đặt cọc để giữ chỗ",
+      "notes": "Ghi chú",
+      "notesPlaceholder": "Ghi chú thêm về hợp đồng cọc...",
+      "creating": "Đang tạo...",
+      "createDeposit": "Tạo hợp đồng cọc"
+    },
+    "validation": {
+      "tenantNameRequired": "Tên người thuê là bắt buộc",
+      "tenantPhoneRequired": "Số điện thoại là bắt buộc",
+      "tenantPhoneInvalid": "Số điện thoại không hợp lệ (10-11 số)",
+      "expectedMoveInDateRequired": "Ngày dự kiến vào ở là bắt buộc",
+      "depositAmountRequired": "Số tiền cọc không hợp lệ",
+      "moveInDateMustBeAfterDeposit": "Ngày vào ở phải sau ngày cọc"
+    },
+    "success": {
+      "depositCreated": "Hợp đồng cọc đã được tạo thành công!"
+    },
+    "error": {
+      "createFailed": "Có lỗi xảy ra khi tạo hợp đồng cọc",
+      "roomNotFound": "Phòng không tồn tại",
+      "invalidData": "Dữ liệu không hợp lệ"
+    },
     "status": {
       "label": "Trạng thái",
       "active": "Hiệu lực",
+      "pending": "Chờ xử lý",
       "expired": "Hết hạn",
       "terminated": "Chấm dứt"
+    },
+    "rental": {
+      "title": "Tạo hợp đồng thuê",
+      "tenantInfo": {
+        "title": "Thông tin người thuê",
+        "addTenant": "Thêm người",
+        "removeTenant": "Xóa",
+        "tenantLabel": "Người thuê",
+        "fullName": "Họ và tên",
+        "fullNamePlaceholder": "Nhập họ và tên đầy đủ",
+        "phone": "Số điện thoại",
+        "phonePlaceholder": "0xxx xxx xxx",
+        "idCard": "CCCD/CMND",
+        "idCardPlaceholder": "012345678901",
+        "images": "Ảnh (Tối đa 5 ảnh)",
+        "addImage": "Thêm ảnh",
+        "removeImage": "Xóa ảnh này"
+      },
+      "vehicleInfo": {
+        "title": "Thông tin phương tiện",
+        "addVehicle": "Thêm xe",
+        "removeVehicle": "Xóa xe này",
+        "vehicleLabel": "Xe",
+        "licensePlate": "Biển số xe",
+        "licensePlatePlaceholder": "30A-123.45",
+        "vehicleType": "Loại xe",
+        "vehicleTypePlaceholder": "Xe máy, Ô tô, Xe đạp...",
+        "owner": "Chủ xe",
+        "noVehicles": "Chưa có thông tin phương tiện nào",
+        "noVehiclesDesc": "Nhấn \"Thêm xe\" để thêm thông tin phương tiện"
+      },
+      "contractInfo": {
+        "title": "Thông tin hợp đồng",
+        "startDate": "Ngày bắt đầu",
+        "endDate": "Ngày kết thúc",
+        "quickDate6M": "6 tháng từ ngày bắt đầu",
+        "quickDate1Y": "1 năm từ ngày bắt đầu",
+        "quick6M": "6T",
+        "quick1Y": "1N",
+        "deposit": "Tiền cọc",
+        "monthlyRent": "Tiền thuê hàng tháng"
+      },
+      "serviceInfo": {
+        "title": "Chi phí dịch vụ",
+        "electricityPrice": "Giá điện (VNĐ/kWh)",
+        "servicePrice": "Phí dịch vụ (VNĐ/tháng)",
+        "waterChargeType": "Cách tính tiền nước",
+        "waterChargeFixed": "💧 Giá cố định",
+        "waterChargePerPerson": "👥 Tính theo người",
+        "waterPrice": "Giá nước",
+        "waterPriceUnit": "(VNĐ/khối)",
+        "waterPricePerPerson": "Giá nước theo người (VNĐ/người/tháng)",
+        "paymentCycle": "Chu kỳ thanh toán",
+        "paymentMonthly": "📅 Hàng tháng",
+        "paymentQuarterly": "📊 Hàng quý",
+        "paymentYearly": "📈 Hàng năm",
+        "notes": "Ghi chú",
+        "notesPlaceholder": "Nhập ghi chú bổ sung (tùy chọn)"
+      },
+      "meterReadings": {
+        "title": "Chỉ số điện nước hiện tại",
+        "electricIndex": "Chỉ số điện (kWh)",
+        "electricIndexPlaceholder": "Nhập chỉ số điện hiện tại",
+        "waterIndex": "Chỉ số nước (m³)",
+        "waterIndexPlaceholder": "Nhập chỉ số nước hiện tại"
+      },
+      "roomInfo": {
+        "title": "Thông tin phòng",
+        "roomName": "Tên phòng:",
+        "capacity": "Sức chứa:",
+        "capacityUnit": "người",
+        "area": "Diện tích:",
+        "price": "Giá phòng:",
+        "amenities": "Tiện ích:"
+      },
+      "actions": {
+        "cancel": "Hủy bỏ",
+        "creating": "Đang tạo...",
+        "create": "Tạo hợp đồng thuê"
+      }
     }
   },
   "header": {

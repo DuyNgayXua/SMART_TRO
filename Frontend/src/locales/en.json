@@ -103,7 +103,16 @@
     "actions": {
       "view": "View",
       "edit": "Edit",
-      "delete": "Delete"
+      "delete": "Delete",
+      "createContract": "Create Contract"
+    },
+    "table": {
+      "room": "Room",
+      "status": "Status",
+      "price": "Price",
+      "details": "Details",
+      "amenities": "Amenities",
+      "actions": "Actions"
     },
     "confirmDelete": "Are you sure you want to delete this room?",
     "pagination": {
@@ -190,6 +199,9 @@
       "parking": "Parking",
       "kitchen": "Kitchen",
       "balcony": "Balcony"
+    },
+    "info": {
+      "title": "Room Information"
     }
   },
   "common": {
@@ -221,7 +233,9 @@
     "all": "All",
     "none": "None", 
     "unknown": "Unknown",
-    "actions": "Actions"
+    "actions": "Actions",
+    "unauthorized": "You need to login again",
+    "networkError": "Network connection error"
   },
   "settings": {
     "title": "Settings",
@@ -305,11 +319,132 @@
     "rules": "Rules",
     "notes": "Notes",
     "creating": "Saving...",
+    "create": {
+      "selectType": "Select Contract Type",
+      "selectTypeDesc": "What type of contract would you like to create for this room?",
+      "depositTitle": "Create Deposit Contract"
+    },
+    "types": {
+      "rental": "Rental Contract",
+      "rentalDesc": "Create a long-term room rental contract",
+      "deposit": "Deposit Contract",
+      "depositDesc": "Create a deposit contract to reserve the room"
+    },
+    "form": {
+      "depositDate": "Deposit Date",
+      "expectedMoveInDate": "Expected Move-in Date",
+      "tenantName": "Tenant Name",
+      "tenantNamePlaceholder": "Enter tenant name",
+      "tenantPhone": "Phone Number",
+      "tenantPhonePlaceholder": "Enter phone number",
+      "depositAmount": "Deposit Amount",
+      "depositAmountHelper": "Amount paid by tenant to reserve the room",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional notes about the deposit contract...",
+      "creating": "Creating...",
+      "createDeposit": "Create Deposit Contract"
+    },
+    "validation": {
+      "tenantNameRequired": "Tenant name is required",
+      "tenantPhoneRequired": "Phone number is required",
+      "tenantPhoneInvalid": "Invalid phone number (10-11 digits)",
+      "expectedMoveInDateRequired": "Expected move-in date is required",
+      "depositAmountRequired": "Invalid deposit amount",
+      "moveInDateMustBeAfterDeposit": "Move-in date must be after deposit date"
+    },
+    "success": {
+      "depositCreated": "Deposit contract created successfully!"
+    },
+    "error": {
+      "createFailed": "Error occurred while creating deposit contract",
+      "roomNotFound": "Room not found",
+      "invalidData": "Invalid data"
+    },
     "status": {
       "label": "Status",
       "active": "Active",
       "expired": "Expired",
       "terminated": "Terminated"
+    },
+    "rental": {
+      "title": "Create Rental Contract",
+      "tenantInfo": {
+        "title": "Tenant Information",
+        "addTenant": "Add Person",
+        "removeTenant": "Remove",
+        "tenantLabel": "Tenant",
+        "fullName": "Full Name",
+        "fullNamePlaceholder": "Enter full name",
+        "phone": "Phone Number",
+        "phonePlaceholder": "0xxx xxx xxx",
+        "idCard": "ID Card/CCCD",
+        "idCardPlaceholder": "012345678901",
+        "images": "Images (Max 5 images)",
+        "addImage": "Add Image",
+        "removeImage": "Remove this image"
+      },
+      "vehicleInfo": {
+        "title": "Vehicle Information",
+        "addVehicle": "Add Vehicle",
+        "removeVehicle": "Remove this vehicle",
+        "vehicleLabel": "Vehicle",
+        "licensePlate": "License Plate",
+        "licensePlatePlaceholder": "30A-123.45",
+        "vehicleType": "Vehicle Type",
+        "vehicleTypePlaceholder": "Motorbike, Car, Bicycle...",
+        "owner": "Vehicle Owner",
+        "noVehicles": "No vehicle information yet",
+        "noVehiclesDesc": "Click \"Add Vehicle\" to add vehicle information"
+      },
+      "contractInfo": {
+        "title": "Contract Information",
+        "startDate": "Start Date",
+        "endDate": "End Date",
+        "quickDate6M": "6 months from start date",
+        "quickDate1Y": "1 year from start date",
+        "quick6M": "6M",
+        "quick1Y": "1Y",
+        "deposit": "Deposit",
+        "monthlyRent": "Monthly Rent"
+      },
+      "serviceInfo": {
+        "title": "Service Costs",
+        "electricityPrice": "Electricity Price (VND/kWh)",
+        "servicePrice": "Service Fee (VND/month)",
+        "waterChargeType": "Water Charge Method",
+        "waterChargeFixed": "💧 Fixed Price",
+        "waterChargePerPerson": "👥 Per Person",
+        "waterPrice": "Water Price",
+        "waterPriceUnit": "(VND/cubic meter)",
+        "waterPricePerPerson": "Water Price Per Person (VND/person/month)",
+        "paymentCycle": "Payment Cycle",
+        "paymentMonthly": "📅 Monthly",
+        "paymentQuarterly": "📊 Quarterly",
+        "paymentYearly": "📈 Yearly",
+        "notes": "Notes",
+        "notesPlaceholder": "Enter additional notes (optional)"
+      },
+      "meterReadings": {
+        "title": "Current Meter Readings",
+        "electricIndex": "Electric Index (kWh)",
+        "electricIndexPlaceholder": "Enter current electric reading",
+        "waterIndex": "Water Index (m³)",
+        "waterIndexPlaceholder": "Enter current water reading"
+      },
+      "roomInfo": {
+        "title": "Room Information",
+        "roomName": "Room Name:",
+        "capacity": "Capacity:",
+        "capacityUnit": "people",
+        "area": "Area:",
+        "price": "Room Price:",
+        "amenities": "Amenities:"
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "creating": "Creating...",
+        "create": "Create Rental Contract"
+      }
     }
   },
   "header": {

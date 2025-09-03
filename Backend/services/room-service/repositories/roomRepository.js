@@ -148,10 +148,12 @@ class RoomRepository {
                 }}
             ];
             const data = await Room.aggregate(pipeline);
-            const summary = data.reduce((acc, cur) => ({
-                ...acc,
-                [cur._id]: cur
-            }), {});
+            const summary = data && Array.isArray(data) 
+                ? data.reduce((acc, cur) => ({
+                    ...acc,
+                    [cur._id]: cur
+                }), {})
+                : {};
             return summary;
         } catch (error) {
             throw new Error('Error getting statistics: ' + error.message);

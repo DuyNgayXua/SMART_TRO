@@ -9,6 +9,7 @@ router.get('/', authMiddleware, landlordMiddleware, (req,res)=>contractControlle
 router.get('/:id', authMiddleware, landlordMiddleware, (req,res)=>contractController.get(req,res));
 router.post('/', authMiddleware, landlordMiddleware, (req,res)=>contractController.create(req,res));
 router.put('/:id', authMiddleware, landlordMiddleware, (req,res)=>contractController.update(req,res));
+router.delete('/:id', authMiddleware, landlordMiddleware, (req,res)=>contractController.delete(req,res));
 router.post('/:id/terminate', authMiddleware, landlordMiddleware, (req,res)=>contractController.terminate(req,res));
 
 export default router;

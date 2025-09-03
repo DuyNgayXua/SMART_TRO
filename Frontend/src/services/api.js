@@ -244,15 +244,11 @@ export const apiUtils = {
   
   // Set auth data - luôn lưu token vào localStorage
   setAuthData: (token, userId, role, sessionToken = null) => {
-    console.log('Setting auth data:', { token: !!token, userId, role, sessionToken }); // Debug log
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userId);
     localStorage.setItem('role', role);
     if (sessionToken) {
       localStorage.setItem('sessionToken', sessionToken);
-      console.log('SessionToken saved:', sessionToken); // Debug log
-    } else {
-      console.log('No sessionToken to save'); // Debug log
     }
   },
   

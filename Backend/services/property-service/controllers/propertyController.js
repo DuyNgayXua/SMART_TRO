@@ -8,10 +8,6 @@ class PropertyController {
     // Tạo property mới với validation đầy đủ
     async createProperty(req, res) {
         try {
-            console.log('Request body:', req.body);
-            console.log('Request files:', req.files);
-            console.log('Request user:', req.user);
-
             // Kiểm tra xác thực user trước tiên
             if (!req.user || (!req.user.id && !req.user.userId)) {
                 return res.status(401).json({
@@ -466,6 +462,67 @@ class PropertyController {
         }
     }
 
+
+    // Rate a property
+    async rateProperty(req, res) {
+        try {
+            const { id: propertyId } = req.params;
+            const { rating, comment } = req.body;
+            const userId = req.user.id || req.user.userId;
+
+            // Validation
+            if (!rating || rating < 1 || rating > 5) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Đánh giá phải từ 1 đến 5 sao',
+                    errors: { rating: 'Đánh giá không hợp lệ' }
+                });
+            }
+
+            // Check if property exists
+            const property = await propertyRepository.findById(propertyId);
+            if (!property) {
+                return res.status(404).json({
+                    success: false,
+                    message: 'Không tìm thấy bất động sản'
+                });
+            }
+
+            // Check if user already rated this property
+            const existingRating = await propertyRepository.findUserRating(propertyId, userId);
+            if (existingRating) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Bạn đã đánh giá bất động sản này rồi'
+                });
+            }
+
+            // Create rating
+            const ratingData = {
+                propertyId,
+                userId,
+                rating: parseInt(rating),
+                comment: comment ? comment.trim() : null,
+                createdAt: new Date()
+            };
+
+            const newRating = await propertyRepository.createRating(ratingData);
+
+            res.status(201).json({
+                success: true,
+                message: 'Đánh giá thành công',
+                data: newRating
+            });
+
+        } catch (error) {
+            console.error('Rate property error:', error);
+            res.status(500).json({
+                success: false,
+                message: 'Lỗi server',
+                error: error.message
+            });
+        }
+    }
 
 }
 
