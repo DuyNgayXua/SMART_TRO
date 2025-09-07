@@ -24,6 +24,10 @@ const contractsAPI = {
   async terminateContract(id, payload={ reason:'' }) {
     const res = await api.post(`/contracts/${id}/terminate`, payload);
     return res.data;
+  },
+  async getContractsByRoom(roomId) {
+    const res = await api.get(`/contracts/room/${roomId}`);
+    return res.data;
   }
 };
 

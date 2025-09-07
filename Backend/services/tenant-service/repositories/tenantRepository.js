@@ -7,6 +7,24 @@ class TenantRepository {
     return Tenant.create(data); 
   }
 
+  // Check if identification number already exists (except for specific tenant ID)
+  async checkIdentificationNumberExists(identificationNumber, excludeTenantId = null) {
+    if (!identificationNumber) return false;
+    
+    const query = { 
+      identificationNumber, 
+      isArchived: false 
+    };
+    
+    // Exclude specific tenant when updating
+    if (excludeTenantId) {
+      query._id = { $ne: excludeTenantId };
+    }
+    
+    const existingTenant = await Tenant.findOne(query);
+    return !!existingTenant;
+  }
+
   async findById(id) { 
     return Tenant.findById(id)
       .populate('room', 'name address roomNumber price')
@@ -165,10 +183,12 @@ class TenantRepository {
     const sortOptions = {};
     sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
 
-    return Tenant.find(query)
+    const result = await Tenant.find(query)
       .populate('landlord', 'name email phone')
       .populate('contract', 'startDate endDate monthlyRent deposit status')
       .sort(sortOptions);
+    
+    return result;
   }
 
   // Thống kê tenant theo chủ trọ

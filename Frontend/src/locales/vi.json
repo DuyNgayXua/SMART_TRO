@@ -91,9 +91,9 @@
     "status": {
       "all": "Tất cả",
       "available": "Còn trống",
-      "occupied": "Đã thuê",
-      "maintenance": "Bảo trì",
-      "reserved": "Đã đặt"
+      "rented": "Đã thuê",
+      "reserved": "Đã đặt",
+      "expiring": "Sắp kết thúc"
     },
     "noRoomsFound": "Không tìm thấy phòng nào",
     "noRoomsDescription": "Thử thay đổi bộ lọc hoặc thêm phòng mới",
@@ -113,9 +113,33 @@
       "view": "Xem",
       "edit": "Sửa",
       "delete": "Xóa",
-      "createContract": "Tạo hợp đồng"
+      "createContract": "Tạo hợp đồng",
+      "viewContract": "Xem hợp đồng trọ",
+      "viewTenants": "Danh sách khách thuê",
+      "viewVehicles": "Danh sách xe",
+      "createInvoice": "Lập hóa đơn",
+      "roomTransfer": "Chuyển đổi phòng",
+      "terminateContract": "Kết thúc hợp đồng",
+      "markAsExpiring": "Đánh dấu sắp kết thúc",
+      "createRentalContract": "Tạo hợp đồng thuê",
+      "cancelDeposit": "Hủy cọc"
     },
     "confirmDelete": "Bạn có chắc chắn muốn xóa phòng này?",
+    "messages": {
+      "developmentFeature": "Chức năng đang phát triển",
+      "viewContractDev": "Xem hợp đồng - Chức năng đang phát triển",
+      "viewTenantsDev": "Danh sách khách thuê - Chức năng đang phát triển",
+      "viewVehiclesDev": "Danh sách xe - Chức năng đang phát triển",
+      "createInvoiceDev": "Lập hóa đơn - Chức năng đang phát triển",
+      "roomTransferDev": "Chuyển đổi phòng - Chức năng đang phát triển",
+      "terminateContractDev": "Kết thúc hợp đồng - Chức năng đang phát triển",
+      "confirmTerminate": "Bạn có chắc chắn muốn kết thúc hợp đồng này?",
+      "confirmMarkExpiring": "Đánh dấu phòng này là sắp kết thúc hợp đồng?",
+      "markedAsExpiring": "Đã đánh dấu phòng sắp kết thúc",
+      "errorMarkingExpiring": "Có lỗi xảy ra khi cập nhật trạng thái phòng",
+      "validateErrors": "Vui lòng kiểm tra và sửa các lỗi được đánh dấu",
+      "creatingContract": "Đang tạo hợp đồng..."
+    },
     "pagination": {
       "page": "Trang",
       "rooms": "phòng"
@@ -368,7 +392,8 @@
       "moveInDateMustBeAfterDeposit": "Ngày vào ở phải sau ngày cọc"
     },
     "success": {
-      "depositCreated": "Hợp đồng cọc đã được tạo thành công!"
+      "depositCreated": "Hợp đồng cọc đã được tạo thành công!",
+      "rentalCreated": "Hợp đồng thuê đã được tạo thành công!"
     },
     "error": {
       "createFailed": "Có lỗi xảy ra khi tạo hợp đồng cọc",

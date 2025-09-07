@@ -1,11 +1,12 @@
 {
   "sidebar": {
     "dashboard": "Dashboard",
+    "properties": "Property Management",
     "rooms": "Room Management",
     "amenities": "Amenity Management",
     "users": "User Management",
     "tenants": "Tenant Management",
-  "contracts": "Contract Management",
+    "contracts": "Contract Management",
     "posts": "Post Management",
     "reports": "Revenue Reports",
     "vouchers": "Voucher Management",
@@ -15,7 +16,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "subtitle": "SMART TRO Room Management System Overview",
+    "subtitle": "SMART TRO room management system overview",
     "stats": {
       "totalRooms": "Total Rooms",
       "occupiedRooms": "Occupied Rooms",
@@ -27,7 +28,7 @@
       "monthlyRevenue": "Monthly Revenue",
       "last6Months": "Last 6 months",
       "1Year": "1 year",
-      "all": "All time",
+      "all": "All",
       "revenueChartPlaceholder": "Revenue chart will be displayed here",
       "occupancyRate": "Occupancy Rate",
       "roomOccupancyRate": "Room Occupancy Rate"
@@ -36,9 +37,9 @@
       "recentActivity": "Recent Activity",
       "systemNotifications": "System Notifications",
       "booking": "{{name}} booked room {{room}}",
-      "payment": "{{name}} paid for room {{room}}",
-      "maintenance": "{{name}} requested maintenance for {{room}}",
-      "checkout": "{{name}} checked out from room {{room}}",
+      "payment": "{{name}} paid rent for room {{room}}",
+      "maintenance": "{{name}} requested maintenance for room {{room}}",
+      "checkout": "{{name}} checked out of room {{room}}",
       "systemMaintenance": "System maintenance at 2:00 AM tomorrow",
       "contractExpiring": "5 contracts expiring this week",
       "reportGenerated": "August report has been generated",
@@ -63,11 +64,11 @@
       },
       "createInvoice": {
         "title": "Create Invoice",
-        "desc": "Generate room payment invoice"
+        "desc": "Generate rent invoice"
       },
       "viewReports": {
         "title": "View Reports",
-        "desc": "Detailed statistics and reports"
+        "desc": "Statistics and detailed reports"
       }
     }
   },
@@ -80,9 +81,9 @@
     "allTypes": "All Types",
     "types": {
       "single": "Single Room",
-  "double": "Double Room",
-  "suite": "Suite Room",
-  "dorm": "Dorm Room"
+      "double": "Double Room",
+      "suite": "Suite Room",
+      "dorm": "Dormitory"
     },
     "priceFrom": "Price From (VND)",
     "priceTo": "Price To (VND)",
@@ -90,31 +91,55 @@
     "status": {
       "all": "All",
       "available": "Available",
-      "occupied": "Occupied",
-      "maintenance": "Maintenance",
-      "reserved": "Reserved"
+      "rented": "Rented",
+      "reserved": "Reserved",
+      "expiring": "Expiring"
     },
     "noRoomsFound": "No rooms found",
-    "noRoomsDescription": "Try changing filters or add new rooms",
+    "noRoomsDescription": "Try changing filters or add new room",
     "month": "month",
     "persons": "persons",
     "vehicles": "vehicles",
     "amenities": "amenities",
-    "actions": {
-      "view": "View",
-      "edit": "Edit",
-      "delete": "Delete",
-      "createContract": "Create Contract"
-    },
     "table": {
       "room": "Room",
       "status": "Status",
-      "price": "Price",
+      "price": "Rent Price",
       "details": "Details",
       "amenities": "Amenities",
       "actions": "Actions"
     },
+    "actions": {
+      "view": "View",
+      "edit": "Edit",
+      "delete": "Delete",
+      "createContract": "Create Contract",
+      "viewContract": "View Rental Contract",
+      "viewTenants": "Tenant List",
+      "viewVehicles": "Vehicle List",
+      "createInvoice": "Create Invoice",
+      "roomTransfer": "Room Transfer",
+      "terminateContract": "Terminate Contract",
+      "markAsExpiring": "Mark as Expiring",
+      "createRentalContract": "Create Rental Contract",
+      "cancelDeposit": "Cancel Deposit"
+    },
     "confirmDelete": "Are you sure you want to delete this room?",
+    "messages": {
+      "developmentFeature": "Feature Under Development",
+      "viewContractDev": "View Contract - Feature Under Development",
+      "viewTenantsDev": "Tenant List - Feature Under Development",
+      "viewVehiclesDev": "Vehicle List - Feature Under Development",
+      "createInvoiceDev": "Create Invoice - Feature Under Development",
+      "roomTransferDev": "Room Transfer - Feature Under Development",
+      "terminateContractDev": "Terminate Contract - Feature Under Development",
+      "confirmTerminate": "Are you sure you want to terminate this contract?",
+      "confirmMarkExpiring": "Mark this room as contract expiring?",
+      "markedAsExpiring": "Room marked as expiring",
+      "errorMarkingExpiring": "Error occurred while updating room status",
+      "validateErrors": "Please check and fix the marked errors",
+      "creatingContract": "Creating contract..."
+    },
     "pagination": {
       "page": "Page",
       "rooms": "rooms"
@@ -130,7 +155,7 @@
       "area": "Area (m²)",
       "capacity": "Capacity",
       "vehicleCount": "Vehicle Count",
-      "capacityPlaceholder": "Auto by room type",
+      "capacityPlaceholder": "Auto based on room type",
       "roomType": "Room Type",
       "description": "Description",
       "amenities": "Amenities",
@@ -148,14 +173,14 @@
         "suite": "Suite",
         "dorm": "Dorm"
       },
-      "fullFurnitureIncludes": "Includes: Air conditioner, Refrigerator, Washing machine, Water heater, Wardrobe, Bed, Desk, Wi-Fi",
+      "fullFurnitureIncludes": "Includes: Air Conditioner, Refrigerator, Washing Machine, Water Heater, Wardrobe, Bed, Desk, Wi-Fi",
       "imagesLabel": "Images (max 5)",
       "imagesCurrent": "Current Images",
       "imagesAddNew": "Add New Images (max {{count}})",
       "deleteImageConfirm": "Delete this image?",
       "uploading": "Uploading...",
       "imagesNone": "No images",
-      "utilityPrices": "Utility Prices & Services",
+      "utilityPrices": "Utility Prices",
       "electricityPrice": "Electricity Price (VND/kWh)",
       "electricityPriceUnit": "VND/kWh",
       "waterPrice": "Water Price (VND/m³)",
@@ -163,35 +188,35 @@
       "servicePrice": "Service Fee (VND/month)",
       "servicePriceUnit": "VND/month",
       "meterConfig": "Meter Configuration",
-      "electricityMeterEnabled": "Use electricity meter",
-      "electricityLastReading": "Last electricity reading (kWh)",
-      "waterMeterEnabled": "Use water meter",
-      "waterLastReading": "Last water reading (m³)",
+      "electricityMeterEnabled": "Use Electricity Meter",
+      "electricityLastReading": "Last Electricity Reading (kWh)",
+      "waterMeterEnabled": "Use Water Meter",
+      "waterLastReading": "Last Water Reading (m³)",
       "paymentConfig": "Payment Configuration",
       "electricityIncluded": "Electricity included in rent",
       "waterIncluded": "Water included in rent",
-      "serviceIncluded": "Service included in rent",
-      "paymentDay": "Monthly payment day",
+      "serviceIncluded": "Service fee included in rent",
+      "paymentDay": "Monthly Payment Date",
       "paymentDayHelper": "Day 1-31 of the month",
-      "advancePayment": "Advance payment months",
+      "advancePayment": "Advance Payment Months",
       "advancePaymentHelper": "At least 1 month"
     },
     "validation": {
-      "propertyRequired": "Select a property",
+      "propertyRequired": "Select property",
       "roomNumberRequired": "Enter room number",
-  "roomNumberDuplicate": "Room number already exists",
-  "checking": "Checking...",
-      "titleMin": "Title must be at least 3 characters",
+      "roomNumberDuplicate": "Room number already exists",
+      "checking": "Checking...",
+      "titleMin": "Title must be >= 3 characters",
       "priceInvalid": "Invalid price",
-      "depositInvalid": "Invalid deposit"
-  ,"capacityInvalid": "Capacity must be >= 1"
+      "depositInvalid": "Invalid deposit",
+      "capacityInvalid": "Capacity must be >= 1"
     },
     "amenityLabels": {
-      "full_furniture": "Full furniture",
-      "air_conditioner": "Air conditioner",
+      "full_furniture": "Full Furniture",
+      "air_conditioner": "Air Conditioner",
       "refrigerator": "Refrigerator",
-      "washing_machine": "Washing machine",
-      "water_heater": "Water heater",
+      "washing_machine": "Washing Machine",
+      "water_heater": "Water Heater",
       "wardrobe": "Wardrobe",
       "bed": "Bed",
       "desk": "Desk",
@@ -220,7 +245,7 @@
     "error": "An error occurred",
     "success": "Success",
     "warning": "Warning",
-    "info": "Info",
+    "info": "Information",
     "confirm": "Confirm",
     "back": "Back",
     "next": "Next",
@@ -231,7 +256,7 @@
     "create": "Create",
     "select": "Select",
     "all": "All",
-    "none": "None", 
+    "none": "None",
     "unknown": "Unknown",
     "actions": "Actions",
     "unauthorized": "You need to login again",
@@ -240,7 +265,7 @@
   "settings": {
     "title": "Settings",
     "language": "Language",
-    "languageDesc": "Choose display language",
+    "languageDesc": "Select display language",
     "vietnamese": "Vietnamese",
     "english": "English",
     "general": "General Settings",
@@ -249,7 +274,7 @@
     "securityDesc": "Manage security and login sessions",
     "notifications": "Notifications",
     "appearance": "Appearance",
-    "appearanceDesc": "Customize system interface and theme",
+    "appearanceDesc": "Customize interface and system theme",
     "system": "System",
     "logout": "Logout",
     "logoutDesc": "End current session and return to login page",
@@ -257,7 +282,7 @@
     "lightTheme": "Light Theme",
     "lightThemeDesc": "Light interface with white background, easy to view in bright environments",
     "darkTheme": "Dark Theme",
-    "darkThemeDesc": "Dark interface with black background, reduces eye strain in low-light environments"
+    "darkThemeDesc": "Dark interface with black background, reduces eye strain in low light environments"
   },
   "auth": {
     "login": "Login",
@@ -269,18 +294,18 @@
     "confirmPassword": "Confirm Password",
     "fullName": "Full Name",
     "rememberMe": "Remember Me",
-    "loginError": "Login failed",
-    "registerSuccess": "Registration successful",
+    "loginError": "Login Failed",
+    "registerSuccess": "Registration Successful",
     "administrator": "Administrator"
   },
   "status": {
-  "new": "New",
-  "completed": "Completed",
-  "pending": "Pending",
-  "warning": "Warning",
-  "upcoming": "Upcoming",
-  "active": "Active",
-  "inactive": "Inactive"
+    "new": "New",
+    "completed": "Completed",
+    "pending": "Pending",
+    "warning": "Warning",
+    "upcoming": "Upcoming",
+    "active": "Active",
+    "inactive": "Inactive"
   },
   "time": {
     "minutesAgo": "minutes ago",
@@ -288,31 +313,44 @@
     "daysAgo": "days ago",
     "weeksAgo": "weeks ago",
     "monthsAgo": "months ago"
-  }
-  ,
+  },
   "tenants": {
     "title": "Tenant Management",
     "addNew": "Add Tenant",
     "searchPlaceholder": "Name, email, phone...",
-    "noTenants": "No tenants found",
-    "noTenantsDescription": "Try adjusting filters or add a new tenant.",
+    "noTenants": "No tenants",
+    "noTenantsDescription": "Try changing filters or add new tenant.",
     "createTitle": "Add Tenant",
     "editTitle": "Edit Tenant"
   },
   "contracts": {
     "title": "Contract Management",
-    "addNew": "New Contract",
+    "addNew": "Create Contract",
     "searchPlaceholder": "Room, tenant...",
     "empty": "No contracts",
     "emptyDescription": "Create a new contract to get started.",
     "createTitle": "Create Contract",
     "detailTitle": "Contract Detail",
+    "tabs": {
+      "rental": "Rental Contract",
+      "deposit": "Deposit Contract"
+    },
+    "deposit": {
+      "empty": "No deposit contracts yet",
+      "emptyDescription": "Deposit contracts will be displayed here",
+      "tenant": "Tenant",
+      "phone": "Phone Number",
+      "depositDate": "Deposit Date",
+      "expectedMoveIn": "Expected Move-in",
+      "amount": "Deposit Amount",
+      "roomPrice": "Room Price"
+    },
     "room": "Room",
     "tenant": "Tenant",
     "startDate": "Start Date",
     "endDate": "End Date",
     "monthlyRent": "Monthly Rent",
-    "deposit": "Deposit",
+    "depositAmount": "Deposit Amount",
     "electricPrice": "Electric Price",
     "waterPrice": "Water Price",
     "servicePrice": "Service Fee",
@@ -353,7 +391,8 @@
       "moveInDateMustBeAfterDeposit": "Move-in date must be after deposit date"
     },
     "success": {
-      "depositCreated": "Deposit contract created successfully!"
+      "depositCreated": "Deposit contract created successfully!",
+      "rentalCreated": "Rental contract created successfully!"
     },
     "error": {
       "createFailed": "Error occurred while creating deposit contract",
@@ -363,6 +402,7 @@
     "status": {
       "label": "Status",
       "active": "Active",
+      "pending": "Pending",
       "expired": "Expired",
       "terminated": "Terminated"
     },

@@ -22,6 +22,17 @@ class TenantController {
         });
       }
 
+      // Check identification number duplicate 
+      if (identificationNumber) {
+        const isDuplicate = await tenantRepository.checkIdentificationNumberExists(identificationNumber);
+        if (isDuplicate) {
+          return res.status(409).json({
+            success: false,
+            message: 'Số CMND/CCCD đã được sử dụng bởi khách thuê khác'
+          });
+        }
+      }
+
       // Kiểm tra quyền sở hữu phòng
       if (landlord) {
         const roomOwnership = await tenantRepository.ensureRoomOwnership(room, landlord);
@@ -33,14 +44,8 @@ class TenantController {
         }
       }
 
-      // Kiểm tra phòng có đang được thuê không
-      const existingActiveTenant = await tenantRepository.findActiveByRoom(room);
-      if (existingActiveTenant) {
-        return res.status(409).json({
-          success: false,
-          message: 'Room is already rented to another tenant'
-        });
-      }
+      // Removed: Check phòng có đang được thuê không - Now support multiple tenants
+      // Multiple tenants can rent the same room
 
       // Kiểm tra duplicate tenant logic trong application
       const existingTenant = await tenantRepository.findOne({
@@ -75,22 +80,27 @@ class TenantController {
         emergencyContact, landlord, room, contract, leaseStart, leaseEnd,
         rentPrice, deposit, notes, moveInDate,
         vehicles: vehicles || [], // Thêm vehicles
-        status: 'pending' // Bắt đầu với trạng thái pending
+        status: 'active' // Mặc định active khi tạo hợp đồng mới
       };
 
       const tenant = await tenantRepository.create(tenantData);
 
-      // Cập nhật trạng thái phòng nếu tenant active
-      if (tenant.status === 'active') {
-        await Room.findByIdAndUpdate(room, { 
-          status: 'rented', 
-          tenant: tenant._id, 
-          leaseStart, 
-          leaseEnd 
-        });
+      // Cập nhật trạng thái phòng (tenant luôn active khi tạo mới)
+      // Get current room to preserve existing tenants
+      const currentRoom = await Room.findById(room);
+      const currentTenants = currentRoom.tenants || [];
+      
+      // Add new tenant to tenants array if not already exists
+      if (!currentTenants.includes(tenant._id)) {
+        currentTenants.push(tenant._id);
       }
-
-      res.status(201).json({ success: true, data: tenant });
+      
+          await Room.findByIdAndUpdate(room, { 
+            status: 'rented', 
+            tenants: currentTenants, // New array field
+            leaseStart, 
+            leaseEnd 
+          });      res.status(201).json({ success: true, data: tenant });
     } catch (e) {
       if (e.code === 11000) {
         return res.status(409).json({ 
@@ -145,7 +155,19 @@ class TenantController {
 
   async update(req, res) {
     try { 
-      const { status: newStatus, ...updateData } = req.body;
+      const { status: newStatus, identificationNumber, ...updateData } = req.body;
+      
+      // Check identification number duplicate when updating
+      if (identificationNumber) {
+        const isDuplicate = await tenantRepository.checkIdentificationNumberExists(identificationNumber, req.params.id);
+        if (isDuplicate) {
+          return res.status(409).json({
+            success: false,
+            message: 'Số CMND/CCCD đã được sử dụng bởi khách thuê khác'
+          });
+        }
+        updateData.identificationNumber = identificationNumber;
+      }
       
       // Nếu cập nhật status, cần xử lý logic đặc biệt
       if (newStatus) {
@@ -157,15 +179,25 @@ class TenantController {
         // Xử lý thay đổi trạng thái
         if (newStatus === 'active' && tenant.status !== 'active') {
           // Kích hoạt tenant - cập nhật phòng
+          const currentRoom = await Room.findById(tenant.room);
+          const currentTenants = currentRoom.tenants || [];
+          
+          if (!currentTenants.includes(tenant._id)) {
+            currentTenants.push(tenant._id);
+          }
+          
           await Room.findByIdAndUpdate(tenant.room, { 
             status: 'rented', 
-            tenant: tenant._id 
+            tenants: currentTenants // New array field
           });
         } else if (newStatus === 'ended' && tenant.status === 'active') {
-          // Kết thúc thuê - giải phóng phòng
+          // Kết thúc thuê - xóa tenant khỏi phòng
+          const currentRoom = await Room.findById(tenant.room);
+          const currentTenants = (currentRoom.tenants || []).filter(id => !id.equals(tenant._id));
+          
           await Room.findByIdAndUpdate(tenant.room, { 
-            status: 'available', 
-            tenant: null 
+            status: currentTenants.length > 0 ? 'rented' : 'available', // Nếu còn tenant khác thì vẫn rented
+            tenants: currentTenants // Updated array
           });
           updateData.moveOutDate = new Date();
         }
@@ -219,10 +251,13 @@ class TenantController {
         return res.status(404).json({ success: false, message: 'Tenant not found' });
       }
 
-      // Cập nhật trạng thái phòng
+      // Cập nhật trạng thái phòng - xóa tenant khỏi mảng tenants
+      const currentRoom = await Room.findById(tenant.room);
+      const currentTenants = (currentRoom.tenants || []).filter(id => !id.equals(tenant._id));
+      
       await Room.findByIdAndUpdate(tenant.room, { 
-        status: 'available', 
-        tenant: null 
+        status: currentTenants.length > 0 ? 'rented' : 'available', // Nếu còn tenant khác thì vẫn rented
+        tenants: currentTenants // Updated array
       });
 
       res.json({ success: true, data: tenant }); 
@@ -285,6 +320,7 @@ class TenantController {
       if (status) filters.status = status;
       
       const tenants = await tenantRepository.findByRoom(roomId, filters, sortBy, sortOrder);
+      
       res.json({ success: true, data: tenants });
     } catch (e) {
       console.error('Get tenants by room error:', e);

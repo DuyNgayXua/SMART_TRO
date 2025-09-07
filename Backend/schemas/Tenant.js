@@ -32,8 +32,8 @@ const tenantSchema = new mongoose.Schema({
   // Trạng thái và quản lý
   status: { 
     type: String, 
-    enum: ['active', 'ended', 'pending', 'cancelled', 'suspended'], 
-    default: 'pending', 
+    enum: ['active', 'ended'], // Simplified: chỉ 2 trạng thái chính
+    default: 'active', // Mặc định active khi tạo hợp đồng mới
     index: true 
   },
   

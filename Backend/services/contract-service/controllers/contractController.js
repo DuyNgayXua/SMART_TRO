@@ -5,25 +5,17 @@ class ContractController {
   async create(req, res) {
     try {
       const { 
-        room, tenant, tenants, startDate, endDate, monthlyRent, deposit,
+        room, tenants, startDate, endDate, monthlyRent, deposit,
         electricPrice, waterPrice, servicePrice, vehicles, notes
       } = req.body;
       
       const landlord = req.body.landlord || req.user?.userId;
       
-      // Handle both single tenant and multiple tenants
-      let tenantsList = [];
-      if (tenants && Array.isArray(tenants)) {
-        tenantsList = tenants;
-      } else if (tenant) {
-        tenantsList = [tenant];
-      }
-      
       // Validation
-      if (!room || tenantsList.length === 0 || !startDate || !endDate || !monthlyRent || !deposit) {
+      if (!room || !tenants || !Array.isArray(tenants) || tenants.length === 0 || !startDate || !endDate || !monthlyRent || !deposit) {
         return res.status(400).json({ 
           success: false, 
-          message: 'Missing required fields: room, tenants, startDate, endDate, monthlyRent, deposit' 
+          message: 'Missing required fields: room, tenants (array), startDate, endDate, monthlyRent, deposit' 
         });
       }
 
@@ -41,8 +33,7 @@ class ContractController {
       // Prepare contract data
       const contractData = {
         room,
-        tenants: tenantsList,
-        tenant: tenantsList[0], // Primary tenant for backward compatibility
+        tenants,
         landlord,
         startDate,
         endDate,
@@ -137,6 +128,16 @@ class ContractController {
       return res.json({ success:true, data: updated });
     } catch (e) {
       return res.status(500).json({ success:false, message:e.message });
+    }
+  }
+
+  async getByRoom(req, res) {
+    try {
+      const { roomId } = req.params;
+      const contracts = await contractRepository.findByRoom(roomId);
+      return res.json({ success: true, data: contracts });
+    } catch (e) {
+      return res.status(500).json({ success: false, message: e.message });
     }
   }
 }

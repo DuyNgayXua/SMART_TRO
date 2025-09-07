@@ -595,19 +595,19 @@
   color: #065f46;
 }
 
-.status-occupied {
+.status-rented {
   background: #fecaca;
   color: #991b1b;
-}
-
-.status-maintenance {
-  background: #fef3c7;
-  color: #92400e;
 }
 
 .status-reserved {
   background: #dbeafe;
   color: #1e40af;
+}
+
+.status-expiring {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 .room-info {
@@ -1630,19 +1630,19 @@
   color: #065f46;
 }
 
-.status-occupied {
+.status-rented {
   background: #fecaca;
   color: #991b1b;
-}
-
-.status-maintenance {
-  background: #fef3c7;
-  color: #92400e;
 }
 
 .status-reserved {
   background: #dbeafe;
   color: #1e40af;
+}
+
+.status-expiring {
+  background: #fef3c7;
+  color: #92400e;
 }
 
 /* Price Column - Improved */
@@ -1897,6 +1897,15 @@
 .action-menu-item.danger:hover {
   background: #fef2f2;
   color: #b91c1c;
+}
+
+.action-menu-item.warning {
+  color: #d97706;
+}
+
+.action-menu-item.warning:hover {
+  background: #fef3c7;
+  color: #b45309;
 }
 
 .action-menu-item i {

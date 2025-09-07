@@ -10,14 +10,14 @@ class ContractRepository {
   async findById(id) {
     return Contract.findById(id)
       .populate('room', 'roomNumber status')
-      .populate('tenant', 'fullName phone email')
+      .populate('tenants', 'fullName phone email')
       .populate('landlord', 'fullName email');
   }
 
   async update(id, data) {
     return Contract.findByIdAndUpdate(id, data, { new: true })
       .populate('room', 'roomNumber status')
-      .populate('tenant', 'fullName phone email')
+      .populate('tenants', 'fullName phone email')
       .populate('landlord', 'fullName email');
   }
 
@@ -36,14 +36,18 @@ class ContractRepository {
         .skip(skip)
         .limit(Number(limit))
         .populate('room', 'roomNumber status')
-        .populate('tenant', 'fullName phone email')
+        .populate('tenants', 'fullName phone email')
         .populate('landlord', 'fullName'),
       Contract.countDocuments(query)
     ]);
     let filtered = items;
     if (search) {
       const rx = new RegExp(search, 'i');
-      filtered = items.filter(c => rx.test(c.notes||'') || rx.test(c.room?.roomNumber||'') || rx.test(c.tenant?.fullName||''));
+      filtered = items.filter(c => 
+        rx.test(c.notes||'') || 
+        rx.test(c.room?.roomNumber||'') || 
+        (c.tenants && c.tenants.some(tenant => rx.test(tenant?.fullName||'')))
+      );
     }
     return {
       items: filtered,
@@ -53,6 +57,14 @@ class ContractRepository {
         total
       }
     };
+  }
+
+  async findByRoom(roomId) {
+    return Contract.find({ room: roomId })
+      .populate('room')
+      .populate('tenants', 'fullName phone email identificationNumber images vehicles') // Only populate tenants array
+      .populate('landlord', 'fullName email')
+      .sort({ createdAt: -1 });
   }
 }
 

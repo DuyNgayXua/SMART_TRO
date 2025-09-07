@@ -32,7 +32,7 @@ const RoomsManagement = () => {
     totalItems: 0,
     itemsPerPage: 12
   });
-  const [statusCounts, setStatusCounts] = useState({ all:0, available:0, occupied:0, maintenance:0, reserved:0 });
+  const [statusCounts, setStatusCounts] = useState({ all:0, available:0, rented:0, reserved:0, expiring:0 });
   const [depositContracts, setDepositContracts] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -83,6 +83,11 @@ const RoomsManagement = () => {
   const [creatingRentalContract, setCreatingRentalContract] = useState(false);
   const [creating, setCreating] = useState(false);
   const [savingEdit, setSavingEdit] = useState(false);
+  
+  // Contract edit mode states
+  const [isContractEditMode, setIsContractEditMode] = useState(false);
+  const [editingContractId, setEditingContractId] = useState(null);
+  
   const [viewRoom, setViewRoom] = useState(null);
   const [viewCarouselIndex, setViewCarouselIndex] = useState(0);
   const [editingRoomId, setEditingRoomId] = useState(null);
@@ -190,7 +195,9 @@ const RoomsManagement = () => {
   const statusLabels = {
     all: t('rooms.status.all'),
     available: t('rooms.status.available'),
-    occupied: t('rooms.status.occupied')
+    rented: t('rooms.status.rented'),
+    reserved: t('rooms.status.reserved'),
+    expiring: t('rooms.status.expiring')
   };
 
   const fetchRooms = useCallback(async () => {
@@ -235,11 +242,11 @@ const RoomsManagement = () => {
       if (statsRes.success) {
         const stats = statsRes.data;
         setStatusCounts({
-          all: (stats.available?.count||0)+(stats.rented?.count||0)+(stats.maintenance?.count||0)+(stats.reserved?.count||0),
+          all: (stats.available?.count||0)+(stats.rented?.count||0)+(stats.reserved?.count||0)+(stats.expiring?.count||0),
           available: stats.available?.count||0,
-          occupied: stats.rented?.count||0,
-          maintenance: stats.maintenance?.count||0,
-          reserved: stats.reserved?.count||0
+          rented: stats.rented?.count||0,
+          reserved: stats.reserved?.count||0,
+          expiring: stats.expiring?.count||0
         });
       }
     } catch (e) {
@@ -373,6 +380,10 @@ const RoomsManagement = () => {
       showToast('error', 'Không tìm thấy hợp đồng cọc');
       return;
     }
+    
+    // Reset edit mode for new contract
+    setIsContractEditMode(false);
+    setEditingContractId(null);
     
     // Set selected room for contract
     setSelectedRoomForContract(room);
@@ -637,7 +648,7 @@ const RoomsManagement = () => {
     // If there are errors, scroll to first error field
     if (Object.keys(errors).length) {
       scrollToFirstError(errors);
-      showToast('error', 'Vui lòng kiểm tra và sửa các lỗi được đánh dấu');
+      showToast('error', t('rooms.messages.validateErrors'));
       return;
     }
 
@@ -645,6 +656,7 @@ const RoomsManagement = () => {
     
     // Transaction state for rollback
     const transaction = {
+      originalRoomStatus: selectedRoomForContract.status, // Lưu status gốc
       createdTenants: [],
       createdContract: null,
       uploadedImages: [],
@@ -664,22 +676,38 @@ const RoomsManagement = () => {
         transaction.originalDepositContract = depositContract;
       }
 
-      // 2. PHASE 1: Tạo tenants
-      showToast('info', 'Đang tạo thông tin khách thuê...');
+      // 2. PHASE 1: Xử lý tenant information (update existing + create new)
+      // Show single loading message at the start
+      showToast('info', isContractEditMode ? 'Đang cập nhật hợp đồng...' : 'Đang tạo hợp đồng...');
       
       for (let i = 0; i < rentalContractData.tenants.length; i++) {
         const tenantData = rentalContractData.tenants[i];
+        const isUpdatingExisting = isContractEditMode && tenantData._id;
         
-        console.log('Creating tenant', i + 1, ':', tenantData);
-        
-        // Lấy vehicles của tenant này
-        const tenantVehicles = rentalContractData.vehicles.filter(vehicle => 
+        // Xử lý vehicles của tenant này - phân biệt update vs create
+        let tenantVehicles = [];
+        const vehiclesForThisTenant = rentalContractData.vehicles.filter(vehicle => 
           vehicle.ownerIndex === i && vehicle.licensePlate.trim()
-        ).map(vehicle => ({
-          licensePlate: vehicle.licensePlate,
-          vehicleType: vehicle.vehicleType,
-          notes: ''
-        }));
+        );
+        
+        if (isUpdatingExisting) {
+          // Đối với tenant đang update, chỉ lấy vehicles mới (không có _id)
+          // Vehicles cũ sẽ được update riêng thông qua tenant update API
+          tenantVehicles = vehiclesForThisTenant
+            .filter(vehicle => !vehicle._id) // Chỉ lấy vehicles mới
+            .map(vehicle => ({
+              licensePlate: vehicle.licensePlate,
+              vehicleType: vehicle.vehicleType,
+              notes: ''
+            }));
+        } else {
+          // Đối với tenant mới, lấy tất cả vehicles
+          tenantVehicles = vehiclesForThisTenant.map(vehicle => ({
+            licensePlate: vehicle.licensePlate,
+            vehicleType: vehicle.vehicleType,
+            notes: ''
+          }));
+        }
         
         // Chuẩn bị dữ liệu tenant
         const tenantPayload = {
@@ -697,26 +725,28 @@ const RoomsManagement = () => {
           vehicles: tenantVehicles // Thêm vehicles của tenant này
         };
 
-        console.log('Tenant payload:', tenantPayload);
-
-        // Tạo tenant
-        const tenantResponse = await tenantsAPI.createTenant(tenantPayload);
-        
-        console.log('Tenant response:', tenantResponse);
+        let tenantResponse;
+        if (isUpdatingExisting) {
+          // Update existing tenant
+          tenantResponse = await tenantsAPI.updateTenant(tenantData._id, tenantPayload);
+        } else {
+          // Create new tenant
+          tenantResponse = await tenantsAPI.createTenant(tenantPayload);
+        }
         
         if (tenantResponse.success) {
-          const createdTenant = tenantResponse.data;
-          transaction.createdTenants.push(createdTenant);
+          const processedTenant = tenantResponse.data;
+          transaction.createdTenants.push(processedTenant);
 
-          // Upload hình ảnh sau khi tạo tenant thành công
+          // Upload hình ảnh sau khi xử lý tenant thành công (chỉ khi có ảnh mới)
           if (tenantData.tenantImages && tenantData.tenantImages.length > 0) {
             try {
-              const uploadRes = await tenantsAPI.uploadTenantImages(createdTenant._id, tenantData.tenantImages);
+              const uploadRes = await tenantsAPI.uploadTenantImages(processedTenant._id, tenantData.tenantImages);
               
               if (uploadRes.success) {
                 console.log('Tenant images uploaded successfully:', uploadRes.data.images);
                 transaction.uploadedImages.push({
-                  tenantId: createdTenant._id,
+                  tenantId: processedTenant._id,
                   images: uploadRes.data.images
                 });
                 
@@ -740,13 +770,72 @@ const RoomsManagement = () => {
             }
           }
         } else {
-          console.error('Failed to create tenant:', tenantResponse);
-          throw new Error(`Failed to create tenant ${i + 1}: ${tenantResponse.message}`);
+          console.error(isContractEditMode ? 'Failed to update tenant:' : 'Failed to create tenant:', tenantResponse);
+          throw new Error(`Failed to ${isContractEditMode ? 'update' : 'create'} tenant ${i + 1}: ${tenantResponse.message}`);
         }
       }
 
-      // 3. PHASE 2: Tạo contract
-      showToast('info', 'Đang tạo hợp đồng...');
+      // 2.3. PHASE 1.3: Xóa tenants bị loại bỏ (chỉ trong edit mode)
+      if (isContractEditMode && selectedRoomForContract.originalTenantIds) {
+        const currentTenantIds = rentalContractData.tenants
+          .filter(t => t._id) // Chỉ lấy tenants có ID
+          .map(t => t._id);
+        
+        const tenantsToDelete = selectedRoomForContract.originalTenantIds.filter(
+          originalId => !currentTenantIds.includes(originalId)
+        );
+        
+        if (tenantsToDelete.length > 0) {
+          // Remove intermediate toast for deletion
+          for (const tenantId of tenantsToDelete) {
+            try {
+              console.log('Archiving removed tenant:', tenantId);
+              await tenantsAPI.archiveTenant(tenantId);
+            } catch (deleteError) {
+              console.warn(`Failed to archive tenant ${tenantId}:`, deleteError);
+            }
+          }
+        }
+      }
+
+      // 2.5. PHASE 1.5: Xử lý vehicle updates riêng (chỉ trong edit mode)
+      if (isContractEditMode) {
+        // Remove intermediate toast for vehicles
+        
+        // Group vehicles by tenant owner
+        const vehiclesByTenant = {};
+        
+        rentalContractData.vehicles
+          .filter(vehicle => vehicle.licensePlate.trim())
+          .forEach(vehicle => {
+            const tenantIndex = vehicle.ownerIndex;
+            if (!vehiclesByTenant[tenantIndex]) {
+              vehiclesByTenant[tenantIndex] = [];
+            }
+            vehiclesByTenant[tenantIndex].push({
+              licensePlate: vehicle.licensePlate,
+              vehicleType: vehicle.vehicleType,
+              notes: ''
+            });
+          });
+        
+        // Update vehicles for each tenant
+        for (const [tenantIndex, vehicles] of Object.entries(vehiclesByTenant)) {
+          const tenant = transaction.createdTenants[parseInt(tenantIndex)];
+          if (tenant) {
+            try {
+              console.log(`Updating vehicles for tenant ${tenant.fullName}:`, vehicles);
+              await tenantsAPI.updateTenant(tenant._id, { vehicles });
+            } catch (vehicleError) {
+              console.warn(`Failed to update vehicles for tenant ${tenant.fullName}:`, vehicleError);
+              // Continue with other tenants
+            }
+          }
+        }
+      }
+
+      // 3. PHASE 2: Xử lý contract
+      // Remove intermediate toast - already shown at start
       
       const contractPayload = {
         room: selectedRoomForContract.id,
@@ -772,33 +861,43 @@ const RoomsManagement = () => {
       
       console.log('Contract payload:', contractPayload);
       
-      const contractResponse = await contractsAPI.createContract(contractPayload);
+      let contractResponse;
+      if (isContractEditMode && editingContractId) {
+        // Update existing contract
+        contractResponse = await contractsAPI.updateContract(editingContractId, contractPayload);
+      } else {
+        // Create new contract
+        contractResponse = await contractsAPI.createContract(contractPayload);
+      }
       
       console.log('Contract response:', contractResponse);
       
       if (contractResponse.success) {
         transaction.createdContract = contractResponse.data;
         
-        // 4. PHASE 3: Cập nhật contract reference cho tenants
-        for (const tenant of transaction.createdTenants) {
-          await tenantsAPI.updateTenant(tenant._id, {
-            contract: transaction.createdContract._id
-          });
+        // 4. PHASE 3: Cập nhật contract reference cho tenants (chỉ cho create mode)
+        if (!isContractEditMode) {
+          for (const tenant of transaction.createdTenants) {
+            await tenantsAPI.updateTenant(tenant._id, {
+              contract: transaction.createdContract._id
+            });
+          }
         }
         
-        // 5. PHASE 4: Cập nhật trạng thái phòng
-        showToast('info', 'Đang cập nhật trạng thái phòng...');
-        await roomsAPI.updateRoom(selectedRoomForContract.id, {
-          status: 'occupied',
-          tenant: transaction.createdTenants[0]._id,
-          leaseStart: rentalContractData.startDate,
-          leaseEnd: rentalContractData.endDate
-        });
-        transaction.updatedRoom = true;
+        // 5. PHASE 4: Cập nhật trạng thái phòng (chỉ cho create mode)
+        if (!isContractEditMode) {
+          // Remove intermediate toast - already shown at start
+          await roomsAPI.updateRoom(selectedRoomForContract.id, {
+            status: 'rented',
+            tenant: transaction.createdTenants[0]._id,
+            leaseStart: rentalContractData.startDate,
+            leaseEnd: rentalContractData.endDate
+          });
+          transaction.updatedRoom = true;
+        }
 
-        // 6. PHASE 5: Cập nhật trạng thái hợp đồng cọc nếu có
-        if (transaction.originalDepositContract) {
-          showToast('info', 'Đang cập nhật hợp đồng cọc...');
+        // 6. PHASE 5: Cập nhật trạng thái hợp đồng cọc nếu có (chỉ cho create mode)
+        if (!isContractEditMode && transaction.originalDepositContract) {
           await depositContractsAPI.updateDepositContractStatus(
             transaction.originalDepositContract._id, 
             'fulfilled'
@@ -807,13 +906,14 @@ const RoomsManagement = () => {
         }
 
         // 7. COMMIT: Thành công - đóng modal và refresh data
-        showToast('info', 'Đang hoàn tất...');
         setShowRentalContractModal(false);
         setSelectedRoomForContract(null);
         
         showToast(
           'success',
-          t('contracts.success.rentalCreated') || 'Hợp đồng thuê đã được tạo thành công!'
+          isContractEditMode 
+            ? (t('contracts.success.rentalUpdated') || 'Hợp đồng thuê đã được cập nhật thành công!')
+            : (t('contracts.success.rentalCreated') || 'Hợp đồng thuê đã được tạo thành công!')
         );
         
         // Refresh UI
@@ -823,20 +923,18 @@ const RoomsManagement = () => {
         }, 500);
 
       } else {
-        throw new Error(contractResponse.message || 'Failed to create contract');
+        throw new Error(contractResponse.message || (isContractEditMode ? 'Failed to update contract' : 'Failed to create contract'));
       }
 
     } catch (error) {
       console.error('Error creating rental contract:', error);
       
       // ROLLBACK: Hoàn tác tất cả các thay đổi
-      showToast('info', 'Đang hoàn tác các thay đổi...');
-      
       try {
         // Rollback room status if updated
         if (transaction.updatedRoom) {
           await roomsAPI.updateRoom(selectedRoomForContract.id, {
-            status: 'available',
+            status: transaction.originalRoomStatus,
             tenant: null,
             leaseStart: null,
             leaseEnd: null
@@ -861,13 +959,14 @@ const RoomsManagement = () => {
           await tenantsAPI.archiveTenant(tenant._id);
         }
 
-        showToast('warning', 'Đã hoàn tác các thay đổi do có lỗi xảy ra');
       } catch (rollbackError) {
         console.error('Error during rollback:', rollbackError);
         showToast('error', 'Có lỗi khi hoàn tác. Vui lòng kiểm tra dữ liệu thủ công.');
       }
       
-      let errorMessage = t('contracts.error.createFailed') || 'Có lỗi xảy ra khi tạo hợp đồng thuê';
+      let errorMessage = isContractEditMode 
+        ? (t('contracts.error.updateFailed') || 'Có lỗi xảy ra khi cập nhật hợp đồng thuê')
+        : (t('contracts.error.createFailed') || 'Có lỗi xảy ra khi tạo hợp đồng thuê');
       
       if (error.response) {
         if (error.response.status === 401) {
@@ -989,6 +1088,131 @@ const RoomsManagement = () => {
     }
   };
 
+  // Rented room action handlers
+  const handleViewContract = async (room) => {
+    try {
+      // Fetch contract data for this room
+      const contractsRes = await contractsAPI.getContractsByRoom(room.id);
+      
+      if (contractsRes.success && contractsRes.data && contractsRes.data.length > 0) {
+        const contract = contractsRes.data[0]; // Get the first/active contract
+        
+        // Extract tenant data from contract (contracts populate tenants array)
+        const tenants = contract.tenants || []; // Only use tenants array
+        
+        // Optional: Also fetch from tenants API for comparison/additional data
+        const tenantsRes = await tenantsAPI.getTenantsByRoom(room.id);
+        
+        // Use contract tenants as primary source, supplement with API tenants if needed
+        const apiTenants = tenantsRes.success ? tenantsRes.data : [];
+        
+        // Merge or prefer contract tenants
+        const finalTenants = tenants.length > 0 ? tenants : apiTenants;
+        
+        // Prepare rental contract data for editing
+        const contractData = {
+          tenants: finalTenants.map(tenant => ({
+            _id: tenant._id, // Lưu ID để update
+            tenantName: tenant.fullName || '',
+            tenantPhone: tenant.phone || '',
+            tenantId: tenant.identificationNumber || '', // Sửa từ idCard thành identificationNumber
+            tenantImages: tenant.images || []
+          })),
+          vehicles: [
+            // Use vehicles from tenants as primary source
+            // Each tenant owns their vehicles
+            ...finalTenants.reduce((allVehicles, tenant) => {
+              return allVehicles.concat((tenant.vehicles || []).map(vehicle => ({
+                _id: vehicle._id, // Lưu vehicle ID để update
+                ...vehicle,
+                ownerIndex: finalTenants.findIndex(t => t._id === tenant._id)
+              })));
+            }, [])
+            // NOTE: Removed contract.vehicles to avoid duplicates
+            // Contract.vehicles should sync with tenant.vehicles in backend
+          ],
+          startDate: contract.startDate ? contract.startDate.split('T')[0] : '',
+          endDate: contract.endDate ? contract.endDate.split('T')[0] : '',
+          monthlyRent: contract.monthlyRent || room.price,
+          deposit: contract.deposit || 0,
+          electricityPrice: contract.electricityPrice || 3500,
+          waterPrice: contract.waterPrice || 25000,
+          waterPricePerPerson: contract.waterPricePerPerson || 50000,
+          waterChargeType: contract.waterChargeType || 'fixed',
+          servicePrice: contract.servicePrice || 150000,
+          currentElectricIndex: contract.currentElectricIndex || '',
+          currentWaterIndex: contract.currentWaterIndex || '',
+          paymentCycle: contract.paymentCycle || 'monthly',
+          notes: contract.notes || ''
+        };
+        
+        // Set edit mode with original tenant IDs for comparison
+        setIsContractEditMode(true);
+        setEditingContractId(contract._id);
+        
+        // Store original tenant IDs to detect deletions
+        const originalTenantIds = finalTenants.map(t => t._id);
+        
+        setSelectedRoomForContract({
+          ...room,
+          originalTenantIds // Store for later comparison
+        });
+        setRentalContractData(contractData);
+        setShowRentalContractModal(true);
+      } else {
+        showToast('error', 'Không tìm thấy hợp đồng cho phòng này');
+      }
+    } catch (error) {
+      console.error('Error fetching contract data:', error);
+      showToast('error', 'Có lỗi khi tải thông tin hợp đồng');
+    }
+  };
+
+  const handleViewTenants = (room) => {
+    // TODO: Implement view tenants modal/page
+    console.log('View tenants for room:', room);
+    showToast('info', t('rooms.messages.viewTenantsDev') || 'Chức năng đang phát triển');
+  };
+
+  const handleViewVehicles = (room) => {
+    // TODO: Implement view vehicles modal/page
+    console.log('View vehicles for room:', room);
+    showToast('info', t('rooms.messages.viewVehiclesDev') || 'Chức năng đang phát triển');
+  };
+
+  const handleCreateInvoice = (room) => {
+    // TODO: Implement create invoice modal/page
+    console.log('Create invoice for room:', room);
+    showToast('info', t('rooms.messages.createInvoiceDev') || 'Chức năng đang phát triển');
+  };
+
+  const handleRoomTransfer = (room) => {
+    // TODO: Implement room transfer modal/page
+    console.log('Room transfer for room:', room);
+    showToast('info', t('rooms.messages.roomTransferDev') || 'Chức năng đang phát triển');
+  };
+
+  const handleTerminateContract = (room) => {
+    // TODO: Implement terminate contract modal/page
+    if (window.confirm(t('rooms.messages.confirmTerminate'))) {
+      console.log('Terminate contract for room:', room);
+      showToast('info', t('rooms.messages.terminateContractDev') || 'Chức năng đang phát triển');
+    }
+  };
+
+  const handleMarkAsExpiring = async (room) => {
+    if (window.confirm(t('rooms.messages.confirmMarkExpiring'))) {
+      try {
+        await roomsAPI.updateRoom(room.id, { status: 'expiring' });
+        showToast('success', t('rooms.messages.markedAsExpiring'));
+        fetchRooms();
+      } catch (error) {
+        console.error('Error marking room as expiring:', error);
+        showToast('error', t('rooms.messages.errorMarkingExpiring'));
+      }
+    }
+  };
+
   // Handle deposit contract form changes
   const handleDepositContractChange = (field, value) => {
     if (field === 'tenantPhone') {
@@ -1036,7 +1260,7 @@ const RoomsManagement = () => {
     // If there are errors, scroll to first error field
     if (Object.keys(errors).length) {
       scrollToFirstError(errors);
-      showToast('error', 'Vui lòng kiểm tra và sửa các lỗi được đánh dấu');
+      showToast('error', t('rooms.messages.validateErrors'));
       return;
     }
 
@@ -1119,6 +1343,11 @@ const RoomsManagement = () => {
   const closeRentalContractModal = () => {
     setShowRentalContractModal(false);
     setSelectedRoomForContract(null);
+    
+    // Reset edit mode
+    setIsContractEditMode(false);
+    setEditingContractId(null);
+    
     setRentalContractData({
       tenants: [{
         tenantName: '',
@@ -1158,9 +1387,9 @@ const RoomsManagement = () => {
   const getStatusBadgeClass = (status) => {
     const classes = {
       available: 'status-available',
-      occupied: 'status-occupied',
-      maintenance: 'status-maintenance',
-      reserved: 'status-reserved'
+      rented: 'status-rented',
+      reserved: 'status-reserved',
+      expiring: 'status-expiring'
     };
     return `status-badge ${classes[status]}`;
   };
@@ -1168,9 +1397,9 @@ const RoomsManagement = () => {
   const getStatusText = (status) => {
     const texts = {
       available: t('rooms.status.available'),
-      occupied: t('rooms.status.occupied'),
-      maintenance: t('rooms.status.maintenance'),
-      reserved: t('rooms.status.reserved')
+      rented: t('rooms.status.rented') || 'Đã thuê',
+      reserved: t('rooms.status.reserved'),
+      expiring: t('rooms.status.expiring') || 'Sắp kết thúc'
     };
     return texts[status];
   };
@@ -1651,7 +1880,7 @@ const RoomsManagement = () => {
                                     }}
                                   >
                                     <i className="fas fa-file-contract"></i>
-                                    Tạo hợp đồng thuê
+                                    {t('rooms.actions.createRentalContract')}
                                   </button>
                                   <button
                                     className="action-menu-item danger"
@@ -1661,10 +1890,89 @@ const RoomsManagement = () => {
                                     }}
                                   >
                                     <i className="fas fa-times-circle"></i>
-                                    Hủy cọc
+                                    {t('rooms.actions.cancelDeposit')}
                                   </button>
                                 </>
                               )}
+
+                              {/* Rented room - show rental management options */}
+                              {(room.status === 'rented' || room.status === 'expiring') && (
+                                <>
+                                  <button
+                                    className="action-menu-item"
+                                    onClick={() => {
+                                      handleViewContract(room);
+                                      setOpenActionMenu(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-file-contract"></i>
+                                    {t('rooms.actions.viewContract')}
+                                  </button>
+                                  <button
+                                    className="action-menu-item"
+                                    onClick={() => {
+                                      handleViewTenants(room);
+                                      setOpenActionMenu(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-users"></i>
+                                    {t('rooms.actions.viewTenants')}
+                                  </button>
+                                  <button
+                                    className="action-menu-item"
+                                    onClick={() => {
+                                      handleViewVehicles(room);
+                                      setOpenActionMenu(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-motorcycle"></i>
+                                    {t('rooms.actions.viewVehicles')}
+                                  </button>
+                                  <button
+                                    className="action-menu-item"
+                                    onClick={() => {
+                                      handleCreateInvoice(room);
+                                      setOpenActionMenu(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-file-invoice-dollar"></i>
+                                    {t('rooms.actions.createInvoice')}
+                                  </button>
+                                  <button
+                                    className="action-menu-item"
+                                    onClick={() => {
+                                      handleRoomTransfer(room);
+                                      setOpenActionMenu(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-exchange-alt"></i>
+                                    {t('rooms.actions.roomTransfer')}
+                                  </button>
+                                  {room.status === 'rented' && (
+                                    <button
+                                      className="action-menu-item warning"
+                                      onClick={() => {
+                                        handleMarkAsExpiring(room);
+                                        setOpenActionMenu(null);
+                                      }}
+                                    >
+                                      <i className="fas fa-clock"></i>
+                                      {t('rooms.actions.markAsExpiring')}
+                                    </button>
+                                  )}
+                                  <button
+                                    className="action-menu-item danger"
+                                    onClick={() => {
+                                      handleTerminateContract(room);
+                                      setOpenActionMenu(null);
+                                    }}
+                                  >
+                                    <i className="fas fa-ban"></i>
+                                    {t('rooms.actions.terminateContract')}
+                                  </button>
+                                </>
+                              )}
+
                               <button
                                 className="action-menu-item"
                                 onClick={() => {
@@ -2370,7 +2678,8 @@ const RoomsManagement = () => {
         <div className="room-modal rental-contract-modal">
           <div className="room-modal-header">
             <h2 className="room-modal-title">
-              <i className="fas fa-file-contract"></i> Tạo hợp đồng thuê - {selectedRoomForContract.name}
+              <i className="fas fa-file-contract"></i> 
+              {isContractEditMode ? 'Chỉnh sửa hợp đồng thuê' : 'Tạo hợp đồng thuê'} - {selectedRoomForContract.name}
             </h2>
             <button className="room-modal-close" disabled={creatingRentalContract} onClick={closeRentalContractModal}>×</button>
           </div>
@@ -2987,8 +3296,8 @@ const RoomsManagement = () => {
               disabled={creatingRentalContract}
             >
               {creatingRentalContract 
-                ? <><i className="fas fa-spinner fa-spin"></i> Đang tạo...</>
-                : <><i className="fas fa-check"></i> Tạo hợp đồng thuê</>
+                ? <><i className="fas fa-spinner fa-spin"></i> {isContractEditMode ? 'Đang cập nhật...' : 'Đang tạo...'}</>
+                : <><i className="fas fa-check"></i> {isContractEditMode ? 'Cập nhật hợp đồng' : 'Tạo hợp đồng thuê'}</>
               }
             </button>
           </div>

@@ -14,11 +14,6 @@ const contractSchema = new mongoose.Schema({
         ref: 'Tenant',
         required: true
     }],
-    // Giữ lại tenant để backward compatibility
-    tenant: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Tenant'
-    },
     landlord: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
