@@ -19,6 +19,7 @@ class PropertyRepository {
         try {
             return await Property.findById(id)
                 .populate('owner', 'fullName email phone')
+                .populate('amenities', 'name key icon category')
                 .exec();
         } catch (error) {
             throw new Error(`Error finding property by ID: ${error.message}`);
@@ -40,6 +41,7 @@ class PropertyRepository {
                 .limit(parseInt(limit))
                 .sort({ createdAt: -1 })
                 .populate('owner', 'fullName email phone')
+                .populate('amenities', 'name key icon category')
                 .exec();
 
             const total = await Property.countDocuments(query);
@@ -119,6 +121,7 @@ class PropertyRepository {
                 .limit(parseInt(limit))
                 .sort({ createdAt: -1 })
                 .populate('owner', 'fullName phone')
+                .populate('amenities', 'name key icon category')
                 .exec();
 
             const total = await Property.countDocuments(query);
@@ -144,7 +147,8 @@ class PropertyRepository {
                 id,
                 updateData,
                 { new: true, runValidators: true }
-            ).populate('owner', 'fullName email phone');
+            ).populate('owner', 'fullName email phone')
+             .populate('amenities', 'name key icon category');
         } catch (error) {
             throw new Error(`Error updating property: ${error.message}`);
         }

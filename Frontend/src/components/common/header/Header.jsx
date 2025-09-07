@@ -152,7 +152,11 @@ const Header = () => {
                         </div>
                       </div>
                       <hr />
-                      <Link to="/profile/account" onClick={() => setUserMenuOpen(false)}>
+                      <Link to="/profile/new-post" onClick={() => setUserMenuOpen(false)}>
+                        <i className="fa fa-plus-circle"></i> {t('header.properties')}
+                      </Link>
+
+                       <Link to="/profile/account" onClick={() => setUserMenuOpen(false)}>
                         <i className="fa fa-user"></i> {t('header.profile')}
                       </Link>
                       <Link to="/settings" onClick={() => setUserMenuOpen(false)}>

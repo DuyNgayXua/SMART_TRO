@@ -106,8 +106,23 @@
   transition: 0.3s;
   font-size: 16px;
 }
+.btn-primary-otp{
+  width: 100%;
+  padding: 14px;
+  background-color: #0daa4f !important;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+  font-size: 16px;
+}
 
 .btn-login-auth:hover {
+  background-color: #00702f !important;
+}
+.btn-primary-otp:hover {
   background-color: #00702f !important;
 }
 

@@ -1,22 +1,30 @@
-import React from "react"
-import Awards from "./awards/Awards"
-import Featured from "./featured/Featured"
-import Hero from "./hero/Hero"
-import Location from "./location/Location"
-import Price from "./price/Price"
-import Recent from "./recent/Recent"
-import Team from "./team/Team"
+import React, { useState } from "react"
+import HomePropertiesSection from "./HomePropertiesSection"
 
 const Home = () => {
+  const [searchResults, setSearchResults] = useState(null)
+  const [searchParams, setSearchParams] = useState(null)
+
+  const handleSearchResults = (results, params) => {
+    console.log('Home received search results:', results)
+    setSearchResults(results)
+    setSearchParams(params)
+  }
+
+  // Reset function to be called from Hero
+  const handleResetSearch = () => {
+    setSearchResults(null)
+    setSearchParams(null)
+    // Update URL to remove search params
+    window.history.pushState({}, '', window.location.pathname)
+  }
+
   return (
     <>
-      <Hero />
-      <Featured />
-      <Recent />
-      <Awards />
-      <Location />
-      <Team />
-      <Price />
+      <HomePropertiesSection 
+        searchResults={searchResults}
+        searchParams={searchParams}
+      />
     </>
   )
 }

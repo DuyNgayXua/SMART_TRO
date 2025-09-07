@@ -72,25 +72,10 @@ const propertySchema = new mongoose.Schema({
         type: Date
     },
 
-    // Tiện ích (array of strings matching NewPost.jsx)
+    // Tiện ích (array of ObjectId references to Amenity model)
     amenities: {
-        type: [String],
-        enum: [
-            'wifi',
-            'parking',
-            'elevator',
-            'security',
-            'laundry',
-            'kitchen',
-            'air_conditioner',
-            'water_heater',
-            'refrigerator',
-            'washing_machine',
-            'tv',
-            'desk',
-            'wardrobe',
-            'balcony'
-        ],
+        type: [mongoose.Schema.Types.ObjectId],
+        ref: 'Amenity',
         default: []
     },
     fullAmenities: {

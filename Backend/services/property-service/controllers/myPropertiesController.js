@@ -62,6 +62,7 @@ const myPropertiesController = {
           .skip(skip)
           .limit(limit)
           .populate('owner', 'name email phone')
+          .populate('amenities', 'name icon')
           .lean(),
         Property.countDocuments(query),
         fetchProvinces(),
@@ -147,7 +148,9 @@ const myPropertiesController = {
       const property = await Property.findOne({
         _id: propertyId,
         owner: userId
-      }).lean();
+      })
+      .populate('amenities', 'name icon')
+      .lean();
       console.log("Fetched property EDIT:", property);
 
 
@@ -205,6 +208,153 @@ const myPropertiesController = {
     }
   },
 
+  // Lấy danh sách tin đăng đã được duyệt và chưa bị xóa của user hiện tại
+  getMyApprovedProperties: async (req, res) => {
+    try {
+
+      // Pagination params
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const skip = (page - 1) * limit;
+
+      // Filter params
+      const status = req.query.status || 'all';
+      const sortBy = req.query.sortBy || 'createdAt';
+      const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
+      const search = req.query.search || '';
+
+      // Build query với điều kiện approvalStatus = 'approved' và isDeleted = false
+      let query = { 
+        approvalStatus: 'approved',
+        isDeleted: { $ne: true }
+      };
+
+      // Status filter - chỉ áp dụng cho các property đã được duyệt
+      if (status !== 'all') {
+        if (status === 'hidden') {
+          query.status = 'inactive';
+        } else if (status === 'available') {
+          query.status = 'available';
+        } else if (status === 'rented') {
+          query.status = 'rented';
+        } else if (status === 'maintenance') {
+          query.status = 'maintenance';
+        } else if (status === 'draft') {
+          query.status = 'draft';
+        }
+      }
+
+      // Search filter
+      if (search.trim()) {
+        query.title = { $regex: search, $options: 'i' };
+      }
+
+      // Build sort object
+      const sortObj = {};
+      sortObj[sortBy] = sortOrder;
+
+      // Lấy data
+      const [properties, total, provinces] = await Promise.all([
+        Property.find(query)
+          .sort(sortObj)
+          .skip(skip)
+          .limit(limit)
+          .populate('owner', 'fullName email phone')
+          .populate('amenities', 'name icon')
+          .lean(),
+        Property.countDocuments(query),
+        fetchProvinces(),
+      ]);
+
+      // Map tỉnh
+      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
+
+      // Lấy districts & wards phụ thuộc provinceCode, districtCode
+      const districtMap = new Map();
+      const wardMap = new Map();
+
+      for (const property of properties) {
+        if (property.province && !districtMap.has(property.district)) {
+          const districts = await fetchDistricts(property.province);
+          districts.forEach(d => districtMap.set(String(d.code), d.name));
+        }
+        if (property.district && !wardMap.has(property.ward)) {
+          const wards = await fetchWards(property.district);
+          wards.forEach(w => wardMap.set(String(w.code), w.name));
+        }
+      }
+
+      // Transform data for frontend
+      const transformedProperties = properties.map(property => ({
+        _id: property._id,
+        title: property.title,
+        category: property.category,
+        rentPrice: property.rentPrice,
+        promotionPrice: property.promotionPrice,
+        area: property.area,
+        images: property.images,
+        approvalStatus: property.approvalStatus,
+        status: property.status,
+        isActive: property.status !== 'inactive',
+        contactName: property.contactName,
+        contactPhone: property.contactPhone,
+        description: property.description,
+        deposit: property.deposit,
+        electricPrice: property.electricPrice,
+        waterPrice: property.waterPrice,
+        maxOccupants: property.maxOccupants,
+        availableDate: property.availableDate,
+        amenities: property.amenities,
+        fullAmenities: property.fullAmenities,
+        timeRules: property.timeRules,
+        houseRules: property.houseRules,
+        video: property.video,
+        coordinates: property.coordinates,
+        owner: {
+          _id: property.owner._id,
+          fullName: property.owner.fullName,
+          email: property.owner.email,
+          phone: property.owner.phone
+        },
+        location: {
+          provinceName: provinceMap.get(String(property.province)) || "",
+          districtName: districtMap.get(String(property.district)) || "",
+          wardName: wardMap.get(String(property.ward)) || "",
+          detailAddress: property.detailAddress
+        },
+        views: property.stats?.views || 0,
+        favorites: property.stats?.favorites || 0,
+        createdAt: property.createdAt,
+        updatedAt: property.updatedAt
+      }));
+      console.log("Transformed approved properties:", transformedProperties);
+
+      const totalPages = Math.ceil(total / limit);
+
+      res.json({
+        success: true,
+        message: 'Lấy danh sách tin đăng đã duyệt thành công',
+        data: {
+          properties: transformedProperties,
+          pagination: {
+            page,
+            limit,
+            total,
+            totalPages
+          }
+        }
+      });
+
+    } catch (error) {
+      console.error('Error in getMyApprovedProperties:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi server khi lấy danh sách tin đăng đã duyệt',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
   // Cập nhật tin đăng
   updateProperty: async (req, res) => {
     try {
@@ -232,9 +382,17 @@ const myPropertiesController = {
         validationErrors.title = 'Tiêu đề không được vượt quá 200 ký tự';
       }
 
-      // Contact name
-      if (!req.body.contactName || !/^[\p{L}\p{M}\s]{2,}$/u.test(req.body.contactName.trim())) {
-        validationErrors.contactName = 'Tên liên hệ chỉ được chứa chữ cái và khoảng trắng';
+      // Contact name - Sử dụng regex cải tiến
+      if (!req.body.contactName || req.body.contactName.trim() === '') {
+        validationErrors.contactName = 'Tên liên hệ không được để trống';
+      } else if (req.body.contactName.trim().length < 2) {
+        validationErrors.contactName = 'Tên liên hệ phải có ít nhất 2 ký tự';
+      } else {
+        // Sử dụng regex explicit thay vì Unicode property
+        const nameRegex = /^[a-zA-ZÀÁÂÃÈÉÊÌÍÒÓÔÕÙÚĂĐĨŨƠàáâãèéêìíòóôõùúăđĩũơƯĂẠẢẤẦẨẪẬẮẰẲẴẶẸẺẼỀỀỂưăạảấầẩẫậắằẳẵặẹẻẽềềểỄỆỈỊỌỎỐỒỔỖỘỚỜỞỠỢỤỦỨỪễệỉịọỏốồổỗộớờởỡợụủứừỬỮỰỲỴÝỶỸửữựỳỵýỷỹ\s]+$/;
+        if (!nameRegex.test(req.body.contactName.trim())) {
+          validationErrors.contactName = 'Tên liên hệ chỉ được chứa chữ cái và khoảng trắng';
+        }
       }
 
       // Contact phone
@@ -358,8 +516,7 @@ const myPropertiesController = {
 
       // Images & video validation
       let images = existingProperty.images || [];
-      let video = existingProperty.video || [];
-      console.log("Existing videos:", video);
+      let video = existingProperty.video || null; 
 
       // Xử lý upload ảnh mới từ req.files.images
       if (req.files?.images && req.files.images.length > 0) {
@@ -390,18 +547,24 @@ const myPropertiesController = {
         validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh';
       }
 
-      // Video
+      // Video processing - Sửa lại logic xử lý video
       // Nếu user xoá video (frontend gửi removeVideo=true)
       if (req.body.removeVideo === "true") {
-        video = ""; // hoặc null
+        video = null; // Set thành null thay vì empty string
       } else if (req.files?.video && req.files.video.length > 0) {
         // Nếu user upload video mới
-        const uploadedVideo = await uploadToCloudinary(
-          req.files.video[0].buffer,
-          'properties/videos'
-        );
-        video = uploadedVideo.secure_url;
+        try {
+          const uploadedVideo = await uploadToCloudinary(
+            req.files.video[0].buffer,
+            'properties/videos'
+          );
+          video = uploadedVideo.secure_url;
+        } catch (uploadError) {
+          console.error('Video upload error:', uploadError);
+          validationErrors.video = 'Lỗi khi tải video lên';
+        }
       }
+      // Nếu không có hành động nào với video, giữ nguyên video hiện tại
 
 
       if (Object.keys(validationErrors).length > 0) {

@@ -27,12 +27,6 @@ const upload = multer({
   }
 });
 
-// Public routes
-router.get('/search', propertyController.searchProperties);
-router.get('/:id', propertyController.getProperty);
-
-
-
 
 // Landlord only routes
 router.post('/', 

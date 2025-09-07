@@ -13,6 +13,7 @@ const uploadFields = upload.fields([
 
 // Routes
 router.get('/', authMiddleware, myPropertiesController.getMyProperties);
+router.get('/approved', authMiddleware, myPropertiesController.getMyApprovedProperties);
 router.get('/stats', authMiddleware, myPropertiesController.getMyPropertiesStats);
 router.get('/:propertyId/edit', authMiddleware, myPropertiesController.getPropertyForEdit);
 

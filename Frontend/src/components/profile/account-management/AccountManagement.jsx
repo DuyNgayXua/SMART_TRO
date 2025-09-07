@@ -533,7 +533,7 @@ const AccountManagement = () => {
                 <h4>{t('profile.account.security.accountStatus.title')}</h4>
                 <p>
                   {user?.isActive ? (
-                    <span className="status-active">
+                    <span className="status-active-verified">
                       <i className="fa fa-check-circle"></i>
                       {t('profile.account.security.accountStatus.verified')}
                     </span>

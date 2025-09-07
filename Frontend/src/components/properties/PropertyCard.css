@@ -1,0 +1,712 @@
+/* Property Card Styles - Horizontal Layout */
+.property-card-list {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  overflow: hidden;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  flex-direction: row;
+  margin-bottom: 16px;
+  border: 1px solid #e5e7eb;
+  min-height: 180px;
+  width: 100%;
+  align-items: stretch;
+  position: relative; /* Để position absolute của favorite button */
+}
+
+.property-card-list:hover {
+  box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+  border-color: #667eea;
+}
+
+/* Property Image - Left Side with Grid Layout */
+.property-image-list {
+  position: relative;
+  width: 500px;
+  height: 540px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 12px 0 0 12px;
+}
+
+/* Image Grid Container - Vertical Layout: ảnh lớn trên, 4 ảnh nhỏ dưới */
+.image-grid {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  gap: 6px;
+  padding: 8px;
+  background: linear-gradient(135deg, #f8fafc, #f1f5f9);
+  border-radius: 8px;
+}
+
+/* Main Large Image - Top (60% height) */
+.main-image {
+  height: 60%;
+  width: 100%;
+  overflow: hidden;
+  border: 4px solid #dfe0da;
+  border-radius: 8px;
+  transition: border-color 0.3s ease;
+}
+
+.main-image:hover {
+  border-color: #dfe0da;
+}
+
+.main-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+/* Small Images Container - Bottom (40% height) - 4 ô vuông */
+.small-images {
+  height: 40%;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  grid-template-rows: 1fr;
+  gap: 6px;
+}
+
+/* Small Image Items - 4 ô ngang đều nhau */
+.small-image {
+  overflow: hidden;
+  position: relative;
+  height: 100%;
+  min-width: 0; /* Cho phép grid item co lại */
+  border: 4px solid #dfe0da;
+  border-radius: 6px;
+  transition: border-color 0.3s ease;
+}
+
+.small-image:hover {
+  border-color: #10b981;
+}
+
+.small-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.small-image:hover img,
+.main-image:hover img {
+  transform: scale(1.05);
+}
+
+/* Different border colors for each small image */
+
+
+.small-image:hover {
+  border-color: #c0c0bf;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+}
+
+
+/* More Images Overlay - positioned on small image */
+.more-images {
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 600;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  backdrop-filter: blur(2px);
+}
+
+/* Single image fallback */
+.property-image-list img:only-child {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.property-card-list:hover .property-image-list img:only-child {
+  transform: scale(1.05);
+}
+
+.no-image {
+  width: 100%;
+  height: 100%;
+  background-color: #f8f9fa;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #999;
+}
+
+.no-image svg {
+  font-size: 2rem;
+  width: 2rem;
+  height: 2rem;
+  margin-bottom: 8px;
+}
+
+.image-count {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.image-count svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Property Badges */
+.property-badges {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 5px;
+}
+
+.property-badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.property-badge svg {
+  width: 10px;
+  height: 10px;
+}
+
+.status-hot {
+  background: linear-gradient(135deg, #ff6b6b, #ee5a52);
+  color: white;
+}
+
+.status-new {
+  background: linear-gradient(135deg, #4ecdc4, #44a08d);
+  color: white;
+}
+
+.status-vip {
+  background: linear-gradient(135deg, #ffd700, #ffed4e);
+  color: #333;
+}
+
+/* Favorite Button */
+.favorite-btn {
+  all: unset;
+  padding: 6px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2px solid #ee5a52;
+  flex-shrink: 0;
+  min-height: 30px;
+  min-width: 30px;
+}
+
+
+.favorite-btn svg {
+  font-size: 16px !important;
+  color: #e74c3c !important; /* màu đỏ nổi bật */
+}
+
+.favorite-btn span {
+  font-size: 18px;
+  transition: all 0.2s;
+}
+
+.favorite-btn:hover,
+.favorite-btn.favorited {
+
+  color: #e74c3c;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+}
+
+.favorite-btn.favorited svg {
+  color: #e74c3c !important;
+  fill: #e74c3c !important;
+}
+
+.favorite-btn:hover svg,
+.favorite-btn.favorited svg {
+  transform: scale(1.1);
+  color: #e74c3c !important;
+  fill: #e74c3c !important;
+}
+
+.favorite-btn:not(.favorited):hover svg {
+  color: #e74c3c !important;
+  fill: #e74c3c !important;
+}
+
+/* Property Info - Right Side */
+.property-info {
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  justify-content: space-between;
+  background: white;
+  min-height: 180px;
+}
+
+.property-header {
+  margin-bottom: 12px;
+}
+
+.property-title {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 10px 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.property-price {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.price-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #dc2626;
+}
+
+.price-unit {
+  font-size: 1rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* Property Details - Enhanced for horizontal layout */
+.property-details {
+  margin-bottom: 16px;
+  flex-grow: 1;
+}
+
+.detail-row {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  
+}
+
+.detail-item-card {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+
+  font-weight: 500;
+  min-width: 130px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  background: #ecfdf5;
+   color: #059669;
+    border: 1px solid #d1fae5;
+}
+.detail-item-card:last-child {
+  margin-left: 100px;
+  font-size: 16px;
+  background: linear-gradient(90deg, #fefbeb, #fef3c7);
+  color: #542202;
+  border: 1px solid #fde68a;
+  align-items: center;
+
+}
+
+
+
+.property-location {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #6b7280;
+  margin-bottom: 12px;
+  line-height: 1.4;
+}
+
+.property-location svg {
+  color: #dc2626;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.property-location span {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+/* Property Description */
+.property-description {
+  font-size: 0.9rem;
+  color: #6b7280;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Amenities Preview - Compact for horizontal layout */
+.property-amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.amenity-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #ecfdf5;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #059669;
+  border: 1px solid #d1fae5;
+}
+
+.amenity-item svg {
+  width: 12px;
+  height: 12px;
+  color: #059669;
+  flex-shrink: 0;
+}
+
+.amenity-more {
+      background: #ecfdf5;
+  color: #6b7280;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Property Meta - Compact for horizontal layout */
+.property-meta {
+  display: flex;
+  justify-content: flex-end;
+  gap: 24px;
+  margin-bottom: 16px;
+  font-size: 0.85rem;
+  color: #9ca3af;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #27ae60;
+  font-weight: bold;
+}
+
+.meta-item svg {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  color: #27ae60;
+}
+
+/* Property Footer - Redesigned for horizontal layout */
+.property-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid #f3f4f6;
+  margin-top: auto;
+}
+
+.owner-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+}
+
+.owner-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #f9fafb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  border: 2px solid #e5e7eb;
+}
+
+.owner-avatar svg {
+  color: #9ca3af;
+  width: 16px;
+  height: 16px;
+}
+
+.owner-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.owner-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+}
+
+.owner-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.post-time {
+  font-size: 0.8rem;
+  color: #059669;
+ 
+}
+
+.property-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.btn-contact {
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.3s ease;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.3);
+}
+
+.btn-contact svg {
+  width: 12px;
+  height: 12px;
+}
+
+.btn-contact:hover {
+  background: linear-gradient(135deg, #2563eb, #1e40af);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(59, 130, 246, 0.4);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .properties-grid-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .property-footer {
+    flex-direction: column;
+    gap: 10px;
+    align-items: stretch;
+  }
+  
+  .owner-info {
+    justify-content: center;
+  }
+  
+  .property-actions {
+    justify-content: center;
+  }
+}
+
+/* Responsive Design for Horizontal Layout */
+@media (max-width: 768px) {
+  .property-card-list {
+    flex-direction: column;
+    border-radius: 12px;
+  }
+  
+  .property-image-list {
+    width: 100%;
+    height: 200px;
+    border-radius: 12px 12px 0 0;
+  }
+
+  /* Mobile: Show single image only */
+  .image-grid {
+    display: block;
+  }
+
+  .main-image {
+    width: 100%;
+    height: 100%;
+  }
+
+  .small-images {
+    display: none;
+  }
+  
+  .property-info {
+    padding: 16px;
+  }
+
+  .property-title {
+    font-size: 1.1rem;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+  }
+
+  .price-value {
+    font-size: 1.3rem;
+  }
+  
+  .detail-row {
+    gap: 12px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .detail-item-card {
+    min-width: auto;
+  }
+
+  .property-amenities {
+    gap: 4px;
+  }
+
+  .amenity-item {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+  }
+  
+  .property-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+  
+  .owner-info {
+    justify-content: flex-start;
+  }
+  
+  .property-actions {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 480px) {
+  .property-card-list {
+    margin: 0 8px 12px;
+    border-radius: 8px;
+  }
+  
+  .property-image-list {
+    height: 180px;
+    border-radius: 8px 8px 0 0;
+  }
+  
+  .property-info {
+    padding: 12px;
+  }
+
+  .property-title {
+    font-size: 1rem;
+  }
+
+  .price-value {
+    font-size: 1.2rem;
+  }
+  
+  .detail-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .detail-item-card {
+    font-size: 0.8rem;
+  }
+
+  .property-location {
+    font-size: 0.8rem;
+  }
+
+  .property-description {
+    font-size: 0.8rem;
+  }
+  
+  .amenity-item {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+  }
+
+  .owner-name {
+    font-size: 0.8rem;
+  }
+
+  .post-time {
+    font-size: 0.7rem;
+  }
+
+  .btn-contact {
+    padding: 8px 16px;
+    font-size: 0.8rem;
+  }
+}

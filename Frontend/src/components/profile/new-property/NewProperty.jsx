@@ -8,6 +8,7 @@ import "react-toastify/dist/ReactToastify.css";
 
 import { postAPI } from '../../../services/propertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
+import amenitiesAPI from '../../../services/amenitiesAPI';
 import './../ProfilePages.css';
 import './NewProperty.css';
 
@@ -124,6 +125,10 @@ const NewProperty = () => {
     geocoding: false
   });
 
+  // Amenities data from API
+  const [amenitiesList, setAmenitiesList] = useState([]);
+  const [loadingAmenities, setLoadingAmenities] = useState(false);
+
   // Options data
   const categories = [
     { value: 'phong_tro', label: 'Phòng trọ' },
@@ -139,23 +144,6 @@ const NewProperty = () => {
     { value: '3', label: '3 người' },
     { value: '4', label: '4 người' },
     { value: '5+', label: '5+ người' }
-  ];
-
-  const amenitiesList = [
-    { value: 'wifi', label: 'Wi-Fi' },
-    { value: 'parking', label: 'Bãi đỗ xe' },
-    { value: 'elevator', label: 'Thang máy' },
-    { value: 'security', label: 'Bảo vệ' },
-    { value: 'laundry', label: 'Giặt ủi' },
-    { value: 'kitchen', label: 'Nhà bếp' },
-    { value: 'air_conditioner', label: 'Máy lạnh' },
-    { value: 'water_heater', label: 'Máy nước nóng' },
-    { value: 'refrigerator', label: 'Tủ lạnh' },
-    { value: 'washing_machine', label: 'Máy giặt' },
-    { value: 'tv', label: 'TV' },
-    { value: 'desk', label: 'Bàn làm việc' },
-    { value: 'wardrobe', label: 'Tủ quần áo' },
-    { value: 'balcony', label: 'Ban công' }
   ];
 
   const houseRulesList = [
@@ -230,6 +218,45 @@ const NewProperty = () => {
   // Initialize user location when component mounts
   useEffect(() => {
     getUserLocation();
+  }, []);
+
+  // Load amenities from API
+  useEffect(() => {
+    const loadAmenities = async () => {
+      try {
+        setLoadingAmenities(true);
+        const response = await amenitiesAPI.getAllAmenities();
+
+        if (response.success) {
+          // Check if data is array or if data is nested
+          const amenitiesData = Array.isArray(response.data) 
+            ? response.data 
+            : Array.isArray(response.data.amenities) 
+              ? response.data.amenities 
+              : [];
+              
+          // Transform data to match the expected format
+          const transformedAmenities = amenitiesData.map(amenity => ({
+            value: amenity._id,
+            label: amenity.name,
+            icon: amenity.icon
+          }));
+          
+         
+          setAmenitiesList(transformedAmenities);
+        } else {
+          console.error('API response not successful:', response);
+          toast.error('Không thể tải danh sách tiện ích');
+        }
+      } catch (error) {
+        console.error('Error loading amenities:', error);
+        toast.error('Không thể tải danh sách tiện ích');
+      } finally {
+        setLoadingAmenities(false);
+      }
+    };
+
+    loadAmenities();
   }, []);
 
   // Handle modal show/hide và Google Maps
@@ -919,7 +946,7 @@ const handleVideoUpload = (e) => {
             <form onSubmit={handleSubmit} className="post-new-property">
               <div className="form-content">
                 {/* Thông tin chủ nhà */}
-                <div className="form-section">
+                <div className="form-section-new-property">
                   <h4>Thông tin chủ nhà</h4>
                   <p className="hint">Nhập các thông tin về người cho thuê</p>
 
@@ -993,7 +1020,7 @@ const handleVideoUpload = (e) => {
                 </div>
 
                 {/* Thông tin cơ bản & giá */}
-                <div className="form-section">
+                <div className="form-section-new-property">
                   <h4>Thông tin cơ bản & giá</h4>
                   <p className="hint">Nhập các thông tin về phòng cho thuê</p>
 
@@ -1113,7 +1140,7 @@ const handleVideoUpload = (e) => {
                 </div>
 
                 {/* Tiện ích */}
-                <div className="form-section">
+                <div className="form-section-new-property">
                   <h4>Tiện ích cho thuê</h4>
 
                   <div className="form-group">
@@ -1129,22 +1156,30 @@ const handleVideoUpload = (e) => {
                   </div>
 
                   <div className="amenities-grid">
-                    {amenitiesList.map((amenity) => (
-                      <label
-                        key={amenity.value}
-                        className={`amenity-item ${formData.fullAmenities ? "disabled" : ""}`}
-                      >
-                        <input
-                          type="checkbox"
-                          name="amenities"
-                          value={amenity.value}
-                          checked={formData.amenities.includes(amenity.value)}
-                          onChange={handleInputChange}
-                          disabled={formData.fullAmenities}
-                        />
-                        <span className="amenity-text-post">{amenity.label}</span>
-                      </label>
-                    ))}
+                    {loadingAmenities ? (
+                      <div className="loading-amenities">
+                        <i className="fa fa-spinner fa-spin"></i>
+                        Đang tải tiện ích...
+                      </div>
+                    ) : (
+                      amenitiesList.map((amenity) => (
+                        <label
+                          key={amenity.value}
+                          className={`amenity-item ${formData.fullAmenities ? "disabled" : ""}`}
+                        >
+                          <input
+                            type="checkbox"
+                            name="amenities"
+                            value={amenity.value}
+                            checked={formData.amenities.includes(amenity.value)}
+                            onChange={handleInputChange}
+                            disabled={formData.fullAmenities}
+                          />
+                          {amenity.icon && <i className={amenity.icon}></i>}
+                          <span className="amenity-text-post">{amenity.label}</span>
+                        </label>
+                      ))
+                    )}
                   </div>
                   {errors.amenities && <span className="error-text">{errors.amenities}</span>}
 
@@ -1162,7 +1197,7 @@ const handleVideoUpload = (e) => {
                 </div>
 
                 {/* Nội quy */}
-                <div className="form-section">
+                <div className="form-section-new-property">
                   <h4>Nội quy</h4>
                   <div className="house-rules-grid">
                     {houseRulesList.map(rule => (
@@ -1182,7 +1217,7 @@ const handleVideoUpload = (e) => {
                 </div>
 
                 {/* Địa chỉ */}
-                <div className="form-section">
+                <div className="form-section-new-property">
                   <h4>Địa chỉ</h4>
 
                   <div className="form-row">
@@ -1309,7 +1344,7 @@ const handleVideoUpload = (e) => {
                 </div>
 
                 {/* Hình ảnh và video */}
-                <div className="form-section">
+                <div className="form-section-new-property">
                   <h4>Hình ảnh và video</h4>
 
                   <div className="form-group">

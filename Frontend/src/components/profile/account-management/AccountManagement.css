@@ -190,7 +190,7 @@
 }
 /* Special styling for email input to handle long emails */
 .form-group-management input[type="email"] {
-  font-size: 0.85rem;
+  font-size: 16px;
 
 }
 
@@ -280,12 +280,15 @@
 
 }
 
-.status-active {
-  color: #28a745;
+.status-active-verified {
+  color: #ffffff;
   font-weight: 600;
   display: flex;
   gap: 10px;
   align-items: center;
+  padding : 6px 12px;
+  background-color: #3d8b40;
+  border-radius: 10px;
 }
 
 .status-inactive {

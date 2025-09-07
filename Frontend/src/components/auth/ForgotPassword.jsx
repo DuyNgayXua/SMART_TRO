@@ -131,7 +131,7 @@ const ForgotPassword = () => {
                             />
                             <button 
                                 type="submit" 
-                                className="btn-primary" 
+                                className="btn-primary-otp" 
                                 disabled={loading}
                             >
                                 {loading ? 'Đang gửi...' : 'Gửi mã OTP'}
@@ -173,7 +173,7 @@ const ForgotPassword = () => {
                             
                             <button 
                                 type="submit" 
-                                className="btn-primary" 
+                                className="btn-primary-otp" 
                                 disabled={loading}
                             >
                                 {loading ? 'Đang xử lý...' : 'Đặt lại mật khẩu'}
@@ -187,7 +187,7 @@ const ForgotPassword = () => {
                                     backgroundColor: '#6c757d', 
                                     border: 'none' 
                                 }}
-                                className="btn-primary"
+                                className="btn-primary-otp"
                             >
                                 Quay lại
                             </button>

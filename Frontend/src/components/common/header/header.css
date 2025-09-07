@@ -228,6 +228,7 @@ header .user-dropdown a {
   text-decoration: none;
   transition: background 0.2s;
   font-size: 14px;
+  text-transform: none !important;
 }
 header .user-dropdown a:hover {
   background: #f5f5f5;

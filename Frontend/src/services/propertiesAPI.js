@@ -145,4 +145,115 @@ export const postAPI = {
   }
 };
 
+// API cho xem và tìm kiếm properties
+export const propertiesViewAPI = {
+
+
+  // Get property by ID
+  getPropertyById: async (id) => {
+    try {
+      const response = await api.get(`/properties/public/${id}`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error getting property:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi tải thông tin tin đăng'
+      };
+    }
+  },
+
+  // Get featured properties
+  getFeaturedProperties: async (limit = 8) => {
+    try {
+      const response = await api.get('/properties/featured', {
+        params: { limit }
+      });
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error getting featured properties:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi tải tin đăng nổi bật'
+      };
+    }
+  },
+
+  // Get similar properties
+  getSimilarProperties: async (propertyId, limit = 6) => {
+    try {
+      const response = await api.get(`/properties/${propertyId}/similar`, {
+        params: { limit }
+      });
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error getting similar properties:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi tải tin đăng tương tự'
+      };
+    }
+  },
+
+  // Add to favorites
+  addToFavorites: async (propertyId) => {
+    try {
+      const response = await api.post(`/properties/${propertyId}/favorite`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error adding to favorites:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi thêm vào yêu thích'
+      };
+    }
+  },
+
+  // Remove from favorites
+  removeFromFavorites: async (propertyId) => {
+    try {
+      const response = await api.delete(`/properties/${propertyId}/favorite`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      console.error('Error removing from favorites:', error);
+      return {
+        success: false,
+        message: error.response?.data?.message || 'Lỗi khi xóa khỏi yêu thích'
+      };
+    }
+  },
+
+  // View property (increase view count)
+  viewProperty: async (propertyId) => {
+    try {
+      const response = await api.post(`/properties/${propertyId}/view`);
+      return {
+        success: true,
+        data: response.data
+      };
+    } catch (error) {
+      // Silent fail for view tracking
+      console.error('Error tracking view:', error);
+      return {
+        success: false
+      };
+    }
+  }
+};
+
 export default postAPI;

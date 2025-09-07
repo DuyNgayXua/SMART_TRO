@@ -80,6 +80,30 @@
   margin-bottom: 10px;
 }
 
+/* Amenities loading and error states */
+.loading-amenities {
+  text-align: center;
+  padding: 20px;
+  color: #666;
+  font-style: italic;
+}
+
+.error-amenities {
+  text-align: center;
+  padding: 20px;
+  color: #e74c3c;
+  background-color: #fdf2f2;
+  border: 1px solid #f8d7da;
+  border-radius: 4px;
+  margin-bottom: 15px;
+}
+
+.amenity-item i {
+  margin-right: 8px;
+  color: #007bff;
+  width: 16px;
+}
+
 
 
 

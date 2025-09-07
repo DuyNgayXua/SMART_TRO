@@ -24,6 +24,26 @@ export const myPropertiesAPI = {
       throw error;
     }
   },
+  getMyApprovedProperties: async (params = {}) => {
+    try {
+      const queryParams = new URLSearchParams({
+        page: params.page || 1,
+        limit: params.limit || 10,
+         status: params.status || 'all',
+        sortBy: params.sortBy || 'createdAt',
+        sortOrder: params.sortOrder || 'desc'
+      });
+        // Thêm search nếu có
+      if (params.search && params.search.trim()) {
+        queryParams.append('search', params.search.trim());
+      }
+      const response = await api.get(`/my-properties/approved?${queryParams}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching my approved properties:', error);
+      throw error;
+    }
+  },
 
   // Lấy thống kê tin đăng của user
   getMyPropertiesStats: async () => {

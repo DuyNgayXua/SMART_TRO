@@ -24,6 +24,7 @@ import NewPost from "../profile/new-property/NewProperty"
 import MyPosts from "../profile/my-properties/MyProperties.jsx"
 import PaymentHistory from "../profile/payment-history/PaymentHistory"
 import PricingProfile from "../profile/pricing/Pricing"
+import PropertiesListing from "../properties/PropertiesListing"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -94,6 +95,13 @@ const Pages = () => {
             <>
               <Header />
               <Contact />
+              <Footer />
+            </>
+          } />
+          <Route path='/properties' element={
+            <>
+              <Header />
+              <PropertiesListing />
               <Footer />
             </>
           } />

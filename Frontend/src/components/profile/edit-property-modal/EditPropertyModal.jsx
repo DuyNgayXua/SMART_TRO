@@ -3,6 +3,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
+import amenitiesAPI  from '../../../services/amenitiesAPI';
 import dayjs from 'dayjs';
 import './EditPropertyModal.css';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
@@ -40,6 +41,13 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     geocoding: false
   });
 
+  // Amenities data
+  const [amenitiesData, setAmenitiesData] = useState({
+    amenities: [],
+    loading: false,
+    error: null
+  });
+
   // Options data
   const categories = [
     { value: 'phong_tro', label: 'Phòng trọ' },
@@ -57,22 +65,56 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     { value: '5+', label: '5+ người' }
   ];
 
-  const amenitiesList = [
-    { value: 'wifi', label: 'Wi-Fi' },
-    { value: 'parking', label: 'Bãi đỗ xe' },
-    { value: 'elevator', label: 'Thang máy' },
-    { value: 'security', label: 'Bảo vệ' },
-    { value: 'laundry', label: 'Giặt ủi' },
-    { value: 'kitchen', label: 'Nhà bếp' },
-    { value: 'air_conditioner', label: 'Máy lạnh' },
-    { value: 'water_heater', label: 'Máy nước nóng' },
-    { value: 'refrigerator', label: 'Tủ lạnh' },
-    { value: 'washing_machine', label: 'Máy giặt' },
-    { value: 'tv', label: 'TV' },
-    { value: 'desk', label: 'Bàn làm việc' },
-    { value: 'wardrobe', label: 'Tủ quần áo' },
-    { value: 'balcony', label: 'Ban công' }
-  ];
+  // Load amenities from API
+  useEffect(() => {
+    const loadAmenities = async () => {
+      try {
+        setAmenitiesData(prev => ({ ...prev, loading: true, error: null }));
+        
+        const response = await amenitiesAPI.getAllAmenities();
+        console.log('Amenities API response:', response);
+        
+        // Handle different response structures
+        let amenitiesArray = [];
+        if (Array.isArray(response)) {
+          amenitiesArray = response;
+        } else if (response?.data && Array.isArray(response.data)) {
+          amenitiesArray = response.data;
+        } else if (response?.data?.amenities && Array.isArray(response.data.amenities)) {
+          amenitiesArray = response.data.amenities;
+        } else if (response?.amenities && Array.isArray(response.amenities)) {
+          amenitiesArray = response.amenities;
+        } else {
+          console.warn('Unexpected amenities API response structure:', response);
+          amenitiesArray = [];
+        }
+
+        // Transform to expected format
+        const transformedAmenities = amenitiesArray.map(amenity => ({
+          value: amenity._id,
+          label: amenity.name,
+          key: amenity.key,
+          icon: amenity.icon
+        }));
+
+        setAmenitiesData({
+          amenities: transformedAmenities,
+          loading: false,
+          error: null
+        });
+
+      } catch (error) {
+        console.error('Error loading amenities:', error);
+        setAmenitiesData({
+          amenities: [],
+          loading: false,
+          error: 'Không thể tải danh sách tiện ích'
+        });
+      }
+    };
+
+    loadAmenities();
+  }, []);
 
   const houseRulesList = [
     { value: 'no_smoking', label: 'Không hút thuốc' },
@@ -88,6 +130,18 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     if (property) {
       // Initialize form với tất cả dữ liệu property
       console.log('Loading property for edit:', property);
+      console.log('Property amenities:', property.amenities);
+      
+      // Process amenities - handle both populated objects and ID strings
+      const processedAmenities = property.amenities ? 
+        property.amenities.map(amenity => {
+          const id = typeof amenity === 'object' ? amenity._id : amenity;
+          console.log('Processing amenity:', amenity, '-> ID:', id);
+          return id;
+        }) : [];
+      
+      console.log('Processed amenities for form:', processedAmenities);
+      
       setFormData({
         title: property.title || '',
         category: property.category || 'phong_tro',
@@ -104,8 +158,8 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         maxOccupants: property.maxOccupants || '1',
         availableDate: property.availableDate ? dayjs(property.availableDate).format('YYYY-MM-DD') : '',
 
-        // Tiện ích
-        amenities: property.amenities || [],
+        // Tiện ích - Handle populated amenities (array of objects) or IDs (array of strings)
+        amenities: processedAmenities,
         fullAmenities: property.fullAmenities || false,
         timeRules: property.timeRules || '',
 
@@ -273,7 +327,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         setFormData(prev => ({
           ...prev,
           fullAmenities: checked,
-          amenities: checked ? amenitiesList.map(item => item.value) : []
+          amenities: checked ? amenitiesData.amenities.map(item => item.value) : []
         }));
       } else if (name === 'amenities') {
         setFormData(prev => ({
@@ -1002,22 +1056,40 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
               </div>
 
               <div className="amenities-grid">
-                {amenitiesList.map((amenity) => (
-                  <label
-                    key={amenity.value}
-                    className={`amenity-item ${formData.fullAmenities ? "disabled" : ""}`}
-                  >
-                    <input
-                      type="checkbox"
-                      name="amenities"
-                      value={amenity.value}
-                      checked={formData.amenities?.includes(amenity.value) || false}
-                      onChange={handleInputChange}
-                      disabled={formData.fullAmenities}
-                    />
-                    <span className="amenity-text">{amenity.label}</span>
-                  </label>
-                ))}
+                {amenitiesData.loading && (
+                  <div className="loading-amenities">
+                    <i className="fa fa-spinner fa-spin"></i> Đang tải tiện ích...
+                  </div>
+                )}
+                
+                {amenitiesData.error && (
+                  <div className="error-amenities">
+                    <i className="fa fa-exclamation-triangle"></i> {amenitiesData.error}
+                  </div>
+                )}
+                
+                {!amenitiesData.loading && !amenitiesData.error && amenitiesData.amenities.map((amenity) => {
+                  const isChecked = formData.amenities?.includes(amenity.value) || false;
+                  console.log(`Amenity ${amenity.label} (${amenity.value}): checked = ${isChecked}, formData.amenities =`, formData.amenities);
+                  
+                  return (
+                    <label
+                      key={amenity.value}
+                      className={`amenity-item ${formData.fullAmenities ? "disabled" : ""}`}
+                    >
+                      <input
+                        type="checkbox"
+                        name="amenities"
+                        value={amenity.value}
+                        checked={isChecked}
+                        onChange={handleInputChange}
+                        disabled={formData.fullAmenities}
+                      />
+                      {amenity.icon && <i className={amenity.icon}></i>}
+                      <span className="amenity-text">{amenity.label}</span>
+                    </label>
+                  );
+                })}
               </div>
               {errors.amenities && <span className="error-text">{errors.amenities}</span>}
 

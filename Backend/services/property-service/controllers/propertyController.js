@@ -17,11 +17,27 @@ class PropertyController {
                 });
             }
 
-            // Lấy user ID từ token (có thể là id hoặc userId)
+
             const userId = req.user.id || req.user.userId;
 
-            // Validation errors object
+
             const validationErrors = {};
+
+
+
+            if (!req.body.contactName || req.body.contactName.trim() === '') {
+                validationErrors.contactName = 'Tên liên hệ không được để trống';
+            } else if (req.body.contactName.trim().length < 2) {
+                validationErrors.contactName = 'Tên liên hệ phải có ít nhất 2 ký tự';
+            } else {
+                // Cho phép mọi chữ cái Unicode + khoảng trắng
+                const nameRegex = /^[\p{L}\s]+$/u;
+                if (!nameRegex.test(req.body.contactName.trim())) {
+                    validationErrors.contactName = 'Tên liên hệ chỉ được chứa chữ cái và khoảng trắng';
+                }
+            }
+
+
 
             // 1. VALIDATION - Thông tin cơ bản bắt buộc (không được để trống)
             if (!req.body.title || req.body.title.trim() === '') {
@@ -32,17 +48,6 @@ class PropertyController {
                 validationErrors.title = 'Tiêu đề không được vượt quá 200 ký tự';
             }
 
-            if (!req.body.contactName || req.body.contactName.trim() === '') {
-                validationErrors.contactName = 'Tên liên hệ không được để trống';
-            } else if (req.body.contactName.trim().length < 2) {
-                validationErrors.contactName = 'Tên liên hệ phải có ít nhất 2 ký tự';
-            } else {
-                // Regex chỉ cho phép chữ cái tiếng Việt, khoảng trắng và không có số hay ký tự đặc biệt
-                const nameRegex = /^[\p{L}\p{M}\s]{2,}$/u;
-                if (!nameRegex.test(req.body.contactName.trim())) {
-                    validationErrors.contactName = 'Tên liên hệ chỉ được chứa chữ cái và khoảng trắng';
-                }
-            }
 
             if (!req.body.contactPhone || req.body.contactPhone.trim() === '') {
                 validationErrors.contactPhone = 'Số điện thoại không được để trống';
@@ -399,127 +404,6 @@ class PropertyController {
                 success: false,
                 message: errorMessage,
                 error: process.env.NODE_ENV === 'development' ? error.message : 'Lỗi server'
-            });
-        }
-    }
-
-    // Lấy property theo ID
-    async getProperty(req, res) {
-        try {
-            const property = await propertyRepository.findById(req.params.id);
-
-            if (!property) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Không tìm thấy bất động sản'
-                });
-            }
-
-            // Tăng lượt xem
-            await propertyRepository.updateById(req.params.id, {
-                $inc: { views: 1 }
-            });
-
-            res.status(200).json({
-                success: true,
-                data: property
-            });
-
-        } catch (error) {
-            console.error('Get property error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi server',
-                error: error.message
-            });
-        }
-    }
-
-    // Tìm kiếm properties (Public + Approved only)
-    async searchProperties(req, res) {
-        try {
-            const filters = { ...req.query };
-
-            // Chỉ hiển thị bài đã được duyệt và đang hoạt động
-            filters.approvalStatus = 'approved';
-            filters.status = 'available';
-
-            const properties = await propertyRepository.find(filters);
-
-            res.status(200).json({
-                success: true,
-                data: properties,
-                total: properties.length
-            });
-
-        } catch (error) {
-            console.error('Search properties error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi server',
-                error: error.message
-            });
-        }
-    }
-
-
-    // Rate a property
-    async rateProperty(req, res) {
-        try {
-            const { id: propertyId } = req.params;
-            const { rating, comment } = req.body;
-            const userId = req.user.id || req.user.userId;
-
-            // Validation
-            if (!rating || rating < 1 || rating > 5) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Đánh giá phải từ 1 đến 5 sao',
-                    errors: { rating: 'Đánh giá không hợp lệ' }
-                });
-            }
-
-            // Check if property exists
-            const property = await propertyRepository.findById(propertyId);
-            if (!property) {
-                return res.status(404).json({
-                    success: false,
-                    message: 'Không tìm thấy bất động sản'
-                });
-            }
-
-            // Check if user already rated this property
-            const existingRating = await propertyRepository.findUserRating(propertyId, userId);
-            if (existingRating) {
-                return res.status(400).json({
-                    success: false,
-                    message: 'Bạn đã đánh giá bất động sản này rồi'
-                });
-            }
-
-            // Create rating
-            const ratingData = {
-                propertyId,
-                userId,
-                rating: parseInt(rating),
-                comment: comment ? comment.trim() : null,
-                createdAt: new Date()
-            };
-
-            const newRating = await propertyRepository.createRating(ratingData);
-
-            res.status(201).json({
-                success: true,
-                message: 'Đánh giá thành công',
-                data: newRating
-            });
-
-        } catch (error) {
-            console.error('Rate property error:', error);
-            res.status(500).json({
-                success: false,
-                message: 'Lỗi server',
-                error: error.message
             });
         }
     }

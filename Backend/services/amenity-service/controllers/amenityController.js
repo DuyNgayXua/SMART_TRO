@@ -43,6 +43,47 @@ class AmenityController {
     }
   }
 
+  // Get all amenities without owner filtering - for public use
+  async getAllAmenities(req, res) {
+    try {
+      const {
+        page = 1,
+        limit = 50,
+        sortBy = 'displayOrder',
+        sortOrder = 1,
+        category,
+        isActive,
+        search
+      } = req.query;
+
+      const options = {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        sortBy,
+        sortOrder: parseInt(sortOrder),
+        category,
+        isActive: isActive !== undefined ? isActive === 'true' : undefined,
+        search,
+       
+      };
+
+      const result = await amenityRepository.findAll({}, options);
+      console.log('All amenities result:', result);
+      
+      res.json({
+        success: true,
+        data: result
+      });
+    } catch (error) {
+      console.error('Get all amenities error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi khi lấy tất cả danh sách tiện ích',
+        error: error.message
+      });
+    }
+  }
+
   // Get active amenities for dropdown/selection
   async getActiveAmenities(req, res) {
     try {

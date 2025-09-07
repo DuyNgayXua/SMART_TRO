@@ -12,6 +12,18 @@ const amenitiesAPI = {
     }
   },
 
+  // Get all amenities without owner filtering - for public use
+  getAllAmenities: async (params = {}) => {
+    try {
+      const response = await api.get('/amenities/all', { params });
+      
+      return response.data;
+    } catch (error) {
+      console.error('Get all amenities error:', error);
+      throw error;
+    }
+  },
+
   // Get active amenities for dropdown/selection
   getActiveAmenities: async () => {
     try {
