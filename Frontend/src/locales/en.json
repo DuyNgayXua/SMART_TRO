@@ -227,6 +227,12 @@
     },
     "info": {
       "title": "Room Information"
+    },
+    "error": {
+      "roomInfoNotFound": "Room information not found"
+    },
+    "confirm": {
+      "cancelDeposit": "Are you sure you want to cancel deposit for room {{roomNumber}}?"
     }
   },
   "common": {
@@ -243,6 +249,10 @@
     "reset": "Reset",
     "loading": "Loading...",
     "error": "An error occurred",
+    "selectOrDragImage": "Select image or drag and drop here",
+    "imageUploadHint": "Supported: JPG, PNG, GIF (max 5 images, 5MB each)",
+    "imageUploadHintEdit": "Supported: JPG, PNG, GIF (max 5MB each)",
+    "unauthorized": "You need to log in again",
     "success": "Success",
     "warning": "Warning",
     "info": "Information",
@@ -259,7 +269,6 @@
     "none": "None",
     "unknown": "Unknown",
     "actions": "Actions",
-    "unauthorized": "You need to login again",
     "networkError": "Network connection error"
   },
   "settings": {
@@ -321,7 +330,30 @@
     "noTenants": "No tenants",
     "noTenantsDescription": "Try changing filters or add new tenant.",
     "createTitle": "Add Tenant",
-    "editTitle": "Edit Tenant"
+    "editTitle": "Edit Tenant",
+    "status": {
+      "active": "currently renting",
+      "ended": "ended"
+    },
+    "form": {
+      "saving": "Saving...",
+      "updating": "Updating...",
+      "update": "Update",
+      "add": "Add Tenant"
+    },
+    "messages": {
+      "deletedButContractUpdateFailed": "Tenant deleted but unable to update contract",
+      "addedButContractUpdateFailed": "Tenant added but unable to update contract",
+      "saveFailed": "Error saving tenant information",
+      "loadTenantInfoFailed": "Unable to load tenant information",
+      "tenantNotFoundPleaseAdd": "Tenant not found with this information. Please add tenant first.",
+      "loadTenantsFailed": "Unable to load tenant list",
+      "updateSuccess": "Tenant information updated successfully",
+      "addSuccess": "New tenant added successfully"
+    },
+    "confirm": {
+      "deleteTenant": "Are you sure you want to delete tenant \"{{tenantName}}\"?"
+    }
   },
   "contracts": {
     "title": "Contract Management",
@@ -380,7 +412,10 @@
       "notes": "Notes",
       "notesPlaceholder": "Additional notes about the deposit contract...",
       "creating": "Creating...",
-      "createDeposit": "Create Deposit Contract"
+      "createDeposit": "Create Deposit Contract",
+      "updating": "Updating contract...",
+      "update": "Update Contract",
+      "create": "Create Rental Contract"
     },
     "validation": {
       "tenantNameRequired": "Tenant name is required",
@@ -392,12 +427,21 @@
     },
     "success": {
       "depositCreated": "Deposit contract created successfully!",
-      "rentalCreated": "Rental contract created successfully!"
+      "rentalCreated": "Rental contract created successfully!",
+      "rentalUpdated": "Rental contract updated successfully!",
+      "depositCancelled": "Deposit cancelled successfully",
+      "contractTerminated": "Rental contract terminated successfully"
     },
     "error": {
       "createFailed": "Error occurred while creating deposit contract",
+      "updateFailed": "Error occurred while updating rental contract",
       "roomNotFound": "Room not found",
-      "invalidData": "Invalid data"
+      "invalidData": "Invalid data",
+      "depositContractNotFound": "Deposit contract not found",
+      "rollbackFailed": "Error during rollback. Please check data manually.",
+      "contractInfoLoadFailed": "Error loading contract information",
+      "contractTerminateFailed": "Error terminating contract",
+      "contractNotFound": "Contract not found for this room"
     },
     "status": {
       "label": "Status",
@@ -516,7 +560,27 @@
     "address": "Address"
   },
   "validation": {
-    "required": "Required"
+    "required": "Required",
+    "tenantNameRequired": "Tenant name is required",
+    "phoneRequired": "Phone number is required",
+    "invalidPhoneNumber": "Invalid phone number",
+    "phoneNumberRequired": "Please enter phone number",
+    "idRequired": "ID card is required",
+    "startDateRequired": "Start date is required",
+    "endDateRequired": "End date is required",
+    "fullNameRequired": "Please enter full name",
+    "licensePlateRequired": "Please enter license plate",
+    "vehicleTypeRequired": "Please enter vehicle type",
+    "ownerPhoneRequired": "Please enter owner's phone number",
+    "invalidOwnerPhone": "Invalid phone number",
+    "electricIndexCannotBeNegative": "Electric index cannot be negative",
+    "waterIndexCannotBeNegative": "Water index cannot be negative",
+    "invalidElectricityPrice": "Invalid electricity price",
+    "invalidWaterPrice": "Invalid water price",
+    "invalidWaterPricePerPerson": "Invalid water price per person",
+    "invalidServicePrice": "Invalid service price",
+    "endDateMustBeAfterStartDate": "End date must be after start date",
+    "pleaseSelectStartDateFirst": "Please select start date first"
   },
   "profile": {
     "layout": {
@@ -749,6 +813,47 @@
     "pagination": {
       "page": "Page",
       "items": "amenities"
+    }
+  },
+  "vehicles": {
+    "registered": "vehicles registered",
+    "add": "Add Vehicle",
+    "loading": "Loading vehicles...",
+    "listTitle": "Vehicle List",
+    "empty": {
+      "title": "No vehicles registered yet"
+    },
+    "form": {
+      "addTitle": "Add New Vehicle",
+      "editTitle": "Edit Vehicle Information",
+      "vehicleInfo": "Vehicle Information",
+      "licensePlate": "License Plate",
+      "vehicleType": "Vehicle Type",
+      "owner": "Owner",
+      "selectOwner": "Select Owner",
+      "noTenants": "No tenants available",
+      "adding": "Adding vehicle...",
+      "updating": "Updating...",
+      "update": "Update",
+      "saving": "Saving...",
+      "selectVehicleType": "Select Vehicle Type",
+      "vehicleTypePlaceholder": "Enter vehicle type (e.g., Motorcycle, Bicycle, Car...)",
+      "notesPlaceholder": "Additional notes about the vehicle (optional)"
+    },
+    "types": {
+      "motorcycle": "Motorcycle"
+    },
+    "messages": {
+      "fetchError": "Unable to load vehicle list",
+      "loadVehiclesFailed": "Error loading vehicle list",
+      "ownerNotFound": "Vehicle owner not found",
+      "deleteFailed": "Error deleting vehicle",
+      "deleteSuccess": "Vehicle deleted successfully",
+      "updateSuccess": "Vehicle information updated successfully",
+      "addSuccess": "New vehicle added successfully"
+    },
+    "confirm": {
+      "deleteVehicle": "Are you sure you want to delete vehicle \"{{licensePlate}}\"?"
     }
   }
 }

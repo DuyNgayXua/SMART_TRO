@@ -314,7 +314,7 @@ class TenantController {
   async getByRoom(req, res) {
     try {
       const { roomId } = req.params;
-      const { status, sortBy = 'createdAt', sortOrder = 'desc' } = req.query;
+      const { status, sortBy = 'status', sortOrder = 'asc' } = req.query;
       
       const filters = {};
       if (status) filters.status = status;

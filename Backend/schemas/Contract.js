@@ -36,8 +36,25 @@ const contractSchema = new mongoose.Schema({
         required: true
     },
     electricPrice: Number, // Giá điện / kWh
-    waterPrice: Number,    // Giá nước / m³
+    waterPrice: Number,    // Giá nước / m³ (giá cố định)
+    waterPricePerPerson: Number, // Giá nước / người (nếu tính theo người)
+    waterChargeType: {
+        type: String,
+        enum: ['fixed', 'per_person'],
+        default: 'fixed'
+    },
     servicePrice: Number,  // Phí dịch vụ hàng tháng
+    
+    // Chỉ số điện nước hiện tại
+    currentElectricIndex: Number,
+    currentWaterIndex: Number,
+    
+    // Chu kỳ thanh toán
+    paymentCycle: {
+        type: String,
+        enum: ['monthly', 'quarterly', 'yearly'],
+        default: 'monthly'
+    },
     
     // Thông tin xe
     vehicles: [{

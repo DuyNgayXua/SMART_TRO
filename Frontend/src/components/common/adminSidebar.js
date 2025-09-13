@@ -46,7 +46,6 @@ const SideBar = () => {
 
   const menuItems = useMemo(() => [
     { text: t('sidebar.dashboard'), icon: <Dashboard />, path: "/admin/dashboard" },
-    { text: t('sidebar.properties'), icon: <House />, path: "/admin/properties" },
     { text: t('sidebar.rooms'), icon: <House />, path: "/admin/rooms" },
     { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities" },
     { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants" },

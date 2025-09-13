@@ -6,7 +6,9 @@ class ContractController {
     try {
       const { 
         room, tenants, startDate, endDate, monthlyRent, deposit,
-        electricPrice, waterPrice, servicePrice, vehicles, notes
+        electricPrice, waterPrice, waterPricePerPerson, waterChargeType, servicePrice, 
+        currentElectricIndex, currentWaterIndex, paymentCycle,
+        vehicles, notes
       } = req.body;
       
       const landlord = req.body.landlord || req.user?.userId;
@@ -41,7 +43,12 @@ class ContractController {
         deposit,
         electricPrice: electricPrice || 3500,
         waterPrice: waterPrice || 25000,
+        waterPricePerPerson: waterPricePerPerson || 50000,
+        waterChargeType: waterChargeType || 'fixed',
         servicePrice: servicePrice || 150000,
+        currentElectricIndex: currentElectricIndex || 0,
+        currentWaterIndex: currentWaterIndex || 0,
+        paymentCycle: paymentCycle || 'monthly',
         notes: notes || '',
         status: 'active'
       };

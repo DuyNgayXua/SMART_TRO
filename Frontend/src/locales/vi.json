@@ -227,6 +227,12 @@
     },
     "info": {
       "title": "Thông tin phòng"
+    },
+    "error": {
+      "roomInfoNotFound": "Không tìm thấy thông tin phòng"
+    },
+    "confirm": {
+      "cancelDeposit": "Bạn có chắc chắn muốn hủy cọc cho phòng {{roomNumber}}?"
     }
   },
   "common": {
@@ -243,6 +249,10 @@
     "reset": "Đặt lại",
     "loading": "Đang tải...",
     "error": "Có lỗi xảy ra",
+    "selectOrDragImage": "Chọn ảnh hoặc kéo thả vào đây",
+    "imageUploadHint": "Hỗ trợ: JPG, PNG, GIF (tối đa 5 ảnh, 5MB mỗi ảnh)",
+    "imageUploadHintEdit": "Hỗ trợ: JPG, PNG, GIF (tối đa 5MB mỗi ảnh)",
+    "unauthorized": "Bạn cần đăng nhập lại",
     "success": "Thành công",
     "warning": "Cảnh báo",
     "info": "Thông tin",
@@ -259,7 +269,6 @@
     "none": "Không có",
     "unknown": "Không xác định",
     "actions": "Thao tác",
-    "unauthorized": "Bạn cần đăng nhập lại",
     "networkError": "Lỗi kết nối mạng"
   },
   "settings": {
@@ -322,7 +331,30 @@
     "noTenants": "Không có khách thuê",
     "noTenantsDescription": "Hãy thay đổi bộ lọc hoặc thêm khách thuê mới.",
     "createTitle": "Thêm khách thuê",
-    "editTitle": "Sửa khách thuê"
+    "editTitle": "Sửa khách thuê",
+    "status": {
+      "active": "đang thuê",
+      "ended": "đã kết thúc"
+    },
+    "form": {
+      "saving": "Đang lưu...",
+      "updating": "Đang cập nhật...",
+      "update": "Cập nhật",
+      "add": "Thêm khách thuê"
+    },
+    "messages": {
+      "deletedButContractUpdateFailed": "Đã xóa tenant nhưng không thể cập nhật hợp đồng",
+      "addedButContractUpdateFailed": "Đã thêm tenant nhưng không thể cập nhật hợp đồng",
+      "saveFailed": "Có lỗi khi lưu thông tin khách thuê",
+      "loadTenantInfoFailed": "Không thể tải thông tin tenant",
+      "tenantNotFoundPleaseAdd": "Không tìm thấy khách thuê với thông tin này. Vui lòng thêm khách thuê trước.",
+      "loadTenantsFailed": "Không thể tải danh sách tenant",
+      "updateSuccess": "Đã cập nhật thông tin khách thuê",
+      "addSuccess": "Đã thêm khách thuê mới"
+    },
+    "confirm": {
+      "deleteTenant": "Bạn có chắc muốn xóa khách thuê \"{{tenantName}}\"?"
+    }
   },
   "contracts": {
     "title": "Quản lý hợp đồng",
@@ -381,7 +413,10 @@
       "notes": "Ghi chú",
       "notesPlaceholder": "Ghi chú thêm về hợp đồng cọc...",
       "creating": "Đang tạo...",
-      "createDeposit": "Tạo hợp đồng cọc"
+      "createDeposit": "Tạo hợp đồng cọc",
+      "updating": "Đang cập nhật hợp đồng...",
+      "update": "Cập nhật hợp đồng",
+      "create": "Tạo hợp đồng thuê"
     },
     "validation": {
       "tenantNameRequired": "Tên người thuê là bắt buộc",
@@ -393,12 +428,21 @@
     },
     "success": {
       "depositCreated": "Hợp đồng cọc đã được tạo thành công!",
-      "rentalCreated": "Hợp đồng thuê đã được tạo thành công!"
+      "rentalCreated": "Hợp đồng thuê đã được tạo thành công!",
+      "rentalUpdated": "Hợp đồng thuê đã được cập nhật thành công!",
+      "depositCancelled": "Đã hủy cọc thành công",
+      "contractTerminated": "Đã kết thúc hợp đồng thuê"
     },
     "error": {
       "createFailed": "Có lỗi xảy ra khi tạo hợp đồng cọc",
+      "updateFailed": "Có lỗi xảy ra khi cập nhật hợp đồng thuê",
       "roomNotFound": "Phòng không tồn tại",
-      "invalidData": "Dữ liệu không hợp lệ"
+      "invalidData": "Dữ liệu không hợp lệ",
+      "depositContractNotFound": "Không tìm thấy hợp đồng cọc",
+      "rollbackFailed": "Có lỗi khi hoàn tác. Vui lòng kiểm tra dữ liệu thủ công.",
+      "contractInfoLoadFailed": "Có lỗi khi tải thông tin hợp đồng",
+      "contractTerminateFailed": "Có lỗi khi kết thúc hợp đồng",
+      "contractNotFound": "Không tìm thấy hợp đồng cho phòng này"
     },
     "status": {
       "label": "Trạng thái",
@@ -517,7 +561,27 @@
     "address": "Địa chỉ"
   },
   "validation": {
-    "required": "Bắt buộc"
+    "required": "Bắt buộc",
+    "tenantNameRequired": "Tên người thuê là bắt buộc",
+    "phoneRequired": "Số điện thoại là bắt buộc",
+    "invalidPhoneNumber": "Số điện thoại không hợp lệ",
+    "phoneNumberRequired": "Vui lòng nhập số điện thoại",
+    "idRequired": "CCCD/CMND là bắt buộc",
+    "startDateRequired": "Ngày bắt đầu là bắt buộc",
+    "endDateRequired": "Ngày kết thúc là bắt buộc",
+    "fullNameRequired": "Vui lòng nhập họ tên",
+    "licensePlateRequired": "Vui lòng nhập biển số xe",
+    "vehicleTypeRequired": "Vui lòng nhập loại xe",
+    "ownerPhoneRequired": "Vui lòng nhập số điện thoại chủ xe",
+    "invalidOwnerPhone": "Số điện thoại không hợp lệ",
+    "electricIndexCannotBeNegative": "Chỉ số điện không được âm",
+    "waterIndexCannotBeNegative": "Chỉ số nước không được âm",
+    "invalidElectricityPrice": "Giá điện không hợp lệ",
+    "invalidWaterPrice": "Giá nước không hợp lệ",
+    "invalidWaterPricePerPerson": "Giá nước theo người không hợp lệ",
+    "invalidServicePrice": "Phí dịch vụ không hợp lệ",
+    "endDateMustBeAfterStartDate": "Ngày kết thúc phải sau ngày bắt đầu",
+    "pleaseSelectStartDateFirst": "Vui lòng chọn ngày bắt đầu trước"
   },
   "profile": {
     "layout": {
@@ -750,6 +814,47 @@
     "pagination": {
       "page": "Trang",
       "items": "tiện ích"
+    }
+  },
+  "vehicles": {
+    "registered": "xe đã đăng ký",
+    "add": "Thêm xe",
+    "loading": "Đang tải danh sách xe...",
+    "listTitle": "Danh sách xe",
+    "empty": {
+      "title": "Chưa có xe nào được đăng ký"
+    },
+    "form": {
+      "addTitle": "Thêm xe mới",
+      "editTitle": "Chỉnh sửa thông tin xe",
+      "vehicleInfo": "Thông tin xe",
+      "licensePlate": "Biển số xe",
+      "vehicleType": "Loại xe",
+      "owner": "Chủ xe",
+      "selectOwner": "Chọn chủ xe",
+      "noTenants": "Chưa có người thuê",
+      "adding": "Đang thêm xe...",
+      "updating": "Đang cập nhật...",
+      "update": "Cập nhật",
+      "saving": "Đang lưu...",
+      "selectVehicleType": "Chọn loại xe",
+      "vehicleTypePlaceholder": "Nhập loại xe (VD: Xe máy, Xe đạp, Ô tô...)",
+      "notesPlaceholder": "Ghi chú thêm về xe (tùy chọn)"
+    },
+    "types": {
+      "motorcycle": "Xe máy"
+    },
+    "messages": {
+      "fetchError": "Không thể tải danh sách xe",
+      "loadVehiclesFailed": "Có lỗi khi tải danh sách xe",
+      "ownerNotFound": "Không tìm thấy chủ xe",
+      "deleteFailed": "Có lỗi khi xóa xe",
+      "deleteSuccess": "Đã xóa xe thành công",
+      "updateSuccess": "Đã cập nhật thông tin xe",
+      "addSuccess": "Đã thêm xe mới"
+    },
+    "confirm": {
+      "deleteVehicle": "Bạn có chắc muốn xóa xe \"{{licensePlate}}\"?"
     }
   }
 }

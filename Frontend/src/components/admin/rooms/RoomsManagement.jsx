@@ -53,6 +53,46 @@ const RoomsManagement = () => {
   
   // Rental Contract Modal States
   const [showRentalContractModal, setShowRentalContractModal] = useState(false);
+  
+  // Tenants Modal States
+  const [showTenantsModal, setShowTenantsModal] = useState(false);
+  const [selectedRoomForTenants, setSelectedRoomForTenants] = useState(null);
+  const [roomTenants, setRoomTenants] = useState([]);
+  const [loadingTenants, setLoadingTenants] = useState(false);
+  const [showAddTenantModal, setShowAddTenantModal] = useState(false);
+  const [showEditTenantModal, setShowEditTenantModal] = useState(false);
+  const [editingTenant, setEditingTenant] = useState(null);
+  const [tenantFormData, setTenantFormData] = useState({
+    fullName: '',
+    phone: '',
+    identificationNumber: '',
+    address: '',
+    vehicleLicensePlate: '',
+    vehicleType: '',
+    tenantImages: [] // Array of max 5 images like in contract form
+  });
+  const [tenantFormErrors, setTenantFormErrors] = useState({});
+  const [savingTenant, setSavingTenant] = useState(false);
+  const [showVehicleForm, setShowVehicleForm] = useState(false);
+  
+  // Vehicles Modal States
+  const [showVehiclesModal, setShowVehiclesModal] = useState(false);
+  const [selectedRoomForVehicles, setSelectedRoomForVehicles] = useState(null);
+  const [roomVehicles, setRoomVehicles] = useState([]);
+  const [loadingVehicles, setLoadingVehicles] = useState(false);
+  const [showAddVehicleModal, setShowAddVehicleModal] = useState(false);
+  const [showEditVehicleModal, setShowEditVehicleModal] = useState(false);
+  const [editingVehicle, setEditingVehicle] = useState(null);
+  const [vehicleFormData, setVehicleFormData] = useState({
+    licensePlate: '',
+    vehicleType: '',
+    ownerName: '',
+    ownerPhone: '',
+    notes: ''
+  });
+  const [vehicleFormErrors, setVehicleFormErrors] = useState({});
+  const [savingVehicle, setSavingVehicle] = useState(false);
+  
   const [rentalContractData, setRentalContractData] = useState({
     tenants: [{
       tenantName: '',
@@ -339,18 +379,18 @@ const RoomsManagement = () => {
     });
     
     if (!depositContract) {
-      showToast('error', 'Không tìm thấy hợp đồng cọc để hủy');
+      showToast('error', t('contracts.error.depositContractNotFound'));
       return;
     }
 
-    if (window.confirm(`Bạn có chắc chắn muốn hủy cọc cho phòng ${roomNumber}?`)) {
+    if (window.confirm(t('rooms.confirm.cancelDeposit', { roomNumber }))) {
       try {
         // Update deposit contract status to 'cancelled'
         // Backend sẽ tự động update room status về 'available'
         const updateRes = await depositContractsAPI.updateDepositContractStatus(depositContract._id, 'cancelled');
         
         if (updateRes.success) {
-          showToast('success', 'Đã hủy cọc thành công');
+          showToast('success', t('contracts.success.depositCancelled'));
           fetchDepositContracts(); // Refresh deposit contracts
           fetchRooms(); // Refresh rooms
         } else {
@@ -372,12 +412,12 @@ const RoomsManagement = () => {
     });
     
     if (!room) {
-      showToast('error', 'Không tìm thấy thông tin phòng');
+      showToast('error', t('rooms.error.roomInfoNotFound'));
       return;
     }
     
     if (!depositContract) {
-      showToast('error', 'Không tìm thấy hợp đồng cọc');
+      showToast('error', t('contracts.error.depositContractNotFound'));
       return;
     }
     
@@ -428,28 +468,28 @@ const RoomsManagement = () => {
     // Validate tenants
     rentalContractData.tenants.forEach((tenant, index) => {
       if (!tenant.tenantName.trim()) {
-        errors[`tenantName_${index}`] = 'Tên người thuê là bắt buộc';
+        errors[`tenantName_${index}`] = t('validation.tenantNameRequired');
       }
       
       if (!tenant.tenantPhone.trim()) {
-        errors[`tenantPhone_${index}`] = 'Số điện thoại là bắt buộc';
+        errors[`tenantPhone_${index}`] = t('validation.phoneRequired');
       } else if (!/^\d{10}$/.test(tenant.tenantPhone.replace(/\s/g, ''))) {
-        errors[`tenantPhone_${index}`] = 'Số điện thoại không hợp lệ';
+        errors[`tenantPhone_${index}`] = t('validation.invalidPhoneNumber');
       }
       
       if (!tenant.tenantId.trim()) {
-        errors[`tenantId_${index}`] = 'CCCD/CMND là bắt buộc';
+        errors[`tenantId_${index}`] = t('validation.idRequired');
       }
     });
     
     if (!rentalContractData.startDate) {
-      errors.startDate = 'Ngày bắt đầu là bắt buộc';
+      errors.startDate = t('validation.startDateRequired');
     }
     
     if (!rentalContractData.endDate) {
-      errors.endDate = 'Ngày kết thúc là bắt buộc';
+      errors.endDate = t('validation.endDateRequired');
     } else if (new Date(rentalContractData.endDate) <= new Date(rentalContractData.startDate)) {
-      errors.endDate = 'Ngày kết thúc phải sau ngày bắt đầu';
+      errors.endDate = t('validation.endDateMustBeAfterStartDate');
     }
     
     if (!rentalContractData.deposit || Number(rentalContractData.deposit) <= 0) {
@@ -461,15 +501,31 @@ const RoomsManagement = () => {
     }
     
     if (!rentalContractData.electricityPrice || Number(rentalContractData.electricityPrice) < 0) {
-      errors.electricityPrice = 'Giá điện không hợp lệ';
+      errors.electricityPrice = t('validation.invalidElectricityPrice');
     }
     
     if (!rentalContractData.waterPrice || Number(rentalContractData.waterPrice) < 0) {
-      errors.waterPrice = 'Giá nước không hợp lệ';
+      errors.waterPrice = t('validation.invalidWaterPrice');
+    }
+    
+    // Validate waterPricePerPerson if waterChargeType is 'per_person'
+    if (rentalContractData.waterChargeType === 'per_person') {
+      if (!rentalContractData.waterPricePerPerson || Number(rentalContractData.waterPricePerPerson) < 0) {
+        errors.waterPricePerPerson = t('validation.invalidWaterPricePerPerson');
+      }
     }
     
     if (!rentalContractData.servicePrice || Number(rentalContractData.servicePrice) < 0) {
-      errors.servicePrice = 'Phí dịch vụ không hợp lệ';
+      errors.servicePrice = t('validation.invalidServicePrice');
+    }
+    
+    // Validate current meter readings (optional but must be non-negative if provided)
+    if (rentalContractData.currentElectricIndex && Number(rentalContractData.currentElectricIndex) < 0) {
+      errors.currentElectricIndex = t('validation.electricIndexCannotBeNegative');
+    }
+    
+    if (rentalContractData.currentWaterIndex && Number(rentalContractData.currentWaterIndex) < 0) {
+      errors.currentWaterIndex = t('validation.waterIndexCannotBeNegative');
     }
     
     return errors;
@@ -617,7 +673,7 @@ const RoomsManagement = () => {
     if (!rentalContractData.startDate) {
       setRentalContractErrors(prev => ({
         ...prev,
-        startDate: 'Vui lòng chọn ngày bắt đầu trước'
+        startDate: t('validation.pleaseSelectStartDateFirst')
       }));
       return;
     }
@@ -632,7 +688,7 @@ const RoomsManagement = () => {
     }));
     
     // Clear any existing error
-    if (rentalContractErrors.startDate === 'Vui lòng chọn ngày bắt đầu trước') {
+    if (rentalContractErrors.startDate === t('validation.pleaseSelectStartDateFirst')) {
       setRentalContractErrors(prev => {
         const newErrors = {...prev};
         delete newErrors.startDate;
@@ -678,7 +734,7 @@ const RoomsManagement = () => {
 
       // 2. PHASE 1: Xử lý tenant information (update existing + create new)
       // Show single loading message at the start
-      showToast('info', isContractEditMode ? 'Đang cập nhật hợp đồng...' : 'Đang tạo hợp đồng...');
+      showToast('info', isContractEditMode ? t('contracts.updating') : t('contracts.creating'));
       
       for (let i = 0; i < rentalContractData.tenants.length; i++) {
         const tenantData = rentalContractData.tenants[i];
@@ -789,10 +845,11 @@ const RoomsManagement = () => {
           // Remove intermediate toast for deletion
           for (const tenantId of tenantsToDelete) {
             try {
-              console.log('Archiving removed tenant:', tenantId);
-              await tenantsAPI.archiveTenant(tenantId);
+              console.log('Ending lease for removed tenant:', tenantId);
+              // Set status to 'ended' instead of archiving
+              await tenantsAPI.endLease(tenantId, { endDate: new Date() });
             } catch (deleteError) {
-              console.warn(`Failed to archive tenant ${tenantId}:`, deleteError);
+              console.warn(`Failed to end lease for tenant ${tenantId}:`, deleteError);
             }
           }
         }
@@ -848,7 +905,12 @@ const RoomsManagement = () => {
         deposit: Number(rentalContractData.deposit),
         electricPrice: Number(rentalContractData.electricityPrice),
         waterPrice: Number(rentalContractData.waterPrice),
+        waterPricePerPerson: Number(rentalContractData.waterPricePerPerson),
+        waterChargeType: rentalContractData.waterChargeType,
         servicePrice: Number(rentalContractData.servicePrice),
+        currentElectricIndex: Number(rentalContractData.currentElectricIndex) || 0,
+        currentWaterIndex: Number(rentalContractData.currentWaterIndex) || 0,
+        paymentCycle: rentalContractData.paymentCycle,
         // Thông tin xe
         vehicles: rentalContractData.vehicles.filter(v => v.licensePlate.trim()).map(vehicle => ({
           licensePlate: vehicle.licensePlate,
@@ -961,7 +1023,7 @@ const RoomsManagement = () => {
 
       } catch (rollbackError) {
         console.error('Error during rollback:', rollbackError);
-        showToast('error', 'Có lỗi khi hoàn tác. Vui lòng kiểm tra dữ liệu thủ công.');
+        showToast('error', t('contracts.error.rollbackFailed'));
       }
       
       let errorMessage = isContractEditMode 
@@ -1135,13 +1197,13 @@ const RoomsManagement = () => {
           endDate: contract.endDate ? contract.endDate.split('T')[0] : '',
           monthlyRent: contract.monthlyRent || room.price,
           deposit: contract.deposit || 0,
-          electricityPrice: contract.electricityPrice || 3500,
-          waterPrice: contract.waterPrice || 25000,
-          waterPricePerPerson: contract.waterPricePerPerson || 50000,
+          electricityPrice: contract.electricPrice !== undefined && contract.electricPrice !== null ? contract.electricPrice : 3500,
+          waterPrice: contract.waterPrice !== undefined && contract.waterPrice !== null ? contract.waterPrice : 25000,
+          waterPricePerPerson: contract.waterPricePerPerson !== undefined && contract.waterPricePerPerson !== null ? contract.waterPricePerPerson : 50000,
           waterChargeType: contract.waterChargeType || 'fixed',
-          servicePrice: contract.servicePrice || 150000,
-          currentElectricIndex: contract.currentElectricIndex || '',
-          currentWaterIndex: contract.currentWaterIndex || '',
+          servicePrice: contract.servicePrice !== undefined && contract.servicePrice !== null ? contract.servicePrice : 150000,
+          currentElectricIndex: contract.currentElectricIndex ? String(contract.currentElectricIndex) : '',
+          currentWaterIndex: contract.currentWaterIndex ? String(contract.currentWaterIndex) : '',
           paymentCycle: contract.paymentCycle || 'monthly',
           notes: contract.notes || ''
         };
@@ -1160,24 +1222,556 @@ const RoomsManagement = () => {
         setRentalContractData(contractData);
         setShowRentalContractModal(true);
       } else {
-        showToast('error', 'Không tìm thấy hợp đồng cho phòng này');
+        showToast('error', t('contracts.error.contractNotFound'));
       }
     } catch (error) {
       console.error('Error fetching contract data:', error);
-      showToast('error', 'Có lỗi khi tải thông tin hợp đồng');
+      showToast('error', t('contracts.error.contractInfoLoadFailed'));
     }
   };
 
-  const handleViewTenants = (room) => {
-    // TODO: Implement view tenants modal/page
+  const handleViewTenants = async (room) => {
     console.log('View tenants for room:', room);
-    showToast('info', t('rooms.messages.viewTenantsDev') || 'Chức năng đang phát triển');
+    setSelectedRoomForTenants(room);
+    setShowTenantsModal(true);
+    setLoadingTenants(true);
+    
+    try {
+      // Sử dụng API để lấy danh sách tenant theo roomId
+      const response = await tenantsAPI.getTenantsByRoom(room.id);
+      if (response.success) {
+        const tenantList = response.data || [];
+        
+        // Sắp xếp danh sách: active trước, ended sau
+        const sortedTenantList = tenantList.sort((a, b) => {
+          // Ưu tiên active trước
+          if (a.status === 'active' && b.status === 'ended') return -1;
+          if (a.status === 'ended' && b.status === 'active') return 1;
+          
+          // Nếu cùng status thì sắp xếp theo tên
+          return a.fullName.localeCompare(b.fullName);
+        });
+        
+        setRoomTenants(sortedTenantList);
+      } else {
+        console.error('Failed to fetch tenants:', response.message);
+        setRoomTenants([]);
+        showToast('error', t('rooms.messages.fetchTenantsError') || 'Không thể tải danh sách khách thuê');
+      }
+    } catch (error) {
+      console.error('Error fetching tenants:', error);
+      setRoomTenants([]);
+      showToast('error', t('rooms.messages.fetchTenantsError') || 'Không thể tải danh sách khách thuê');
+    } finally {
+      setLoadingTenants(false);
+    }
   };
 
-  const handleViewVehicles = (room) => {
-    // TODO: Implement view vehicles modal/page
-    console.log('View vehicles for room:', room);
-    showToast('info', t('rooms.messages.viewVehiclesDev') || 'Chức năng đang phát triển');
+  // Thêm tenant mới
+  const handleAddTenant = () => {
+    setTenantFormData({
+      fullName: '',
+      phone: '',
+      identificationNumber: '',
+      address: '',
+      vehicleLicensePlate: '',
+      vehicleType: '',
+      tenantImages: []
+    });
+    setTenantFormErrors({});
+    setShowVehicleForm(false);
+    setShowAddTenantModal(true);
+  };
+
+  // Sửa tenant
+  const handleEditTenant = (tenant) => {
+    setEditingTenant(tenant);
+    setTenantFormData({
+      fullName: tenant.fullName || '',
+      phone: tenant.phone || '',
+      identificationNumber: tenant.identificationNumber || '',
+      address: tenant.address || '',
+      // Backend trả về images array, convert thành tenantImages format cho UI
+      tenantImages: (tenant.images || tenant.tenantImages || []).map(url => 
+        typeof url === 'string' ? { url, isUploaded: true } : url
+      )
+    });
+    setTenantFormErrors({});
+    setShowEditTenantModal(true);
+  };
+
+  // Xóa tenant
+  const handleDeleteTenant = async (tenant) => {
+    if (!window.confirm(t('tenants.confirm.deleteTenant', { tenantName: tenant.fullName }))) {
+      return;
+    }
+
+    try {
+      const response = await tenantsAPI.endLease(tenant.id, { endDate: new Date() });
+      if (response.success) {
+        // Nếu phòng có contract hiện tại, cập nhật contract để loại bỏ tenant
+        if (selectedRoomForTenants.currentContract) {
+          try {
+            // Lấy thông tin contract hiện tại
+            const contractResponse = await contractsAPI.getContract(selectedRoomForTenants.currentContract.id);
+            
+            if (contractResponse.success) {
+              const currentContract = contractResponse.data;
+              
+              // Loại bỏ tenant khỏi danh sách tenants
+              const updatedTenants = (currentContract.tenants || []).filter(
+                tenantId => tenantId !== tenant.id
+              );
+              
+              // Loại bỏ các xe của tenant này khỏi contract
+              const updatedVehicles = (currentContract.vehicles || []).filter(
+                vehicle => vehicle.owner !== tenant.id
+              );
+              
+              // Cập nhật contract
+              const updatedContractPayload = {
+                ...currentContract,
+                tenants: updatedTenants,
+                vehicles: updatedVehicles
+              };
+              
+              const updateContractResponse = await contractsAPI.updateContract(
+                selectedRoomForTenants.currentContract.id, 
+                updatedContractPayload
+              );
+              
+              if (!updateContractResponse.success) {
+                console.warn('Failed to update contract after removing tenant:', updateContractResponse.message);
+                showToast('warning', t('tenants.messages.deletedButContractUpdateFailed'));
+              }
+            }
+          } catch (contractError) {
+            console.error('Error updating contract after removing tenant:', contractError);
+            showToast('warning', t('tenants.messages.deletedButContractUpdateFailed'));
+          }
+        }
+        
+        showToast('success', t('contracts.success.contractTerminated'));
+        // Refresh danh sách tenants
+        handleViewTenants(selectedRoomForTenants);
+        // Refresh rooms để cập nhật status
+        fetchRooms();
+      } else {
+        showToast('error', response.message || t('contracts.error.contractTerminateFailed'));
+      }
+    } catch (error) {
+      console.error('Error ending lease:', error);
+      showToast('error', t('contracts.error.contractTerminateFailed'));
+    }
+  };
+
+  // Validate tenant form
+  const validateTenantForm = () => {
+    const errors = {};
+    
+    if (!tenantFormData.fullName?.trim()) {
+      errors.fullName = t('validation.fullNameRequired');
+    }
+    
+    if (!tenantFormData.phone?.trim()) {
+      errors.phone = t('validation.phoneNumberRequired');
+    } else if (!/^[0-9]{10,11}$/.test(tenantFormData.phone.replace(/\s/g, ''))) {
+      errors.phone = t('validation.invalidPhoneNumber');
+    }
+    
+    if (!tenantFormData.identificationNumber?.trim()) {
+      errors.identificationNumber = 'Vui lòng nhập CCCD/CMND';
+    }
+    
+    // Không cần bắt buộc nhập địa chỉ nữa
+    // if (!tenantFormData.address?.trim()) {
+    //   errors.address = 'Vui lòng nhập địa chỉ';
+    // }
+    
+    return errors;
+  };
+
+  // Lưu tenant (thêm mới hoặc cập nhật)
+  const handleSaveTenant = async () => {
+    const errors = validateTenantForm();
+    setTenantFormErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    
+    setSavingTenant(true);
+    
+    try {
+      const payload = {
+        fullName: tenantFormData.fullName,
+        phone: tenantFormData.phone,
+        identificationNumber: tenantFormData.identificationNumber,
+        address: tenantFormData.address,
+        room: selectedRoomForTenants.id,
+        images: tenantFormData.tenantImages,
+        // Thêm các field bắt buộc
+        leaseStart: new Date(), // Ngày bắt đầu thuê là hôm nay
+        rentPrice: selectedRoomForTenants.price || 0, // Lấy giá phòng
+        deposit: 0, // Mặc định tiền cọc là 0
+        vehicles: tenantFormData.vehicleLicensePlate ? [{
+          licensePlate: tenantFormData.vehicleLicensePlate,
+          vehicleType: tenantFormData.vehicleType || t('vehicles.types.motorcycle')
+        }] : []
+      };
+      
+      let response;
+      if (editingTenant) {
+        // Cập nhật tenant
+        response = await tenantsAPI.updateTenant(editingTenant.id, payload);
+      } else {
+        // Thêm tenant mới
+        response = await tenantsAPI.createTenant(payload);
+        
+        // Nếu tạo tenant mới thành công và phòng có contract hiện tại
+        if (response.success && selectedRoomForTenants.currentContract) {
+          try {
+            // Lấy thông tin contract hiện tại
+            const contractResponse = await contractsAPI.getContract(selectedRoomForTenants.currentContract.id);
+            
+            if (contractResponse.success) {
+              const currentContract = contractResponse.data;
+              
+              // Cập nhật contract để thêm tenant mới
+              const updatedContractPayload = {
+                ...currentContract,
+                tenants: [...(currentContract.tenants || []), response.data._id], // Thêm tenant mới vào danh sách
+                // Cập nhật thông tin xe nếu có
+                vehicles: [
+                  ...(currentContract.vehicles || []),
+                  ...(payload.vehicles.map(vehicle => ({
+                    ...vehicle,
+                    owner: response.data._id
+                  })))
+                ]
+              };
+              
+              // Cập nhật contract
+              const updateContractResponse = await contractsAPI.updateContract(
+                selectedRoomForTenants.currentContract.id, 
+                updatedContractPayload
+              );
+              
+              if (!updateContractResponse.success) {
+                console.warn('Failed to update contract with new tenant:', updateContractResponse.message);
+                showToast('warning', t('tenants.messages.addedButContractUpdateFailed'));
+              }
+            }
+          } catch (contractError) {
+            console.error('Error updating contract with new tenant:', contractError);
+            showToast('warning', t('tenants.messages.addedButContractUpdateFailed'));
+          }
+        }
+      }
+      
+      if (response.success) {
+        showToast('success', editingTenant ? t('tenants.messages.updateSuccess') : t('tenants.messages.addSuccess'));
+        setShowAddTenantModal(false);
+        setShowEditTenantModal(false);
+        setEditingTenant(null);
+        // Refresh danh sách tenants
+        handleViewTenants(selectedRoomForTenants);
+        // Refresh rooms để cập nhật status
+        fetchRooms();
+      } else {
+        showToast('error', response.message || t('tenants.messages.saveFailed'));
+      }
+    } catch (error) {
+      console.error('Error saving tenant:', error);
+      showToast('error', t('tenants.messages.saveFailed'));
+    } finally {
+      setSavingTenant(false);
+    }
+  };
+
+  const closeTenantModals = () => {
+    setShowAddTenantModal(false);
+    setShowEditTenantModal(false);
+    setEditingTenant(null);
+    setTenantFormData({
+      fullName: '',
+      phone: '',
+      email: '',
+      identificationNumber: '',
+      dateOfBirth: '',
+      address: '',
+      emergencyContact: {
+        name: '',
+        phone: '',
+        relationship: ''
+      },
+      leaseStart: '',
+      leaseEnd: '',
+      rentPrice: '',
+      deposit: '',
+      notes: ''
+    });
+    setTenantFormErrors({});
+  };
+
+  // ============ VEHICLE MANAGEMENT FUNCTIONS ============
+  
+  // Xem danh sách xe của phòng
+  const handleViewVehicles = async (room) => {
+    setSelectedRoomForVehicles(room);
+    setShowVehiclesModal(true);
+    setLoadingVehicles(true);
+    
+    try {
+      // Lấy danh sách tenant để tìm xe của họ
+      const tenantResponse = await tenantsAPI.getTenantsByRoom(room.id);
+      
+      if (tenantResponse.success) {
+        const tenants = tenantResponse.data || [];
+        
+        // Set roomTenants để sử dụng trong form thêm xe
+        setRoomTenants(tenants);
+        
+        // Lấy tất cả xe từ các tenant
+        const allVehicles = [];
+        tenants.forEach(tenant => {
+          if (tenant.vehicles && tenant.vehicles.length > 0) {
+            tenant.vehicles.forEach(vehicle => {
+              allVehicles.push({
+                ...vehicle,
+                id: `${tenant.id}_${vehicle.licensePlate}`,
+                ownerName: tenant.fullName,
+                ownerPhone: tenant.phone,
+                ownerId: tenant.id,
+                status: tenant.status // inherit tenant status
+              });
+            });
+          }
+        });
+        
+        // Chỉ hiển thị xe của tenant đang thuê (active)
+        const activeVehicles = allVehicles.filter(vehicle => vehicle.status === 'active');
+        
+        // Sắp xếp theo biển số
+        const sortedVehicles = activeVehicles.sort((a, b) => 
+          a.licensePlate.localeCompare(b.licensePlate)
+        );
+        
+        setRoomVehicles(sortedVehicles);
+      } else {
+        console.error('Failed to fetch vehicles:', tenantResponse.message);
+        setRoomVehicles([]);
+        showToast('error', t('vehicles.messages.fetchError'));
+      }
+    } catch (error) {
+      console.error('Error fetching vehicles:', error);
+      setRoomVehicles([]);
+      showToast('error', t('vehicles.messages.loadVehiclesFailed'));
+    } finally {
+      setLoadingVehicles(false);
+    }
+  };
+
+  // Thêm xe mới
+  const handleAddVehicle = () => {
+    setVehicleFormData({
+      licensePlate: '',
+      vehicleType: '',
+      ownerName: '',
+      ownerPhone: '',
+      notes: ''
+    });
+    setVehicleFormErrors({});
+    setShowAddVehicleModal(true);
+  };
+
+  // Sửa xe
+  const handleEditVehicle = (vehicle) => {
+    setEditingVehicle(vehicle);
+    setVehicleFormData({
+      licensePlate: vehicle.licensePlate || '',
+      vehicleType: vehicle.vehicleType || '',
+      ownerName: vehicle.ownerName || '',
+      ownerPhone: vehicle.ownerPhone || '',
+      notes: vehicle.notes || ''
+    });
+    setVehicleFormErrors({});
+    setShowEditVehicleModal(true);
+  };
+
+  // Xóa xe
+  const handleDeleteVehicle = async (vehicle) => {
+    if (!window.confirm(t('vehicles.confirm.deleteVehicle', { licensePlate: vehicle.licensePlate }))) {
+      return;
+    }
+
+    try {
+      // Tìm tenant sở hữu xe này
+      const tenantResponse = await tenantsAPI.getTenantsByRoom(selectedRoomForVehicles.id);
+      if (!tenantResponse.success) {
+        showToast('error', t('tenants.messages.loadTenantInfoFailed'));
+        return;
+      }
+
+      const tenant = tenantResponse.data.find(t => t.id === vehicle.ownerId);
+      if (!tenant) {
+        showToast('error', t('vehicles.messages.ownerNotFound'));
+        return;
+      }
+
+      // Cập nhật danh sách xe của tenant (bỏ xe này)
+      const updatedVehicles = (tenant.vehicles || []).filter(v => v.licensePlate !== vehicle.licensePlate);
+      
+      const response = await tenantsAPI.updateTenant(tenant.id, {
+        vehicles: updatedVehicles
+      });
+
+      if (response.success) {
+        showToast('success', t('vehicles.messages.deleteSuccess'));
+        // Refresh danh sách xe
+        handleViewVehicles(selectedRoomForVehicles);
+      } else {
+        showToast('error', response.message || t('vehicles.messages.deleteFailed'));
+      }
+    } catch (error) {
+      console.error('Error deleting vehicle:', error);
+      showToast('error', t('vehicles.messages.deleteFailed'));
+    }
+  };
+
+  // Validate vehicle form
+  const validateVehicleForm = () => {
+    const errors = {};
+    
+    if (!vehicleFormData.licensePlate?.trim()) {
+      errors.licensePlate = t('validation.licensePlateRequired');
+    }
+    
+    if (!vehicleFormData.vehicleType?.trim()) {
+      errors.vehicleType = t('validation.vehicleTypeRequired');
+    }
+    
+    if (!vehicleFormData.ownerName?.trim()) {
+      errors.ownerName = 'Vui lòng nhập tên chủ xe';
+    }
+    
+    if (!vehicleFormData.ownerPhone?.trim()) {
+      errors.ownerPhone = t('validation.ownerPhoneRequired');
+    } else if (!/^[0-9]{10,11}$/.test(vehicleFormData.ownerPhone.replace(/\s/g, ''))) {
+      errors.ownerPhone = t('validation.invalidOwnerPhone');
+    }
+    
+    return errors;
+  };
+
+  // Lưu xe (thêm mới hoặc cập nhật)
+  const handleSaveVehicle = async () => {
+    const errors = validateVehicleForm();
+    setVehicleFormErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      return;
+    }
+    
+    setSavingVehicle(true);
+    
+    try {
+      // Lấy danh sách tenant hiện tại
+      const tenantResponse = await tenantsAPI.getTenantsByRoom(selectedRoomForVehicles.id);
+      if (!tenantResponse.success) {
+        showToast('error', t('tenants.messages.loadTenantsFailed'));
+        return;
+      }
+
+      // Tìm hoặc tạo tenant cho xe này
+      let targetTenant = tenantResponse.data.find(t => 
+        t.fullName === vehicleFormData.ownerName && t.phone === vehicleFormData.ownerPhone
+      );
+
+      if (!targetTenant) {
+        showToast('error', t('tenants.messages.tenantNotFoundPleaseAdd'));
+        return;
+      }
+
+      const vehicleData = {
+        licensePlate: vehicleFormData.licensePlate,
+        vehicleType: vehicleFormData.vehicleType,
+        notes: vehicleFormData.notes
+      };
+
+      let updatedVehicles = targetTenant.vehicles || [];
+      if (editingVehicle) {
+        // Cập nhật xe hiện có
+        updatedVehicles = updatedVehicles.map(v => 
+          v.licensePlate === editingVehicle.licensePlate ? vehicleData : v
+        );
+      } else {
+        // Thêm xe mới
+        updatedVehicles = [...updatedVehicles, vehicleData];
+      }
+
+      const response = await tenantsAPI.updateTenant(targetTenant.id, {
+        vehicles: updatedVehicles
+      });
+      
+      if (response.success) {
+        showToast('success', editingVehicle ? t('vehicles.messages.updateSuccess') : t('vehicles.messages.addSuccess'));
+        closeVehicleModals();
+        // Refresh danh sách xe
+        handleViewVehicles(selectedRoomForVehicles);
+      } else {
+        showToast('error', response.message || 'Có lỗi khi lưu thông tin xe');
+      }
+    } catch (error) {
+      console.error('Error saving vehicle:', error);
+      showToast('error', 'Có lỗi khi lưu thông tin xe');
+    } finally {
+      setSavingVehicle(false);
+    }
+  };
+
+  const closeVehicleModals = () => {
+    setShowVehiclesModal(false);
+    setShowAddVehicleModal(false);
+    setShowEditVehicleModal(false);
+    setEditingVehicle(null);
+    setRoomVehicles([]);
+    setRoomTenants([]); // Clear room tenants
+    setVehicleFormData({
+      licensePlate: '',
+      vehicleType: '',
+      ownerName: '',
+      ownerPhone: '',
+      notes: ''
+    });
+    setVehicleFormErrors({});
+  };
+
+  const closeAddVehicleModal = () => {
+    setShowAddVehicleModal(false);
+    setVehicleFormData({
+      licensePlate: '',
+      vehicleType: '',
+      ownerName: '',
+      ownerPhone: '',
+      notes: ''
+    });
+    setVehicleFormErrors({});
+    // Giữ lại modal danh sách xe
+  };
+
+  const closeEditVehicleModal = () => {
+    setShowEditVehicleModal(false);
+    setEditingVehicle(null);
+    setVehicleFormData({
+      licensePlate: '',
+      vehicleType: '',
+      ownerName: '',
+      ownerPhone: '',
+      notes: ''
+    });
+    setVehicleFormErrors({});
+    // Giữ lại modal danh sách xe
   };
 
   const handleCreateInvoice = (room) => {
@@ -1916,7 +2510,7 @@ const RoomsManagement = () => {
                                     }}
                                   >
                                     <i className="fas fa-users"></i>
-                                    {t('rooms.actions.viewTenants')}
+                                    Xem người thuê
                                   </button>
                                   <button
                                     className="action-menu-item"
@@ -1925,8 +2519,8 @@ const RoomsManagement = () => {
                                       setOpenActionMenu(null);
                                     }}
                                   >
-                                    <i className="fas fa-motorcycle"></i>
-                                    {t('rooms.actions.viewVehicles')}
+                                    <i className="fas fa-car"></i>
+                                    Xem xe
                                   </button>
                                   <button
                                     className="action-menu-item"
@@ -2049,7 +2643,9 @@ const RoomsManagement = () => {
             <h2 className="room-modal-title">{t('rooms.form.modalTitle')}</h2>
             <button className="room-modal-close" disabled={creating || uploadingImages} onClick={closeCreateModal}>×</button>
           </div>
-          <div className="room-form-grid">
+          
+          <div className="room-modal-content">
+            <div className="room-form-grid">
             <div className="room-form-group">
               <label className="room-form-label">{t('rooms.form.roomNumber')} *</label>
               <input className="room-form-input" value={formData.roomNumber} onChange={e=>handleFormChange('roomNumber', e.target.value)} style={{borderColor: formData.roomNumber && !roomNumberChecking && !roomNumberAvailable ? '#dc2626' : undefined}} />
@@ -2178,6 +2774,8 @@ const RoomsManagement = () => {
               )}
             </div>
           </div>
+          </div>
+          
           <div className="room-modal-footer">
             <button className="btn-secondary" disabled={creating || uploadingImages} onClick={closeCreateModal}>{t('rooms.form.cancel')}</button>
             <button className="btn-primary" disabled={creating || uploadingImages || roomNumberChecking || !roomNumberAvailable} onClick={submitCreate}>{(creating||uploadingImages) ? (uploadingImages? t('rooms.form.uploading') : t('rooms.form.creating')) : t('rooms.form.create')}</button>
@@ -2296,7 +2894,9 @@ const RoomsManagement = () => {
             <h2 className="room-modal-title">{t('rooms.form.editModalTitle') || 'Edit Room'}</h2>
             <button className="room-modal-close" onClick={closeEditModal}>×</button>
           </div>
-          <div className="room-form-grid">
+          
+          <div className="room-modal-content">
+            <div className="room-form-grid">
             <div className="room-form-group">
               <label className="room-form-label">{t('rooms.form.roomNumber')} *</label>
               <input className="room-form-input" value={editFormData.roomNumber} onChange={e=>setEditFormData(p=>({...p,roomNumber:e.target.value}))} style={{borderColor: editFormData.roomNumber && !editRoomNumberChecking && !editRoomNumberAvailable ? '#dc2626' : undefined}} />
@@ -2389,7 +2989,7 @@ const RoomsManagement = () => {
             </div>
             <div className="room-form-group full">
               <label className="room-form-label">{t('rooms.form.amenities')}</label>
-              <div className="amenities-list" style={{gap:'12px'}}>
+              <div className="amenities-list" style={{gap:'50px'}}>
                 {availableAmenities.map(amenity => (
                    <label key={amenity._id} style={{display:'flex',alignItems:'center',gap:'6px',background:'#f8fafc',padding:'8px 12px',borderRadius:'10px',border:'1px solid #e2e8f0',cursor:'pointer'}}>
                      <input
@@ -2449,6 +3049,8 @@ const RoomsManagement = () => {
               )}
             </div>
           </div>
+          </div>
+          
           <div className="room-modal-footer">
             <button className="btn-secondary" onClick={closeEditModal}>{t('rooms.form.cancel')}</button>
             <button className="btn-primary" disabled={savingEdit || editUploadingImages || editRoomNumberChecking || !editRoomNumberAvailable} onClick={submitEdit}>{(savingEdit||editUploadingImages) ? (editUploadingImages? t('rooms.form.uploading') : (t('rooms.form.updating') || 'Updating...')) : (t('rooms.form.update') || 'Update')}</button>
@@ -2684,7 +3286,8 @@ const RoomsManagement = () => {
             <button className="room-modal-close" disabled={creatingRentalContract} onClick={closeRentalContractModal}>×</button>
           </div>
           
-          <div className="rental-contract-two-columns">
+          <div className="room-modal-content">
+            <div className="rental-contract-two-columns">
             {/* Left Column - Tenant Information */}
             <div className="rental-contract-left">
               {/* Tenant Information */}
@@ -2893,7 +3496,7 @@ const RoomsManagement = () => {
 
                       <div className="form-group">
                         <label className="form-label">
-                          Loại xe <span className="required">*</span>
+                          {t('vehicles.form.vehicleType')} <span className="required">*</span>
                         </label>
                         <div className="form-input-group">
                           <i className="input-icon fas fa-car"></i>
@@ -3229,7 +3832,7 @@ const RoomsManagement = () => {
                     className="form-input"
                     value={rentalContractData.notes}
                     onChange={(e) => setRentalContractData(prev => ({...prev, notes: e.target.value}))}
-                    placeholder="Nhập ghi chú bổ sung (tùy chọn)"
+                    placeholder={t('contracts.form.notesPlaceholder')}
                     rows="3"
                     style={{resize: 'vertical', minHeight: '80px'}}
                   />
@@ -3282,7 +3885,7 @@ const RoomsManagement = () => {
                 </div>
               </div>
             </div>
-            </div>
+          </div>
           </div>
 
           <div className="room-modal-footer">
@@ -3296,9 +3899,856 @@ const RoomsManagement = () => {
               disabled={creatingRentalContract}
             >
               {creatingRentalContract 
-                ? <><i className="fas fa-spinner fa-spin"></i> {isContractEditMode ? 'Đang cập nhật...' : 'Đang tạo...'}</>
-                : <><i className="fas fa-check"></i> {isContractEditMode ? 'Cập nhật hợp đồng' : 'Tạo hợp đồng thuê'}</>
+                ? <><i className="fas fa-spinner fa-spin"></i> {isContractEditMode ? t('contracts.updating') : t('contracts.creating')}</>
+                : <><i className="fas fa-check"></i> {isContractEditMode ? t('contracts.update') : t('contracts.create')}</>
               }
+            </button>
+          </div>
+        </div>
+      </div>
+      </div>
+    )}
+
+    {/* Tenants Modal */}
+    {showTenantsModal && (
+      <div className="room-modal-backdrop" onClick={() => setShowTenantsModal(false)}>
+        <div className="room-modal tenant-modal large" onClick={e => e.stopPropagation()}>
+          <div className="room-modal-header">
+            <div className="modal-title-section">
+              <h2 className="room-modal-title">
+                <i className="fas fa-users"></i>
+                Khách thuê - {selectedRoomForTenants?.name || selectedRoomForTenants?.roomNumber}
+              </h2>
+              <div className="tenant-count-info">
+                {!loadingTenants && (
+                  <span className="tenant-count">
+                    {roomTenants.filter(t => t.status === 'active').length}/{selectedRoomForTenants?.capacity || 4} người
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="modal-actions">
+              {!loadingTenants && roomTenants.filter(t => t.status === 'active').length < (selectedRoomForTenants?.capacity || 4) && (
+                <button className="btn-add-tenant" onClick={handleAddTenant}>
+                  <i className="fas fa-user-plus"></i>
+                  Thêm người thuê
+                </button>
+              )}
+              <button className="room-modal-close" onClick={() => setShowTenantsModal(false)}>×</button>
+            </div>
+          </div>
+
+          <div className="tenant-modal-content">
+            {loadingTenants ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Đang tải danh sách khách thuê...</p>
+              </div>
+            ) : roomTenants.length === 0 ? (
+              <div className="empty-tenants">
+                <div className="empty-icon">👥</div>
+                <h3>Chưa có khách thuê</h3>
+                <p>Phòng này chưa có khách thuê nào.</p>
+                <button className="btn-primary" onClick={handleAddTenant}>
+                  <i className="fas fa-user-plus"></i>
+                  Thêm khách thuê đầu tiên
+                </button>
+              </div>
+            ) : (
+              <div className="tenants-grid">
+                {roomTenants.map((tenant, index) => (
+                  <div key={tenant.id || index} className={`tenant-card pro-minimal ${tenant.status}`}>
+                    <div className="tenant-content">
+                      <div className="tenant-name">{tenant.fullName}</div>
+                      <div className="tenant-phone">{tenant.phone}</div>
+                      <div className={`tenant-status ${tenant.status}`}>
+                        {tenant.status === 'active' ? t('tenants.status.active') : t('tenants.status.ended')}
+                      </div>
+                    </div>
+                    {tenant.status === 'active' && (
+                      <div className="tenant-actions">
+                        <button 
+                          className="action-btn edit" 
+                          onClick={() => handleEditTenant(tenant)}
+                          title="Sửa thông tin"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button 
+                          className="action-btn delete" 
+                          onClick={() => handleDeleteTenant(tenant)}
+                          title="Kết thúc hợp đồng"
+                        >
+                          <i className="fas fa-user-times"></i>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="room-modal-footer">
+            <div className="footer-info">
+              {!loadingTenants && roomTenants.length > 0 && (
+                <span className="tenant-summary">
+                  Tổng: {roomTenants.length} người 
+                  ({roomTenants.filter(t => t.status === 'active').length} {t('tenants.status.active')}, {roomTenants.filter(t => t.status === 'ended').length} {t('tenants.status.ended')})
+                </span>
+              )}
+            </div>
+            <button className="btn-secondary" onClick={() => setShowTenantsModal(false)}>
+              <i className="fas fa-times"></i> Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Add Tenant Modal */}
+    {showAddTenantModal && (
+      <div className="room-modal-backdrop" onClick={closeTenantModals}>
+        <div className="room-modal tenant-form-modal" onClick={e => e.stopPropagation()}>
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              <i className="fas fa-user-plus"></i>
+              Thêm khách thuê mới - {selectedRoomForTenants?.name || selectedRoomForTenants?.roomNumber}
+            </h2>
+            <button className="room-modal-close" onClick={closeTenantModals}>×</button>
+          </div>
+
+          <div className="tenant-form-content">
+            <form className="tenant-form">
+              <div className="form-section">
+                <h4 className="section-title">
+                  <i className="fas fa-user"></i>
+                  Thông tin khách thuê
+                </h4>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Họ và tên *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={tenantFormData.fullName}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
+                      placeholder="Nhập họ và tên"
+                    />
+                    {tenantFormErrors.fullName && (
+                      <div className="error-message">{tenantFormErrors.fullName}</div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Số điện thoại *</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      value={tenantFormData.phone}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
+                      placeholder="Nhập số điện thoại"
+                    />
+                    {tenantFormErrors.phone && (
+                      <div className="error-message">{tenantFormErrors.phone}</div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">CMND/CCCD *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={tenantFormData.identificationNumber}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
+                      placeholder="Nhập số CMND/CCCD"
+                    />
+                    {tenantFormErrors.identificationNumber && (
+                      <div className="error-message">{tenantFormErrors.identificationNumber}</div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Địa chỉ</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={tenantFormData.address}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
+                      placeholder="Nhập địa chỉ (không bắt buộc)"
+                    />
+                    {tenantFormErrors.address && (
+                      <div className="error-message">{tenantFormErrors.address}</div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Image Upload Section */}
+                <div className="form-row">
+                  <div className="form-group full-width">
+                    <label className="form-label">Ảnh căn cước/chân dung</label>
+                    <div className="image-upload-section">
+                      <div className="image-upload-area">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files);
+                            const currentImagesCount = tenantFormData.tenantImages.length;
+                            const availableSlots = Math.max(0, 5 - currentImagesCount);
+                            const filesToAdd = files.slice(0, availableSlots);
+                            
+                            if (files.length > availableSlots) {
+                              showToast(`Chỉ có thể tải lên tối đa 5 ảnh. Đã thêm ${filesToAdd.length} ảnh đầu tiên.`, 'warning');
+                            }
+                            
+                            setTenantFormData(prev => ({
+                              ...prev, 
+                              tenantImages: [...prev.tenantImages, ...filesToAdd]
+                            }));
+                          }}
+                          style={{display: 'none'}}
+                          id="tenant-image-upload"
+                        />
+                        <label htmlFor="tenant-image-upload" className="upload-label">
+                          <i className="fas fa-cloud-upload-alt"></i>
+                          <span>{t('common.selectOrDragImage')}</span>
+                          <small>{t('common.imageUploadHint')}</small>
+                        </label>
+                      </div>
+                      
+                      {/* Image Preview */}
+                      {tenantFormData.tenantImages && tenantFormData.tenantImages.length > 0 && (
+                        <div className="image-preview-grid">
+                          {tenantFormData.tenantImages.map((image, index) => (
+                            <div key={index} className="image-preview-item">
+                              <img
+                                src={typeof image === 'string' ? image : URL.createObjectURL(image)}
+                                alt={`Tenant ${index + 1}`}
+                                className="preview-image"
+                              />
+                              <button
+                                type="button"
+                                className="remove-image"
+                                onClick={() => {
+                                  setTenantFormData(prev => ({
+                                    ...prev,
+                                    tenantImages: prev.tenantImages.filter((_, i) => i !== index)
+                                  }));
+                                }}
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Vehicle Section */}
+                {(() => {
+                  const maxVehicles = selectedRoomForTenants?.maxVehicles || 3;
+                  const currentVehicles = roomTenants.filter(t => t.status === 'active' && t.vehicles && t.vehicles.length > 0).length;
+                  const canAddVehicle = currentVehicles < maxVehicles;
+                  
+                  return (
+                    <div className="vehicle-section">
+                      {!showVehicleForm && canAddVehicle && (
+                        <div className="form-row">
+                          <div className="form-group full-width">
+                            <button 
+                              type="button"
+                              className="btn-add-vehicle"
+                              onClick={() => setShowVehicleForm(true)}
+                            >
+                              <i className="fas fa-plus"></i> Thêm thông tin xe ({currentVehicles}/{maxVehicles})
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {showVehicleForm && (
+                        <div className="vehicle-form-section">
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label className="form-label">Biển số xe</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={tenantFormData.vehicleLicensePlate}
+                                onChange={(e) => setTenantFormData(prev => ({...prev, vehicleLicensePlate: e.target.value}))}
+                                placeholder="Nhập biển số xe"
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">{t('vehicles.form.vehicleType')}</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={tenantFormData.vehicleType}
+                                onChange={(e) => setTenantFormData(prev => ({...prev, vehicleType: e.target.value}))}
+                                placeholder={t('vehicles.form.vehicleTypePlaceholder')}
+                              />
+                            </div>
+                          </div>
+                          <div className="form-row">
+                            <div className="form-group full-width">
+                              <button 
+                                type="button"
+                                className="btn-remove-vehicle"
+                                onClick={() => {
+                                  setShowVehicleForm(false);
+                                  setTenantFormData(prev => ({...prev, vehicleLicensePlate: '', vehicleType: ''}));
+                                }}
+                              >
+                                <i className="fas fa-times"></i> Bỏ thông tin xe
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {!canAddVehicle && (
+                        <div className="form-row">
+                          <div className="form-group full-width">
+                            <div className="vehicle-limit-message">
+                              <i className="fas fa-info-circle"></i>
+                              Phòng này đã đạt giới hạn xe ({currentVehicles}/{maxVehicles})
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </form>
+          </div>
+
+          <div className="room-modal-footer">
+            <button className="btn-secondary" onClick={closeTenantModals} disabled={savingTenant}>
+              <i className="fas fa-times"></i> Hủy
+            </button>
+            <button className="btn-primary" onClick={handleSaveTenant} disabled={savingTenant}>
+              {savingTenant ? (
+                <><i className="fas fa-spinner fa-spin"></i> {t('tenants.form.saving')}</>
+              ) : (
+                <><i className="fas fa-plus"></i> {t('tenants.form.add')}</>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Edit Tenant Modal */}
+    {showEditTenantModal && (
+      <div className="room-modal-backdrop" onClick={closeTenantModals}>
+        <div className="room-modal tenant-form-modal" onClick={e => e.stopPropagation()}>
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              <i className="fas fa-user-edit"></i>
+              Sửa thông tin khách thuê - {editingTenant?.fullName}
+            </h2>
+            <button className="room-modal-close" onClick={closeTenantModals}>×</button>
+          </div>
+
+          <div className="tenant-form-content">
+            <form className="tenant-form">
+              <div className="form-section">
+                <h4 className="section-title">
+                  <i className="fas fa-user"></i>
+                  Thông tin khách thuê
+                </h4>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">Họ và tên *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={tenantFormData.fullName}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
+                      placeholder="Nhập họ và tên"
+                    />
+                    {tenantFormErrors.fullName && (
+                      <div className="error-message">{tenantFormErrors.fullName}</div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Số điện thoại *</label>
+                    <input
+                      type="tel"
+                      className="form-input"
+                      value={tenantFormData.phone}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
+                      placeholder="Nhập số điện thoại"
+                    />
+                    {tenantFormErrors.phone && (
+                      <div className="error-message">{tenantFormErrors.phone}</div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="form-row">
+                  <div className="form-group">
+                    <label className="form-label">CMND/CCCD *</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={tenantFormData.identificationNumber}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
+                      placeholder="Nhập số CMND/CCCD"
+                    />
+                    {tenantFormErrors.identificationNumber && (
+                      <div className="error-message">{tenantFormErrors.identificationNumber}</div>
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Địa chỉ</label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={tenantFormData.address}
+                      onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
+                      placeholder="Nhập địa chỉ (không bắt buộc)"
+                    />
+                    {tenantFormErrors.address && (
+                      <div className="error-message">{tenantFormErrors.address}</div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Image Upload Section */}
+                <div className="form-row">
+                  <div className="form-group full-width">
+                    <label className="form-label">Ảnh căn cước/chân dung</label>
+                    <div className="image-upload-section">
+                      <div className="image-upload-area">
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files);
+                            setTenantFormData(prev => ({
+                              ...prev, 
+                              tenantImages: [...prev.tenantImages, ...files]
+                            }));
+                          }}
+                          style={{display: 'none'}}
+                          id="tenant-image-upload-edit"
+                        />
+                        <label htmlFor="tenant-image-upload-edit" className="upload-label">
+                          <i className="fas fa-cloud-upload-alt"></i>
+                          <span>{t('common.selectOrDragImage')}</span>
+                          <small>{t('common.imageUploadHintEdit')}</small>
+                        </label>
+                      </div>
+                      
+                      {/* Image Preview */}
+                      {tenantFormData.tenantImages && tenantFormData.tenantImages.length > 0 && (
+                        <div className="image-preview-grid">
+                          {tenantFormData.tenantImages.map((image, index) => {
+                            // Xử lý nhiều định dạng hình ảnh: URL string, object với url, hoặc File object
+                            const imageUrl = image?.url || (typeof image === 'string' ? image : URL.createObjectURL(image));
+                            
+                            return (
+                              <div key={index} className="image-preview-item">
+                                <img
+                                  src={imageUrl}
+                                  alt={`Tenant ${index + 1}`}
+                                  className="preview-image"
+                                />
+                                <button
+                                  type="button"
+                                  className="remove-image"
+                                  onClick={() => {
+                                    setTenantFormData(prev => ({
+                                      ...prev,
+                                      tenantImages: prev.tenantImages.filter((_, i) => i !== index)
+                                    }));
+                                  }}
+                                >
+                                  <i className="fas fa-times"></i>
+                                </button>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <div className="room-modal-footer">
+            <button className="btn-secondary" onClick={closeTenantModals} disabled={savingTenant}>
+              <i className="fas fa-times"></i> {t('common.cancel')}
+            </button>
+            <button className="btn-primary" onClick={handleSaveTenant} disabled={savingTenant}>
+              {savingTenant ? (
+                <><i className="fas fa-spinner fa-spin"></i> {t('tenants.form.updating')}</>
+              ) : (
+                <><i className="fas fa-save"></i> {t('tenants.form.update')}</>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ============ VEHICLE MODALS ============ */}
+    
+    {/* Vehicle List Modal */}
+    {showVehiclesModal && (
+      <div className="room-modal-backdrop" onClick={closeVehicleModals}>
+        <div className="room-modal vehicle-modal large" onClick={e => e.stopPropagation()}>
+          <div className="room-modal-header">
+            <div className="modal-title-section">
+              <h2 className="room-modal-title">
+                <i className="fas fa-car"></i>
+                Danh sách xe - {selectedRoomForVehicles?.name || selectedRoomForVehicles?.roomNumber}
+              </h2>
+              <div className="vehicle-count-info">
+                {!loadingVehicles && (
+                  <span className="vehicle-count">
+                    {roomVehicles.length} {t('vehicles.registered')}
+                  </span>
+                )}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn-add-vehicle" onClick={handleAddVehicle}>
+                <i className="fas fa-plus"></i>
+                {t('vehicles.add')}
+              </button>
+              <button className="room-modal-close" onClick={closeVehicleModals}>×</button>
+            </div>
+          </div>
+
+          <div className="room-modal-body">
+            {loadingVehicles ? (
+              <div className="loading-section">
+                <div className="loading-spinner">
+                  <i className="fas fa-spinner fa-spin"></i>
+                </div>
+                <p>{t('vehicles.loading')}</p>
+              </div>
+            ) : roomVehicles.length === 0 ? (
+              <div className="empty-section">
+                <div className="empty-icon">
+                  <i className="fas fa-car"></i>
+                </div>
+                <div className="empty-content">
+                  <h3>{t('vehicles.empty.title')}</h3>
+                  <p>{t('vehicles.empty.description')}</p>
+                  <button className="btn-primary" onClick={handleAddVehicle}>
+                    <i className="fas fa-plus"></i>
+                    {t('vehicles.empty.addFirst')}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="vehicles-grid">
+                {roomVehicles.map((vehicle) => (
+                  <div key={vehicle.id} className="vehicle-card pro-minimal">
+                    <div className="vehicle-content">
+                      <div className="vehicle-license">{vehicle.licensePlate}</div>
+                      <div className="vehicle-type">{vehicle.vehicleType}</div>
+                      <div className="vehicle-owner">{vehicle.ownerName}</div>
+                      <div className="vehicle-phone">{vehicle.ownerPhone}</div>
+                      {vehicle.notes && (
+                        <div className="vehicle-notes">{vehicle.notes}</div>
+                      )}
+                    </div>
+                    <div className="vehicle-actions">
+                      <button 
+                        className="action-btn edit" 
+                        onClick={() => handleEditVehicle(vehicle)}
+                        title="Sửa thông tin"
+                      >
+                        <i className="fas fa-edit"></i>
+                      </button>
+                      <button 
+                        className="action-btn delete" 
+                        onClick={() => handleDeleteVehicle(vehicle)}
+                        title="Xóa xe"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="room-modal-footer">
+            <div className="footer-info">
+              {!loadingVehicles && roomVehicles.length > 0 && (
+                <span className="vehicle-summary">
+                  Tổng: {roomVehicles.length} xe đăng ký
+                </span>
+              )}
+            </div>
+            <button className="btn-secondary" onClick={closeVehicleModals}>
+              <i className="fas fa-times"></i> Đóng
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Add Vehicle Modal */}
+    {showAddVehicleModal && (
+      <div className="room-modal-backdrop" onClick={closeAddVehicleModal}>
+        <div className="room-modal vehicle-form-modal" onClick={e => e.stopPropagation()}>
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              <i className="fas fa-plus"></i>
+              {t('vehicles.form.addTitle')}
+            </h2>
+            <button className="room-modal-close" onClick={closeAddVehicleModal}>×</button>
+          </div>
+
+          <div className="room-modal-body">
+            <div className="form-container">
+              <div className="form-section">
+                <h3 className="section-title">
+                  <i className="fas fa-car"></i>
+                  {t('vehicles.form.vehicleInfo')}
+                </h3>
+                
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">{t('vehicles.form.licensePlate')} *</label>
+                    <input
+                      type="text"
+                      className={`form-input ${vehicleFormErrors.licensePlate ? 'error' : ''}`}
+                      value={vehicleFormData.licensePlate}
+                      onChange={(e) => setVehicleFormData(prev => ({
+                        ...prev,
+                        licensePlate: e.target.value
+                      }))}
+                      placeholder={t('vehicles.form.licensePlatePlaceholder')}
+                    />
+                    {vehicleFormErrors.licensePlate && (
+                      <span className="error-message">{vehicleFormErrors.licensePlate}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">{t('vehicles.form.vehicleType')} *</label>
+                    <input
+                      type="text"
+                      className={`form-input ${vehicleFormErrors.vehicleType ? 'error' : ''}`}
+                      value={vehicleFormData.vehicleType}
+                      onChange={(e) => setVehicleFormData(prev => ({
+                        ...prev,
+                        vehicleType: e.target.value
+                      }))}
+                      placeholder={t('vehicles.form.vehicleTypePlaceholder')}
+                    />
+                    {vehicleFormErrors.vehicleType && (
+                      <span className="error-message">{vehicleFormErrors.vehicleType}</span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label">{t('vehicles.form.owner')} *</label>
+                  <select
+                    className={`form-input ${vehicleFormErrors.ownerName ? 'error' : ''}`}
+                    value={vehicleFormData.selectedTenantId || ''}
+                    onChange={(e) => {
+                      const selectedTenant = roomTenants.find(t => t.id === e.target.value);
+                      setVehicleFormData(prev => ({
+                        ...prev,
+                        selectedTenantId: e.target.value,
+                        ownerName: selectedTenant ? selectedTenant.fullName : '',
+                        ownerPhone: selectedTenant ? selectedTenant.phone : ''
+                      }));
+                    }}
+                  >
+                    <option value="">
+                      {loadingVehicles ? t('common.loading') : t('vehicles.form.selectOwner')}
+                    </option>
+                    {!loadingVehicles && roomTenants.filter(t => t.status === 'active').map((tenant) => (
+                      <option key={tenant.id} value={tenant.id}>
+                        {tenant.fullName} - {tenant.phone}
+                      </option>
+                    ))}
+                    {!loadingVehicles && roomTenants.filter(t => t.status === 'active').length === 0 && (
+                      <option value="" disabled>{t('vehicles.form.noTenants')}</option>
+                    )}
+                  </select>
+                  {vehicleFormErrors.ownerName && (
+                    <span className="error-message">{vehicleFormErrors.ownerName}</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="room-modal-footer">
+            <button className="btn-secondary" onClick={closeAddVehicleModal} disabled={savingVehicle}>
+              <i className="fas fa-times"></i> {t('common.cancel')}
+            </button>
+            <button className="btn-primary" onClick={handleSaveVehicle} disabled={savingVehicle}>
+              {savingVehicle ? (
+                <><i className="fas fa-spinner fa-spin"></i> {t('vehicles.form.adding')}</>
+              ) : (
+                <><i className="fas fa-plus"></i> {t('vehicles.add')}</>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Edit Vehicle Modal */}
+    {showEditVehicleModal && (
+      <div className="room-modal-backdrop" onClick={closeEditVehicleModal}>
+        <div className="room-modal vehicle-form-modal" onClick={e => e.stopPropagation()}>
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              <i className="fas fa-edit"></i>
+              {t('vehicles.form.editTitle')} - {editingVehicle?.licensePlate}
+            </h2>
+            <button className="room-modal-close" onClick={closeEditVehicleModal}>×</button>
+          </div>
+
+          <div className="room-modal-body">
+            <div className="form-container">
+              <div className="form-section">
+                <h3 className="section-title">
+                  <i className="fas fa-car"></i>
+                  Thông tin xe
+                </h3>
+                
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Biển số xe *</label>
+                    <input
+                      type="text"
+                      className={`form-input ${vehicleFormErrors.licensePlate ? 'error' : ''}`}
+                      value={vehicleFormData.licensePlate}
+                      onChange={(e) => setVehicleFormData(prev => ({
+                        ...prev,
+                        licensePlate: e.target.value
+                      }))}
+                      placeholder="Nhập biển số xe"
+                    />
+                    {vehicleFormErrors.licensePlate && (
+                      <span className="error-message">{vehicleFormErrors.licensePlate}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">{t('vehicles.form.vehicleType')} *</label>
+                    <select
+                      className={`form-input ${vehicleFormErrors.vehicleType ? 'error' : ''}`}
+                      value={vehicleFormData.vehicleType}
+                      onChange={(e) => setVehicleFormData(prev => ({
+                        ...prev,
+                        vehicleType: e.target.value
+                      }))}
+                    >
+                      <option value="">{t('vehicles.form.selectVehicleType')}</option>
+                      <option value="Xe máy">🏍️ Xe máy</option>
+                      <option value="Xe đạp">🚲 Xe đạp</option>
+                      <option value="Ô tô">🚗 Ô tô</option>
+                      <option value="Xe điện">⚡ Xe điện</option>
+                      <option value="Khác">🔧 Khác</option>
+                    </select>
+                    {vehicleFormErrors.vehicleType && (
+                      <span className="error-message">{vehicleFormErrors.vehicleType}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h3 className="section-title">
+                  <i className="fas fa-user"></i>
+                  Thông tin chủ xe
+                </h3>
+                
+                <div className="form-grid">
+                  <div className="form-group">
+                    <label className="form-label">Tên chủ xe *</label>
+                    <input
+                      type="text"
+                      className={`form-input ${vehicleFormErrors.ownerName ? 'error' : ''}`}
+                      value={vehicleFormData.ownerName}
+                      onChange={(e) => setVehicleFormData(prev => ({
+                        ...prev,
+                        ownerName: e.target.value
+                      }))}
+                      placeholder="Nhập tên chủ xe"
+                    />
+                    {vehicleFormErrors.ownerName && (
+                      <span className="error-message">{vehicleFormErrors.ownerName}</span>
+                    )}
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Số điện thoại *</label>
+                    <input
+                      type="tel"
+                      className={`form-input ${vehicleFormErrors.ownerPhone ? 'error' : ''}`}
+                      value={vehicleFormData.ownerPhone}
+                      onChange={(e) => setVehicleFormData(prev => ({
+                        ...prev,
+                        ownerPhone: e.target.value
+                      }))}
+                      placeholder="Nhập số điện thoại"
+                    />
+                    {vehicleFormErrors.ownerPhone && (
+                      <span className="error-message">{vehicleFormErrors.ownerPhone}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="form-section">
+                <h3 className="section-title">
+                  <i className="fas fa-sticky-note"></i>
+                  Thông tin bổ sung
+                </h3>
+                
+                <div className="form-group">
+                  <label className="form-label">Ghi chú</label>
+                  <textarea
+                    className="form-input"
+                    value={vehicleFormData.notes}
+                    onChange={(e) => setVehicleFormData(prev => ({
+                      ...prev,
+                      notes: e.target.value
+                    }))}
+                    placeholder={t('vehicles.form.notesPlaceholder')}
+                    rows="3"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="room-modal-footer">
+            <button className="btn-secondary" onClick={closeEditVehicleModal} disabled={savingVehicle}>
+              <i className="fas fa-times"></i> Hủy
+            </button>
+            <button className="btn-primary" onClick={handleSaveVehicle} disabled={savingVehicle}>
+              {savingVehicle ? (
+                <><i className="fas fa-spinner fa-spin"></i> {t('vehicles.form.updating')}</>
+              ) : (
+                <><i className="fas fa-save"></i> {t('vehicles.form.update')}</>
+              )}
             </button>
           </div>
         </div>

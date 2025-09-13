@@ -180,8 +180,17 @@ class TenantRepository {
       ...filters 
     };
 
+    // Tạo sort options với ưu tiên status trước
     const sortOptions = {};
-    sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    
+    // Ưu tiên sắp xếp theo status: active trước, ended sau
+    if (sortBy === 'status') {
+      sortOptions['status'] = 1; // active trước ended (alphabetically)
+    } else {
+      // Sắp xếp theo status trước, sau đó theo field được chỉ định
+      sortOptions['status'] = 1; // active trước
+      sortOptions[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    }
 
     const result = await Tenant.find(query)
       .populate('landlord', 'name email phone')
