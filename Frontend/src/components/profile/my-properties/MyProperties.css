@@ -523,10 +523,10 @@
   gap: 15px;
 }
 
-.pagination-btn {
+.pagination-btn-my-properties {
   padding: 8px 16px;
   border: 1px solid #ddd;
-  background: white;
+  background: #27ae60;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -536,17 +536,18 @@
   font-size: 14px;
 }
 
-.pagination-btn:hover:not(:disabled) {
+.pagination-btn-my-properties:hover:not(:disabled) {
   background: #f8f9fa;
-  border-color: #007bff;
+  color: #27ae60;
+  border-color: #27ae60;
 }
 
-.pagination-btn:disabled {
+.pagination-btn-my-properties:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.pagination-info {
+.pagination-info-my-properties {
   font-size: 14px;
   color: #666;
   text-align: center;

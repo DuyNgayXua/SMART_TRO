@@ -15,6 +15,7 @@ import {
   FaSpinner,
   FaEllipsisH
 } from 'react-icons/fa';
+import Avatar from './Avatar';
 import '../../components/properties/Comments.css';
 
 const StarRating = ({ rating, onRatingChange, readonly = false, size = 'medium' }) => {
@@ -117,13 +118,12 @@ const CommentForm = ({ propertyId, onCommentAdded, parentComment = null, onCance
     <form className="comment-form" onSubmit={handleSubmit}>
       <div className="comment-form-header">
         <div className="info-user">
-          <div className="user-avatar">
-            {user?.avatar ? (
-              <img src={user.avatar} alt={user.fullName} />
-            ) : (
-              <FaUser />
-            )}
-          </div>
+          <Avatar
+            src={user?.avatar}
+            alt={user?.fullName || 'User'}
+            size={40}
+            fallbackIcon={<FaUser />}
+          />
           <span className="user-name">{user?.fullName || 'Người dùng'}</span>
         </div>
         <div className="form-content">
@@ -497,13 +497,12 @@ const CommentItem = ({ comment, propertyOwnerId, onCommentUpdated, onCommentDele
     <div className={`comment-item level-${level}`}>
       <div className="comment-header">
         <div className="info-user">
-          <div className="user-avatar">
-            {comment.user.avatar ? (
-              <img src={comment.user.avatar} alt={comment.user.fullName} />
-            ) : (
-              <FaUser />
-            )}
-          </div>
+          <Avatar
+            src={comment.user.avatar}
+            alt={comment.user.fullName}
+            size={40}
+            fallbackIcon={<FaUser />}
+          />
           <div className="user-comment">
             <div className="user-name-container">
               <h4 className="user-name">{comment.user.fullName}</h4>

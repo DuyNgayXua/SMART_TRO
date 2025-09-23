@@ -50,13 +50,14 @@ const SideBar = () => {
     { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities" },
     { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants" },
     { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts" },
+    { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties" },
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings" }
   ], [t]);
 
   // Load current user profile - only once per token
   useEffect(() => {
     const token = localStorage.getItem('token') || null;
-    
+
     // If we have cached data for this token, use it immediately
     if (__cachedUserProfile && __cachedUserProfile.token === token) {
       const { fullName: cName, avatar: cAvatar, role: cRole } = __cachedUserProfile;
@@ -66,23 +67,23 @@ const SideBar = () => {
       setLoadingUser(false);
       return;
     }
-    
+
     // If already loading, don't start another fetch
     if (__isLoading) {
       return;
     }
-    
+
     // Start loading
     __isLoading = true;
     setLoadingUser(true);
-    
+
     (async () => {
       try {
         // Always try to call API, even without token (for bypass mode)
         const res = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
-        
+
         if (!res.ok) {
           // If we had a token but request failed, try without token
           if (token) {
@@ -107,7 +108,7 @@ const SideBar = () => {
           }
           throw new Error('Failed profile');
         }
-        
+
         const data = await res.json();
         if (data.success && data.data) {
           const u = {
@@ -126,7 +127,7 @@ const SideBar = () => {
         // Use fallback data
         const fallbackName = localStorage.getItem('fallbackFullName') || 'Landlord';
         const fallbackRole = localStorage.getItem('role') || 'landlord';
-        
+
         setFullName(fallbackName);
         setRole(fallbackRole);
       } finally {
@@ -192,29 +193,29 @@ const SideBar = () => {
         },
       }}
     >
-      <Toolbar sx={{ 
-        display: "flex", 
-        flexDirection: "column", 
+      <Toolbar sx={{
+        display: "flex",
+        flexDirection: "column",
         py: 2.5,
         background: "rgba(255, 255, 255, 0.08)",
         backdropFilter: "blur(10px)",
         borderBottom: "1px solid rgba(255, 255, 255, 0.1)",
         minHeight: "200px"
       }}>
-        <Box sx={{ 
-          display: "flex", 
-          flexDirection: "column", 
-          alignItems: "center", 
+        <Box sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
           mb: 1.5,
           width: "100%"
         }}>
           {avatar ? (
-            <Avatar 
-              src={avatar} 
+            <Avatar
+              src={avatar}
               alt={fullName}
-              sx={{ 
-                width: 70, 
-                height: 70, 
+              sx={{
+                width: 70,
+                height: 70,
                 mb: 1.5,
                 border: "3px solid rgba(255,255,255,0.3)",
                 boxShadow: "0 4px 16px rgba(0,0,0,0.2)",
@@ -225,11 +226,11 @@ const SideBar = () => {
               }}
             />
           ) : (
-            <Avatar 
-              sx={{ 
-                width: 70, 
-                height: 70, 
-                mb: 1.5, 
+            <Avatar
+              sx={{
+                width: 70,
+                height: 70,
+                mb: 1.5,
                 bgcolor: "rgba(255,255,255,0.2)",
                 fontSize: 28,
                 fontWeight: 700,
@@ -244,9 +245,9 @@ const SideBar = () => {
               {getInitials(fullName)}
             </Avatar>
           )}
-          <Typography 
-            variant="h6" 
-            sx={{ 
+          <Typography
+            variant="h6"
+            sx={{
               fontFamily: fontFamily,
               fontWeight: 600,
               letterSpacing: 0.3,
@@ -269,9 +270,9 @@ const SideBar = () => {
             backdropFilter: "blur(10px)",
             mb: 1
           }}>
-            <Typography 
-              variant="caption" 
-              sx={{ 
+            <Typography
+              variant="caption"
+              sx={{
                 fontFamily: fontFamily,
                 opacity: 0.9,
                 fontWeight: 500,
@@ -285,28 +286,28 @@ const SideBar = () => {
           </Box>
         </Box>
       </Toolbar>
-      
-      <Divider sx={{ 
-        bgcolor: "rgba(255,255,255,0.2)", 
+
+      <Divider sx={{
+        bgcolor: "rgba(255,255,255,0.2)",
         mx: 0,
         boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
       }} />
-      
+
       <List sx={{ px: 2, pt: 2, pb: 1 }}>
         {menuItems.map((item, index) => (
           <div key={index}>
             {item.isParent ? (
               <>
                 <ListItem disablePadding sx={{ display: "block", mb: 0.8 }}>
-                  <ListItemButton 
+                  <ListItemButton
                     onClick={() => toggleMenu(item.text)}
                     sx={{
                       borderRadius: 2.5,
                       py: 1.2,
                       px: 2,
                       mb: 0.3,
-                      backgroundColor: isActiveParentRoute(item.subMenus) 
-                        ? "rgba(255,255,255,0.2)" 
+                      backgroundColor: isActiveParentRoute(item.subMenus)
+                        ? "rgba(255,255,255,0.2)"
                         : "rgba(255,255,255,0.05)",
                       "&:hover": {
                         backgroundColor: "rgba(255,255,255,0.25)",
@@ -318,15 +319,15 @@ const SideBar = () => {
                       backdropFilter: "blur(10px)"
                     }}
                   >
-                    <ListItemIcon 
-                      sx={{ 
+                    <ListItemIcon
+                      sx={{
                         color: isActiveParentRoute(item.subMenus) ? "#fff" : "rgba(255,255,255,0.8)",
                         minWidth: "40px"
                       }}
                     >
                       {item.icon}
                     </ListItemIcon>
-                    <ListItemText 
+                    <ListItemText
                       primary={item.text}
                       primaryTypographyProps={{
                         fontFamily: fontFamily,
@@ -335,8 +336,8 @@ const SideBar = () => {
                         letterSpacing: 0.2,
                       }}
                     />
-                    {openMenus[item.text] ? 
-                      <ExpandLess sx={{ color: "rgba(255,255,255,0.9)" }} /> : 
+                    {openMenus[item.text] ?
+                      <ExpandLess sx={{ color: "rgba(255,255,255,0.9)" }} /> :
                       <ExpandMore sx={{ color: "rgba(255,255,255,0.9)" }} />
                     }
                   </ListItemButton>
@@ -355,8 +356,8 @@ const SideBar = () => {
                             pl: 4,
                             py: 1,
                             borderRadius: 2.5,
-                            backgroundColor: isActiveRoute(subItem.path) 
-                              ? "rgba(255,255,255,0.25)" 
+                            backgroundColor: isActiveRoute(subItem.path)
+                              ? "rgba(255,255,255,0.25)"
                               : "rgba(255,255,255,0.05)",
                             "&:hover": {
                               backgroundColor: "rgba(255,255,255,0.2)",
@@ -367,8 +368,8 @@ const SideBar = () => {
                             border: "1px solid rgba(255,255,255,0.08)"
                           }}
                         >
-                          <ListItemIcon 
-                            sx={{ 
+                          <ListItemIcon
+                            sx={{
                               color: isActiveRoute(subItem.path) ? "#fff" : "rgba(255,255,255,0.7)",
                               minWidth: "35px",
                               ml: -0.5,
@@ -376,7 +377,7 @@ const SideBar = () => {
                           >
                             <ArrowRight fontSize="small" />
                           </ListItemIcon>
-                          <ListItemText 
+                          <ListItemText
                             primary={subItem.text}
                             primaryTypographyProps={{
                               fontFamily: fontFamily,
@@ -394,14 +395,14 @@ const SideBar = () => {
               </>
             ) : (
               <ListItem disablePadding sx={{ display: "block", mb: 0.8 }}>
-                <ListItemButton 
+                <ListItemButton
                   onClick={() => navigate(item.path)}
                   sx={{
                     borderRadius: 2.5,
                     py: 1.2,
                     px: 2,
-                    backgroundColor: isActiveRoute(item.path) 
-                      ? "rgba(255,255,255,0.2)" 
+                    backgroundColor: isActiveRoute(item.path)
+                      ? "rgba(255,255,255,0.2)"
                       : "rgba(255,255,255,0.05)",
                     "&:hover": {
                       backgroundColor: "rgba(255,255,255,0.25)",
@@ -413,15 +414,15 @@ const SideBar = () => {
                     backdropFilter: "blur(10px)"
                   }}
                 >
-                  <ListItemIcon 
-                    sx={{ 
+                  <ListItemIcon
+                    sx={{
                       color: isActiveRoute(item.path) ? "#fff" : "rgba(255,255,255,0.8)",
                       minWidth: "40px"
                     }}
                   >
                     {item.icon}
                   </ListItemIcon>
-                  <ListItemText 
+                  <ListItemText
                     primary={item.text}
                     primaryTypographyProps={{
                       fontFamily: fontFamily,
@@ -436,11 +437,11 @@ const SideBar = () => {
           </div>
         ))}
       </List>
-      
+
       <Box sx={{ flexGrow: 1 }} />
-      
-      <Box sx={{ 
-        p: 3, 
+
+      <Box sx={{
+        p: 3,
         background: "linear-gradient(135deg, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 100%)",
         borderTop: "1px solid rgba(255,255,255,0.15)",
         backdropFilter: "blur(10px)",
@@ -450,10 +451,10 @@ const SideBar = () => {
         borderRadius: 2,
         boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
       }}>
-        <Typography variant="caption" sx={{ 
+        <Typography variant="caption" sx={{
           fontFamily: fontFamily,
-          opacity: 0.7, 
-          display: "block", 
+          opacity: 0.7,
+          display: "block",
           textAlign: "center",
           fontSize: "0.75rem",
           fontWeight: 400,

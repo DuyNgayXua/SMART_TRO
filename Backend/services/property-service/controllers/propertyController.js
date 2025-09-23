@@ -232,7 +232,17 @@ class PropertyController {
                         ? JSON.parse(req.body.houseRules)
                         : req.body.houseRules
                     : [];
+                
+                // Parse coordinates from request body
+                console.log('Raw coordinates from request:', req.body.coordinates);
+                if (req.body.coordinates) {
+                    coordinates = typeof req.body.coordinates === 'string'
+                        ? JSON.parse(req.body.coordinates)
+                        : req.body.coordinates;
+                }
+                console.log('Parsed coordinates:', coordinates);
             } catch (parseError) {
+                console.error('JSON parse error:', parseError);
                 return res.status(400).json({
                     success: false,
                     message: 'Dữ liệu JSON không hợp lệ',
@@ -245,6 +255,15 @@ class PropertyController {
             if (!houseRules.length) validationErrors.houseRules = 'Vui lòng chọn ít nhất 1 nội quy';
             if (!req.body.timeRules || req.body.timeRules.toString().trim() === '')
                 validationErrors.timeRules = 'Vui lòng nhập quy định giờ giấc';
+            
+            // Validate coordinates
+            if (!coordinates) {
+                validationErrors.coordinates = 'Tọa độ không được để trống';
+            } else if (!coordinates.lat || !coordinates.lng) {
+                validationErrors.coordinates = 'Tọa độ phải có đầy đủ lat và lng';
+            } else if (isNaN(coordinates.lat) || isNaN(coordinates.lng)) {
+                validationErrors.coordinates = 'Tọa độ phải là số hợp lệ';
+            }
 
             if (Object.keys(validationErrors).length > 0) {
                 return res.status(400).json({
@@ -342,7 +361,10 @@ class PropertyController {
                 district: req.body.district.trim(),
                 ward: req.body.ward.trim(),
                 detailAddress: req.body.detailAddress.trim(),
-                coordinates: coordinates || null,
+                coordinates: {
+                    lat: coordinates ? Number(coordinates.lat) : null,
+                    lng: coordinates ? Number(coordinates.lng) : null
+                },
 
                 // Media
                 images: imageUrls,
@@ -357,6 +379,7 @@ class PropertyController {
                 updatedAt: now
             };
 
+            console.log('Final propertyData coordinates:', propertyData.coordinates);
 
             // Tạo property
             const property = await propertyRepository.create(propertyData);

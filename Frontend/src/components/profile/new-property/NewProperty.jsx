@@ -36,7 +36,7 @@ const geocodeAddress = async (address) => {
     const res = await locationAPI.geocodeAddress(address);
     console.log("Geocode via backend:", res.data);
 
-    if (res.data && res.data.coordinates.lat && res.data.coordinates.lng) {
+    if (res.data && res.data.coordinates && res.data.coordinates.lat && res.data.coordinates.lng) {
       return { lat: res.data.coordinates.lat, lng: res.data.coordinates.lng };
     }
     return null;
@@ -58,6 +58,11 @@ const NewProperty = () => {
 
   // Ref để nhớ toạ độ cuối cùng hợp lệ
   const lastCoordsRef = useRef(null);
+  // Ref để theo dõi xem coordinates có được set thủ công không
+  const isManuallySetRef = useRef(false);
+  // Ref để lưu tọa độ thủ công
+  const manualCoordsRef = useRef(null);
+  
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
 
@@ -111,6 +116,7 @@ const NewProperty = () => {
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
+  const [isManuallySet, setIsManuallySet] = useState(false);
 
   const [showMap, setShowMap] = useState(false);
 
@@ -172,13 +178,22 @@ const NewProperty = () => {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude } = position.coords;
-        console.log("User location:", { lat: latitude, lng: longitude });
+        const userCoords = { lat: latitude, lng: longitude };
+        console.log("User location:", userCoords);
+        
+        // Đánh dấu là đã được set thủ công
+        isManuallySetRef.current = true;
+        setIsManuallySet(true);
+        manualCoordsRef.current = userCoords;
+        
         setFormData(prev => ({
           ...prev,
-          coordinates: { lat: latitude, lng: longitude }
+          coordinates: userCoords
         }));
+        
+        // Cập nhật lastCoordsRef để lưu tọa độ hợp lệ
+        lastCoordsRef.current = userCoords;
         setGettingLocation(false);
-      
       },
       (error) => {
         console.error('Error getting user location:', error);
@@ -216,6 +231,14 @@ const NewProperty = () => {
 
   // Initialize user location when component mounts
   useEffect(() => {
+    // Đảm bảo coordinates luôn có giá trị ban đầu
+    if (!formData.coordinates || !formData.coordinates.lat || !formData.coordinates.lng) {
+      setFormData(prev => ({
+        ...prev,
+        coordinates: defaultCenter
+      }));
+      lastCoordsRef.current = defaultCenter;
+    }
     getUserLocation();
   }, []);
 
@@ -298,6 +321,10 @@ const NewProperty = () => {
       if (!formData.province) {
         setLocationData(prev => ({ ...prev, districts: [], wards: [] }));
         setFormData(prev => ({ ...prev, district: '', ward: '' }));
+        // Reset manual flag khi không có tỉnh
+        isManuallySetRef.current = false;
+        setIsManuallySet(false);
+        manualCoordsRef.current = null;
         return;
       }
 
@@ -311,6 +338,10 @@ const NewProperty = () => {
           wards: []
         }));
         setFormData(prev => ({ ...prev, district: '', ward: '' }));
+        // Reset manual flag khi thay đổi tỉnh để cho phép geocoding tự động
+        isManuallySetRef.current = false;
+        setIsManuallySet(false);
+        manualCoordsRef.current = null;
       } catch (error) {
         console.error('Error loading districts:', error);
         setLocationData(prev => ({ ...prev, loadingDistricts: false }));
@@ -487,7 +518,6 @@ const NewProperty = () => {
       const timer = setTimeout(async () => {
         const addressPayload = await getFullAddressPayload(formData, locationData);
 
-
         const payloadString = JSON.stringify(addressPayload);
 
         if (addressPayload && payloadString !== lastAddressRef.current) {
@@ -497,11 +527,25 @@ const NewProperty = () => {
           const coords = await geocodeAddress(addressPayload);
           console.log("Geocoded coords:", coords);
 
-          if (coords) {
+          // Chỉ cập nhật coordinates nếu chưa được set thủ công
+          if (coords && coords.lat && coords.lng && !isManuallySetRef.current) {
             lastCoordsRef.current = coords;
-            setFormData(prev => ({ ...prev, coordinates: coords }));
-          } else if (lastCoordsRef.current) {
-            setFormData(prev => ({ ...prev, coordinates: lastCoordsRef.current }));
+            setFormData(prev => ({ 
+              ...prev, 
+              coordinates: coords 
+            }));
+            console.log("Updated coordinates from geocoding:", coords);
+          } else if (lastCoordsRef.current && !isManuallySetRef.current) {
+            console.log("Using last valid coordinates:", lastCoordsRef.current);
+            setFormData(prev => ({ 
+              ...prev, 
+              coordinates: lastCoordsRef.current 
+            }));
+          } else if (isManuallySetRef.current) {
+            console.log("Coordinates manually set, skipping geocoding update");
+          } else {
+            console.log("No valid coordinates, keeping current:", formData.coordinates);
+            // Không cập nhật coordinates nếu không có coords hợp lệ
           }
         }
       }, 2000);
@@ -753,25 +797,56 @@ const handleVideoUpload = (e) => {
       const districtData = locationData.districts.find(d => d.code === formData.district);
       const wardData = locationData.wards.find(w => w.code === formData.ward);
 
+      // Đảm bảo coordinates luôn có giá trị hợp lệ - ưu tiên tọa độ thủ công
+      let finalCoordinates;
+      
+      // Nếu có tọa độ thủ công, sử dụng tọa độ đó
+      if (isManuallySetRef.current && manualCoordsRef.current) {
+        finalCoordinates = manualCoordsRef.current;
+        console.log("Using manually set coordinates:", finalCoordinates);
+      } else if (formData.coordinates && formData.coordinates.lat && formData.coordinates.lng) {
+        finalCoordinates = formData.coordinates;
+        console.log("Using current coordinates:", finalCoordinates);
+      } else {
+        // Nếu coordinates không hợp lệ, thử geocode lại
+        console.log("Coordinates invalid, attempting final geocode...");
+        const addressPayload = await getFullAddressPayload(formData, locationData);
+        if (addressPayload) {
+          const coords = await geocodeAddress(addressPayload);
+          if (coords && coords.lat && coords.lng) {
+            finalCoordinates = coords;
+            console.log("Final geocode successful:", coords);
+          }
+        }
+      }
+
+      // Nếu vẫn không có coordinates hợp lệ, sử dụng coordinates mặc định
+      if (!finalCoordinates || !finalCoordinates.lat || !finalCoordinates.lng) {
+        finalCoordinates = defaultCenter;
+        console.log("Using default coordinates:", defaultCenter);
+        toast.warn("Không thể xác định vị trí chính xác, sử dụng vị trí mặc định. Bạn có thể chỉnh sửa sau.");
+      }
 
       const dataToSubmit = {
         ...formData,
         availableDate: formatDateForBackend(formData.availableDate),
-        // Gửi cả code và name để backend có thể chọn
+        coordinates: finalCoordinates, // Đảm bảo coordinates được gửi ở root level
+        // Gửi name để backend lưu trữ (vì schema yêu cầu name)
         province: provinceData?.name || formData.province,
-        district: districtData?.name || formData.district,
+        district: districtData?.name || formData.district, 
         ward: wardData?.name || formData.ward,
-        // Hoặc tạo object location
+        // Giữ location object để backward compatibility
         location: {
           province: provinceData?.name || formData.province,
           district: districtData?.name || formData.district,
           ward: wardData?.name || formData.ward,
           detailAddress: formData.detailAddress,
-          coordinates: formData.coordinates
+          coordinates: finalCoordinates
         }
       };
 
       console.log('Data to submit:', dataToSubmit);
+      console.log('Final coordinates being sent:', finalCoordinates);
 
       const result = await postAPI.createPost(dataToSubmit);
 
@@ -814,6 +889,13 @@ const handleVideoUpload = (e) => {
         });
 
         setErrors({});
+        // Reset manual coordinate flags
+        isManuallySetRef.current = false;
+        setIsManuallySet(false);
+        manualCoordsRef.current = null;
+        lastAddressRef.current = "";
+        lastCoordsRef.current = null;
+        
         if (fileInputRef.current) fileInputRef.current.value = '';
         if (videoInputRef.current) videoInputRef.current.value = '';
         getUserLocation();
@@ -904,7 +986,23 @@ const handleVideoUpload = (e) => {
   const MapClickHandler = () => {
     useMapEvents({
       click(e) {
-        setFormData(prev => ({ ...prev, coordinates: { lat: e.latlng.lat, lng: e.latlng.lng } }));
+        const clickedCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
+        console.log("Map clicked, new coordinates:", clickedCoords);
+        
+        // Đánh dấu là đã được set thủ công
+        isManuallySetRef.current = true;
+        setIsManuallySet(true);
+        manualCoordsRef.current = clickedCoords;
+        
+        setFormData(prev => ({ 
+          ...prev, 
+          coordinates: clickedCoords 
+        }));
+        
+        // Cập nhật lastCoordsRef để lưu tọa độ hợp lệ
+        lastCoordsRef.current = clickedCoords;
+        
+        console.log("Coordinates manually set to:", clickedCoords);
       },
     });
     return null;
@@ -1314,6 +1412,12 @@ const handleVideoUpload = (e) => {
                           <i className="fa fa-compass"></i>
                           <span>Kinh độ: <strong>{formData.coordinates?.lng?.toFixed(6) || 'N/A'}</strong></span>
                         </div>
+                        <div className="coordinate-item">
+                          <i className={`fa ${isManuallySet ? 'fa-hand-paper-o' : 'fa-magic'}`} style={{ color: isManuallySet ? '#28a745' : '#007bff' }}></i>
+                          <span>Trạng thái: <strong style={{ color: isManuallySet ? '#28a745' : '#007bff' }}>
+                            {isManuallySet ? 'Đã chỉnh thủ công' : 'Tự động geocoding'}
+                          </strong></span>
+                        </div>
                       </div>
                       <p className="address-hint">💡 Nhấp vào bản đồ để chọn vị trí chính xác</p>
 
@@ -1334,8 +1438,16 @@ const handleVideoUpload = (e) => {
                           <i className={`fa ${gettingLocation ? 'fa-spinner fa-spin' : 'fa-location-arrow'}`}></i>
                           {gettingLocation ? 'Đang định vị...' : 'Lấy vị trí hiện tại'}
                         </button>
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => setFormData(prev => ({ ...prev, coordinates: { lat: 10.7769, lng: 106.7009 } }))}>
-                          Reset vị trí
+                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
+                          // Reset về tọa độ mặc định và cho phép geocoding tự động
+                          isManuallySetRef.current = false;
+                          setIsManuallySet(false);
+                          manualCoordsRef.current = null;
+                          setFormData(prev => ({ ...prev, coordinates: defaultCenter }));
+                          console.log("Reset to auto geocoding mode");
+                        }}>
+                          <i className="fa fa-refresh"></i>
+                          Reset & Auto Geo
                         </button>
                       </div>
                     </div>

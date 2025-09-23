@@ -16,7 +16,7 @@ const MyProperties = () => {
   const [loading, setLoading] = useState(true);
   const [pagination, setPagination] = useState({
     page: 1,
-    limit: 10,
+    limit: 12,
     total: 0,
     totalPages: 0
   });
@@ -477,7 +477,7 @@ const MyProperties = () => {
                 <div className="pagination-container">
                   <div className="pagination">
                     <button
-                      className="pagination-btn"
+                      className="pagination-btn-my-properties"
                       disabled={pagination.page === 1}
                       onClick={() => handlePageChange(pagination.page - 1)}
                     >
@@ -485,7 +485,7 @@ const MyProperties = () => {
                       Trước
                     </button>
 
-                    <div className="pagination-info">
+                    <div className="pagination-info-my-properties">
                       Trang {pagination.page} / {pagination.totalPages}
                       <span className="total-info">
                         ({pagination.total} tin đăng)
@@ -493,7 +493,7 @@ const MyProperties = () => {
                     </div>
 
                     <button
-                      className="pagination-btn"
+                      className="pagination-btn-my-properties"
                       disabled={pagination.page === pagination.totalPages}
                       onClick={() => handlePageChange(pagination.page + 1)}
                     >
