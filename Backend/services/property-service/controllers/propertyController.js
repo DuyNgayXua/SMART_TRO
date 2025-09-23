@@ -350,7 +350,7 @@ class PropertyController {
 
                 // Trạng thái và metadata
                 approvalStatus: 'pending', // Chờ admin duyệt
-                status: req.body.isForRent === 'false' ? 'inactive' : 'draft', // draft cho đến khi được duyệt, inactive nếu không cho thuê
+                status: 'available',
                 views: 0,
                 featured: false,
                 createdAt: now,
