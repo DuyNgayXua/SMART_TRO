@@ -7,6 +7,7 @@ import dotenv from 'dotenv';
 import Database from './config/database.js';
 import schemas from './schemas/index.js';
 import serviceRoutes from './services/index.js';
+import EmbeddingMigration from './services/chatbot-service/scripts/migrateChatbotEmbeddings.js';
 
 // Load environment variables
 dotenv.config();
@@ -180,6 +181,21 @@ async function startServer() {
     try {
         // Connect to database
         await Database.connect();
+        
+        // Run chatbot migration
+        console.log('\nRunning chatbot migration...');
+        try {
+            const migration = new EmbeddingMigration();
+            const migrationSuccess = await migration.runMigration();
+            if (migrationSuccess) {
+                console.log('Chatbot migration completed successfully');
+            } else {
+                console.log('Chatbot migration had issues, but continuing...');
+            }
+        } catch (migrationError) {
+            console.error('Migration error:', migrationError.message);
+            console.log('Continuing without migration...');
+        }
         
         // Start server
         app.listen(PORT, () => {

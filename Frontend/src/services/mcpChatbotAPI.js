@@ -27,7 +27,26 @@ const mcpChatbotAPI = {
       }
 
       const data = await response.json();
-      console.log('MCP Chatbot Response Data:', data);
+      console.log('=== MCP CHATBOT RAW RESPONSE ===');
+      console.log('Full response data:', JSON.stringify(data, null, 2));
+      console.log('Response keys:', Object.keys(data));
+      console.log('Properties data:', data.properties);
+      console.log('Properties length:', data.properties?.length || 0);
+      
+      // Log chi tiết properties nếu có
+      if (data.properties && data.properties.length > 0) {
+        console.log('=== PROPERTIES DETAILS ===');
+        data.properties.forEach((prop, index) => {
+          console.log(`Property ${index + 1}:`, {
+            id: prop._id,
+            title: prop.title,
+            location: prop.location,
+            hasLocationObject: !!prop.location,
+            locationKeys: prop.location ? Object.keys(prop.location) : null
+          });
+        });
+      }
+      console.log('=== END MCP RESPONSE ===');
       
       return {
         success: true,
@@ -66,26 +85,6 @@ const mcpChatbotAPI = {
     }
   },
 
-  /**
-   * Lấy thông tin session
-   */
-  getSession: async (sessionId) => {
-    try {
-      const response = await fetch(`${MCP_API_BASE_URL}/sessions/${sessionId}`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      return await response.json();
-    } catch (error) {
-      console.error('Get session error:', error);
-      return {
-        success: false,
-        message: 'Không thể lấy thông tin session'
-      };
-    }
-  }
 };
 
 export default mcpChatbotAPI;

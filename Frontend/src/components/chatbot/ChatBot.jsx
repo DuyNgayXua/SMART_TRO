@@ -360,7 +360,15 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
         response = await chatbotAPI.sendMessage(message, sessionId);
       }
       
-      console.log('Chatbot response:', response);
+      console.log('=== CHATBOT SEND MESSAGE RESPONSE ===');
+      console.log('Message sent:', message);
+      console.log('Mode:', guidedMode ? 'Guided' : 'Free');
+      console.log('Full response:', JSON.stringify(response, null, 2));
+      console.log('Properties received:', response.data?.properties?.length || 0);
+      if (response.data?.properties?.length > 0) {
+        console.log('Properties details:', response.data.properties);
+      }
+      console.log('=== END SEND MESSAGE RESPONSE ===');
       
       if (response.success) {
         // Cập nhật session ID nếu có
@@ -449,6 +457,12 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
           null, 
           null
         );
+        console.log('=== INITIALIZE CONVERSATION RESPONSE ===');
+        console.log('Full response:', JSON.stringify(response, null, 2));
+        console.log('Response success:', response.success);
+        console.log('Response data:', response.data);
+        console.log('Properties in response:', response.data?.properties);
+        console.log('=== END INITIALIZE RESPONSE ===');
         
         if (response.success) {
           // Cập nhật session ID

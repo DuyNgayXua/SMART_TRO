@@ -4,12 +4,14 @@ import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import './PropertySlider.css';
 
 const PropertySlider = ({ properties }) => {
+    console.log("PropertySlider properties:", properties);
     const navigate = useNavigate();
     const [currentIndex, setCurrentIndex] = useState(0);
     const sliderRef = useRef(null);
 
     const handleViewDetails = (propertyId) => {
-        navigate(`/properties/${propertyId}`);
+        // Mở link trong tab mới để giữ nguyên chatbot
+        window.open(`/properties/${propertyId}`, '_blank');
     };
 
     const handlePrevSlide = () => {
@@ -169,10 +171,10 @@ const PropertySlider = ({ properties }) => {
                             <div className="property-location">
                                 <i className="fas fa-map-marker-alt"></i>
                                 <span>
-                                    {property.detailAddress && `${property.detailAddress}, `}
-                                    {property.wardName && `${property.wardName}, `}
-                                    {property.districtName && `${property.districtName}, `}
-                                    {property.provinceName && `${property.provinceName}, `}
+                                    {property.location?.detailAddress && `${property.location.detailAddress}, `}
+                                    {property.location?.wardName && `${property.location.wardName}, `}
+                                    {property.location?.districtName && `${property.location.districtName}, `}
+                                    {property.location?.provinceName && `${property.location.provinceName}, `}
                                 </span>
                             </div>
 

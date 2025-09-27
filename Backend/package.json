@@ -7,6 +7,8 @@
     "start": "node app.js",
     "dev": "node --watch app.js",
     "seed": "node scripts/seeder.js",
+    "migrate:chatbot": "node -e \"import('./scripts/chatbotMigration.js').then(m => m.default())\"",
+    "migrate:embeddings": "node scripts/migrateToNomicEmbeddings.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [

@@ -432,11 +432,16 @@ class SmartTroMCP:
         properties = self.search_properties_fast(criteria)
         print('Found properties:', properties)
 
+        # Giới hạn số lượng properties trả về
+        limited_properties = properties[:8]
+        total_found = len(properties)
+        displayed_count = len(limited_properties)
+
         # Tạo response với kết quả
         response = {
-            'message': f"Tuyệt vời! Tôi đã tìm thấy {len(properties)} bài đăng phù hợp với yêu cầu của bạn.",
-            'properties': properties[:8],
-            'total_found': len(properties),
+            'message': f"Tuyệt vời! Tôi đã tìm thấy {displayed_count} bài đăng phù hợp với yêu cầu của bạn.",
+            'properties': limited_properties,
+            'total_found': total_found,
             'search_criteria': criteria,
             'conversation_state': state,
             'step': 'search_results',
@@ -475,8 +480,6 @@ class SmartTroMCP:
     
     def _extract_budget(self, message: str) -> Dict[str, float]:
         """Extract budget từ tin nhắn"""
-        print(f"Extracting budget from: '{message}'")
-        
         # Patterns để tìm giá tiền (theo thứ tự ưu tiên)
         price_patterns = [
             # Pattern có "từ...đến" với triệu
@@ -516,9 +519,6 @@ class SmartTroMCP:
             match = re.search(pattern, message.lower())
             if match:
                 try:
-                    print(f"Pattern {i+1} matched: {pattern}")
-                    print(f"Groups: {match.groups()}")
-                    
                     if len(match.groups()) == 2:
                         result = extractor(match.group(1), match.group(2))
                     else:
@@ -840,81 +840,84 @@ class SmartTroMCP:
             if response.status_code == 200:
                 data = response.json()
                 properties = data.get("data", {}).get("properties", [])
-                print(f"Found {len(properties)} properties")
+              
                 
-                # Process properties để map location ra ngoài
+                # Process properties để đảm bảo có location object đầy đủ
                 if properties:
-                    # Load provinces cache để map
-                    province_map = {}
-                    if self.provinces_cache:
-                        province_map = {str(p['code']): p['name'] for p in self.provinces_cache}
-                    
                     # Xử lý location object cho mỗi property
                     for prop in properties:
-                        
-                        # Kiểm tra xem đã có location object chưa
+                        # Ưu tiên sử dụng location có sẵn từ API trước
                         existing_location = prop.get('location', {})
-                        
-                        if existing_location and isinstance(existing_location, dict):
-                            # Nếu đã có location object với dữ liệu đầy đủ, giữ nguyên
-                            if (existing_location.get('provinceName') or 
-                                existing_location.get('districtName') or 
-                                existing_location.get('wardName') or 
-                                existing_location.get('detailAddress')):
-                                continue
-                        
-                        # Nếu chưa có location object hoặc rỗng, tạo mới từ raw data
-                      
+                        if existing_location and any(existing_location.values()):
+                            # Đảm bảo location có đủ các field cần thiết
+                            if not existing_location.get('provinceName'):
+                                existing_location['provinceName'] = ''
+                            if not existing_location.get('districtName'):
+                                existing_location['districtName'] = ''
+                            if not existing_location.get('wardName'):
+                                existing_location['wardName'] = ''
+                            if not existing_location.get('detailAddress'):
+                                existing_location['detailAddress'] = ''
+                            prop['location'] = existing_location
+                            continue
+                        # Nếu không có location sẵn, tạo mới từ raw data
                         location = {}
-                        
-                        # Map province (cả trường hợp có giá trị và không có)
+                        # Load provinces cache để map (chỉ khi cần)
+                        province_map = {}
+                        if self.provinces_cache:
+                            province_map = {str(p['code']): p['name'] for p in self.provinces_cache}
+                        # Map province từ raw data
                         province_value = prop.get('province')
                         if province_value:
                             mapped_province = province_map.get(str(province_value), str(province_value))
                             location['provinceName'] = mapped_province
-                       
-                        
-                        # Map district
+                        # Map district từ raw data
                         district_value = prop.get('district')
                         if district_value:
                             try:
-                                if province_value and str(province_value) in self.districts_cache:
-                                    districts = self.districts_cache[str(province_value)]
-                                    district_map = {str(d['code']): d['name'] for d in districts}
-                                    mapped_district = district_map.get(str(district_value), str(district_value))
-                                    location['districtName'] = mapped_district
-                                    
+                                if province_value:
+                                    # Load districts nếu chưa có trong cache
+                                    cache_key = str(province_value)
+                                    if cache_key not in self.districts_cache:
+                                        try:
+                                            districts_response = requests.get(f"{self.location_api_url}/p/{province_value}?depth=2", timeout=5)
+                                            if districts_response.status_code == 200:
+                                                districts_data = districts_response.json()
+                                                self.districts_cache[cache_key] = districts_data.get('districts', [])
+                                        except Exception as e:
+                                            print(f"   Error loading districts: {e}")
+                                            self.districts_cache[cache_key] = []
+                                    # Map district name
+                                    districts = self.districts_cache.get(cache_key, [])
+                                    if districts:
+                                        district_map = {str(d['code']): d['name'] for d in districts}
+                                        mapped_district = district_map.get(str(district_value), str(district_value))
+                                        location['districtName'] = mapped_district
+                                    else:
+                                        location['districtName'] = str(district_value)  
                                 else:
                                     location['districtName'] = str(district_value)
-                                  
                             except Exception as e:
                                 location['districtName'] = str(district_value)
-                              
+                                print(f"   Error mapping district: {e}")
                         
-                        # Map ward
+                        # Map ward từ raw data
                         ward_value = prop.get('ward')
                         if ward_value:
                             location['wardName'] = str(ward_value)
-                            print(f"   Ward: {ward_value}")
-                        
-                        # Map detailAddress
+                        # Map detailAddress từ raw data
                         detail_address = prop.get('detailAddress')
                         if detail_address:
                             location['detailAddress'] = str(detail_address)
-                            print(f"   Detail address: {detail_address}")
-                        
-                        # Nếu vẫn không có dữ liệu, kiểm tra các trường khác
-                        if not location:
+                        # Fallback: tìm trong các trường khác có chứa "address"
+                        if not detail_address:
                             for key, value in prop.items():
                                 if 'address' in key.lower() and value:
                                     location['detailAddress'] = str(value)
                                     break
-                        
-                        # Gán location object vào property
+                        # Gán location object đã tạo vào property
                         prop['location'] = location
-                   
-                
-                        
+                print("Final properties", properties)
                 return properties
             else:
                 print(f"API Error: {response.status_code} - {response.text}")

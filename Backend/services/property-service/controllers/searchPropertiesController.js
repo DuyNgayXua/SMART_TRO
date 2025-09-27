@@ -33,7 +33,7 @@ const searchController = {
       // Build query object
       let query = {
         approvalStatus: 'approved',
-        status: 'available', 
+        status: 'available',
         isDeleted: { $ne: true }
       };
 
@@ -86,8 +86,9 @@ const searchController = {
       if (amenities) {
         const amenitiesArray = amenities.split(',').filter(id => id.trim());
         if (amenitiesArray.length > 0) {
-          // Tìm properties có ít nhất một trong các amenities được chọn
-          query.amenities = { $in: amenitiesArray };
+          query.amenities = {
+            $in: amenitiesArray.map(id => new mongoose.Types.ObjectId(id))
+          };
         }
       }
 
@@ -95,7 +96,7 @@ const searchController = {
 
       // Build sort object - Ưu tiên approvedAt nếu có, fallback về createdAt
       let properties, total, provinces;
-      
+
       if (sortBy === 'createdAt') {
         // Sắp xếp theo thời gian: promoted first, sau đó approvedAt nếu có, fallback về createdAt
         // Sử dụng aggregation pipeline để handle logic: approvedAt nếu có, fallback về createdAt
@@ -110,11 +111,11 @@ const searchController = {
                 }
               }
             },
-            { 
-              $sort: { 
+            {
+              $sort: {
                 promotedAt: -1, // Promoted first
                 sortDate: sortOrder === 'asc' ? 1 : -1 // Then by sortDate
-              } 
+              }
             },
             { $skip: skip },
             { $limit: limit },
@@ -148,7 +149,7 @@ const searchController = {
       } else {
         // Các sort khác sử dụng find bình thường
         const sortObj = {};
-        
+
         if (sortBy === 'price' || sortBy === 'rentPrice') {
           // Sắp xếp theo giá thuần túy, không ưu tiên promoted
           sortObj.rentPrice = sortOrder === 'asc' ? 1 : -1;
@@ -323,7 +324,7 @@ const searchController = {
   getSearchSuggestions: async (req, res) => {
     try {
       const { q } = req.query;
-      
+
       if (!q || q.trim().length < 2) {
         return res.json({
           success: true,

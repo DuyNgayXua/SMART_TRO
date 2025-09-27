@@ -532,7 +532,7 @@ const MyProperties = () => {
         <div className="modal-overlay-reason-my-properties" onClick={() => setShowDetailModal(false)}>
           <div className="property-detail-modal" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-management">
-              <h3>Chi tiết bài đăng</h3>
+              <h2>Chi tiết bài đăng</h2>
               <button
                 className="close-btn-management"
                 onClick={() => setShowDetailModal(false)}

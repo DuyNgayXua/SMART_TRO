@@ -1,5 +1,6 @@
 import Property from '../../../schemas/Property.js';
 import ollamaService from '../services/ollamaService.js';
+import vectorService from '../services/vectorService.js';
 import axios from 'axios';
 
 // Helper functions for location API
@@ -28,52 +29,6 @@ const fetchWards = async (districtCode) => {
  */
 const chatbotController = {
   /**
-   * Xử lý guided conversation - API endpoint tương tự như gradio_server.py
-   */
-  processGuidedChat: async (req, res) => {
-    try {
-      const { message, sessionId, conversationState } = req.body;
-
-      // Validation
-      if (!message?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Tin nhắn không được để trống'
-        });
-      }
-
-      // Xử lý guided conversation
-      const result = await guidedConversationService.processGuidedApi(
-        message.trim(),
-        sessionId,
-        conversationState
-      );
-
-      // Trả về response theo format ChatResponse
-      return res.json({
-        success: result.success || true,
-        message: result.message || '',
-        step: result.step || '',
-        options: result.options || null,
-        properties: result.properties || null,
-        totalFound: result.totalFound || null,
-        conversationState: result.conversationState || {},
-        showGrid: result.showGrid || false,
-        placeholder: result.placeholder || null,
-        searchCriteria: result.searchCriteria || null
-      });
-
-    } catch (error) {
-      console.error('Guided chat error:', error);
-      return res.status(500).json({
-        success: false,
-        message: 'Lỗi xử lý tin nhắn. Vui lòng thử lại.',
-        error: process.env.NODE_ENV === 'development' ? error.message : undefined
-      });
-    }
-  },
-
-  /**
    * Xử lý tin nhắn từ người dùng - Stateless version (không dùng session)
    */
   processMessage: async (req, res) => {
@@ -88,8 +43,8 @@ const chatbotController = {
         });
       }
 
-      // Xử lý tin nhắn bằng Ollama service
-      const ollamaResult = await ollamaService.processMessage(message.trim());
+      // Xử lý tin nhắn bằng Ollama service với cache info từ middleware
+      const ollamaResult = await ollamaService.processMessage(message.trim(), req.vectorCache);
       // console.log('Ollama Result:', ollamaResult);
       
       if (!ollamaResult.success) {
@@ -344,6 +299,168 @@ const chatbotController = {
       'Khu vực nào bạn muốn tìm kiếm?',
       'Xem các tin đăng mới nhất'
     ];
+  },
+
+  /**
+   * Tìm kiếm trong vector database - Public endpoint
+   */
+  searchVector: async (req, res) => {
+    try {
+      const { question, threshold = 0.85 } = req.body;
+
+      if (!question?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Câu hỏi không được để trống'
+        });
+      }
+
+      console.log(`Vector search request: "${question}" (threshold: ${threshold})`);
+
+      // Tìm kiếm trong vector database
+      const startTime = Date.now();
+      const result = await vectorService.findSimilarQuestion(question.trim(), threshold);
+      const searchTime = Date.now() - startTime;
+
+      if (result) {
+        console.log(`Found cached response in ${searchTime}ms with similarity: ${result.score}`);
+        
+        // Parse response nếu là JSON string
+        let responseData = result.response;
+        if (typeof result.response === 'string') {
+          try {
+            responseData = JSON.parse(result.response);
+          } catch (e) {
+            responseData = result.response;
+          }
+        }
+
+        return res.json({
+          success: true,
+          data: {
+            found: true,
+            question: result.question,
+            response: responseData,
+            similarity: result.score,
+            metadata: result.metadata,
+            searchTime: `${searchTime}ms`,
+            source: 'vector-cache'
+          }
+        });
+      } else {
+        console.log(`No cached response found in ${searchTime}ms`);
+        
+        return res.json({
+          success: true,
+          data: {
+            found: false,
+            message: 'Không tìm thấy câu hỏi tương tự trong cache',
+            searchTime: `${searchTime}ms`,
+            suggestion: 'Hãy sử dụng /api/chatbot/message để xử lý câu hỏi mới'
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error in vector search:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi khi tìm kiếm trong vector database',
+        error: error.message
+      });
+    }
+  },
+
+  /**
+   * Lưu câu hỏi/trả lời vào vector database - Admin endpoint
+   */
+  saveVector: async (req, res) => {
+    try {
+      const { 
+        question, 
+        response, 
+        metadata = {},
+        overwrite = false 
+      } = req.body;
+
+      if (!question?.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Câu hỏi không được để trống'
+        });
+      }
+
+      if (!response) {
+        return res.status(400).json({
+          success: false,
+          message: 'Câu trả lời không được để trống'
+        });
+      }
+
+      console.log(`Manual save request: "${question.substring(0, 50)}..."`);
+
+      // Kiểm tra xem đã có câu hỏi tương tự chưa (nếu không overwrite)
+      if (!overwrite) {
+        const existing = await vectorService.findSimilarQuestion(question.trim(), 0.3);
+        if (existing) {
+          return res.status(409).json({
+            success: false,
+            message: 'Đã có câu hỏi tương tự trong database',
+            data: {
+              existingQuestion: existing.question,
+              similarity: existing.score,
+              suggestion: 'Sử dụng overwrite=true để ghi đè'
+            }
+          });
+        }
+      }
+
+      // Chuẩn bị metadata
+      const saveMetadata = {
+        type: metadata.type || 'manual',
+        source: 'manual',
+        priority: metadata.priority || 'normal',
+        tags: metadata.tags || ['manual-entry'],
+        createdBy: req.user?.name || req.user?._id || 'admin',
+        verified: true,
+        adminNotes: metadata.adminNotes || 'Manual entry via API',
+        ...metadata
+      };
+
+      // Lưu vào vector database
+      const startTime = Date.now();
+      const success = await vectorService.saveQnA(
+        question.trim(),
+        typeof response === 'string' ? response : JSON.stringify(response),
+        saveMetadata
+      );
+      const saveTime = Date.now() - startTime;
+
+      if (success) {
+        console.log(`Manual save completed in ${saveTime}ms`);
+        
+        res.json({
+          success: true,
+          message: 'Đã lưu câu hỏi/trả lời vào vector database',
+          data: {
+            question: question.trim(),
+            saved: true,
+            saveTime: `${saveTime}ms`,
+            metadata: saveMetadata
+          }
+        });
+      } else {
+        throw new Error('Không thể lưu vào vector database');
+      }
+
+    } catch (error) {
+      console.error('Error saving to vector database:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi khi lưu vào vector database',
+        error: error.message
+      });
+    }
   }
 };
 
