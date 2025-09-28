@@ -46,7 +46,7 @@ const chatbotEmbeddingSchema = new mongoose.Schema({
     // Nguồn xử lý
     source: {
       type: String,
-      enum: ['ollama', 'quick-check', 'manual', 'seed'],
+      enum: ['ollama', 'quick-check', 'manual', 'seed', 'vector-cache'],
       default: 'ollama'
     },
 

@@ -219,7 +219,7 @@ async function startServer() {
 
 // Graceful shutdown
 process.on('SIGINT', async () => {
-    console.log('\n⏹️  Shutting down gracefully...');
+    console.log('\nShutting down gracefully...');
     
     try {
         await Database.disconnect();

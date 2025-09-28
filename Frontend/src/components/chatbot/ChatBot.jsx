@@ -397,6 +397,13 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
           placeholder: response.data.placeholder
         };
         
+        console.log('🔍 Bot message created with properties:', {
+          hasProperties: !!response.data.properties,
+          propertiesLength: response.data.properties?.length || 0,
+          properties: response.data.properties,
+          botMessage: botMessage
+        });
+        
         setMessages(prev => [...prev, botMessage]);
         playSuccessSound();
         

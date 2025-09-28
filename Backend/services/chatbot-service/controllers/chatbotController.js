@@ -45,29 +45,36 @@ const chatbotController = {
 
       // Xử lý tin nhắn bằng Ollama service với cache info từ middleware
       const ollamaResult = await ollamaService.processMessage(message.trim(), req.vectorCache);
-      // console.log('Ollama Result:', ollamaResult);
+      console.log('🔍 Full Ollama Result:', JSON.stringify(ollamaResult, null, 2));
       
       if (!ollamaResult.success) {
         throw new Error('Không thể phân tích tin nhắn từ AI');
       }
 
+
       // Tìm kiếm properties nếu có search params
-      const searchResults = await chatbotController.handlePropertySearch(ollamaResult.data.searchParams);
-      console.log(`searchResults`, searchResults);
+      const searchParams = ollamaResult.data?.searchParams;
+      const searchResults = searchParams ? await chatbotController.handlePropertySearch(searchParams) : [];
+      console.log(`🏠 Search Results: ${searchResults.length} properties found`);
       
       // Tạo AI response
       const aiResponse = chatbotController.buildAIResponse(
         ollamaResult.data,
         searchResults,
-        ollamaResult.data.searchParams
+        searchParams
       );
-      console.log('AI Response:', aiResponse);
+      console.log('🎯 Final AI Response:', aiResponse);
 
       // Trả về response
-      return res.json({
+      const finalResponse = {
         success: true,
         data: aiResponse
-      });
+      };
+      
+      console.log('📤 Final Backend Response:', JSON.stringify(finalResponse, null, 2));
+      console.log('🔍 Properties count in final response:', finalResponse.data?.properties?.length || 0);
+      
+      return res.json(finalResponse);
 
     } catch (error) {
       console.error('Chatbot error:', error);

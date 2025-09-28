@@ -1,5 +1,6 @@
 import axios from 'axios';
 import vectorService from './vectorService.js';
+import { response } from 'express';
 
 /**
  * Tích hợp với Ollama server để phân tích tin nhắn người dùng
@@ -302,77 +303,71 @@ class OllamaService {
       console.log('Processing message via Ollama model with vector caching...');
       const startTime = Date.now();
 
-      // Bước 1: Sử dụng cache info từ middleware nếu có
-      let cachedResponse = null;
-      if (vectorCache && vectorCache.found) {
-        cachedResponse = vectorCache.result;
-        console.log(`Using cache from middleware (similarity: ${vectorCache.similarity})`);
+      // Bước 1: Sử dụng cache từ middleware nếu có, nếu không thì tìm kiếm
+      let cachedResponse = vectorCache;
+      if (!cachedResponse) {
+        cachedResponse = await vectorService.findSimilarQuestion(userMessage);
       }
-
+      
+      console.log('🔍 Cached Response Check:', {
+        found: !!cachedResponse,
+        fromMiddleware: !!vectorCache,
+        similarity: cachedResponse?.score,
+        question: cachedResponse?.question?.substring(0, 50),
+        response: cachedResponse?.response?.substring(0, 50)
+      });
+      console.log('cachedResponse', cachedResponse);
+      
       if (cachedResponse) {
-        const similarity = cachedResponse.confidence || cachedResponse.score || 0;
-        console.log(`Found cached response with similarity: ${similarity.toFixed(4)}`);
+        console.log('📋 Found cached response, extracting searchParams...');
         
-        // Kiểm tra similarity threshold nghiêm ngặt hơn
-        if (similarity < 0.93) {
-          console.log(`Similarity ${similarity.toFixed(4)} too low, processing as new query`);
-          // Continue với fresh processing
-        } else {
-          console.log('High similarity match, using cached response...');
-          
-          // Parse cached response data
-          let cachedData;
-          try {
-            cachedData = typeof cachedResponse.response === 'string' 
-              ? JSON.parse(cachedResponse.response) 
-              : cachedResponse.response;
-          } catch (e) {
-            cachedData = cachedResponse.response;
-          }
-
-          // Kiểm tra cache data structure
-          if (cachedData && cachedData.searchParams) {
-          console.log('Found cache with searchParams, searching for fresh properties...');
-          console.log('Cached searchParams:', cachedData.searchParams);
-          
-          // Luôn gọi property search API với params từ cache để có kết quả mới nhất
-          const propertyResults = await this.searchPropertiesWithParams(cachedData.searchParams);
-          console.log(`propertyResults:`, propertyResults);
-
+        // Parse cached response data
+        let responseData;
+        try {
+          responseData = typeof cachedResponse.response === 'string' 
+            ? JSON.parse(cachedResponse.response) 
+            : cachedResponse.response;
+        } catch (e) {
+          responseData = cachedResponse.response;
+        }
+        
+        // Ưu tiên lấy searchParams từ metadata nếu có, nếu không thì từ response
+        const searchParams = cachedResponse.metadata?.searchParams || responseData.searchParams;
+        
+        console.log('🔍 Parsed cached data:', {
+          hasResponseSearchParams: !!responseData.searchParams,
+          responseSearchParams: responseData.searchParams,
+          hasMetadataSearchParams: !!cachedResponse.metadata?.searchParams,
+          metadataSearchParams: cachedResponse.metadata?.searchParams,
+          finalSearchParams: searchParams,
+          hasProperties: !!responseData.properties,
+          propertiesLength: responseData.properties?.length
+        });
+        
+        // Nếu là room có searchParams, return searchParams để controller xử lý
+        if (searchParams) {
           return {
             success: true,
             data: {
               isRoomSearchQuery: true,
-              searchParams: cachedData.searchParams,
-              properties: propertyResults,
-              totalFound: propertyResults.length,
-              processingTime: `${Date.now() - startTime}ms (cached params + fresh search)`,
-              source: 'vector-cache-enhanced',
-              similarity: cachedResponse.confidence || cachedResponse.score,
-              cacheMetadata: {
-                originalQuestion: cachedResponse.question,
-                usageCount: cachedResponse.usageCount || 1,
-                cacheSource: cachedResponse.source
-              }
-            }
-          };
-        } else if (cachedData && cachedData.isRoomSearchQuery === false) {
-          // Cache cho non-room queries - trả về luôn
-          console.log('Found cached non-room query response');
-          return {
-            success: true,
-            data: {
-              ...cachedData,
+              searchParams: searchParams,
+              message: responseData.message || 'Đã tìm thấy kết quả phù hợp.',
               processingTime: `${Date.now() - startTime}ms (cached)`,
               source: 'vector-cache',
-              similarity: cachedResponse.confidence || cachedResponse.score
+              similarity: cachedResponse.score
             }
           };
         } else {
-          // Cache data không có searchParams - có thể là format cũ
-          console.log('Cache found but no searchParams, falling back to fresh processing');
-          // Continue để xử lý như câu hỏi mới
-        }
+          // Non-room queries hoặc không có searchParams, return trực tiếp
+          return {
+            success: true,
+            data: {
+              ...responseData,
+              processingTime: `${Date.now() - startTime}ms (cached)`,
+              source: 'vector-cache',
+              similarity: cachedResponse.score
+            }
+          };
         }
       }
 
@@ -444,23 +439,17 @@ class OllamaService {
         const searchParams = await this.enhanceWithRealIds(extractedData, provinces, amenities);
         console.log('Final search params:', searchParams);
 
-        // Tìm kiếm properties với search params mới
-        console.log('Searching properties for new query...');
-        const propertyResults = await this.searchPropertiesWithParams(searchParams);
-        
         finalResponse = {
           success: true,
           data: {
             isRoomSearchQuery: true,
             searchParams: searchParams,
-            properties: propertyResults,
             processingTime: `${processingTime}ms`,
-            source: 'ollama-fresh',
-            extractedData: extractedData // Include để debug
+            source: 'ollama'
           }
         };
         
-        // Lưu vào cache với metadata chi tiết (bao gồm cả property results)
+        // Lưu vào cache với metadata chi tiết
         await vectorService.saveQnA(
           userMessage, 
           JSON.stringify(finalResponse.data),
@@ -468,7 +457,6 @@ class OllamaService {
             type: 'room-search-query',
             extractedData: extractedData,
             searchParams: searchParams,
-            propertyCount: propertyResults.length,
             processingTimeMs: processingTime
           }
         );
@@ -659,7 +647,7 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
       sortBy: 'createdAt',
       sortOrder: 'desc',
       page: '1',
-      limit: '8' // Request 8 properties từ API
+      limit: '8'
     };
 
     // Map province name to ID
@@ -774,120 +762,6 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
     console.log(`Quick check result: ${result}`);
     
     return result;
-  }
-
-  /**
-   * Tìm kiếm properties với search params từ cache
-   */
-  async searchPropertiesWithParams(searchParams) {
-    try {
-      console.log('Searching properties with params:', searchParams);
-      
-      // Construct query string từ search params
-      const queryParams = new URLSearchParams();
-      
-      Object.keys(searchParams).forEach(key => {
-        if (searchParams[key] !== null && searchParams[key] !== undefined && searchParams[key] !== '') {
-          queryParams.append(key, searchParams[key]);
-        }
-      });
-      
-      const queryString = queryParams.toString();
-      
-      const searchUrl = `http://localhost:5000/api/search-properties/properties/?${queryString}`;
-      
-      console.log('🔍 Property search URL:', searchUrl);
-      
-      const response = await axios.get(searchUrl, { 
-        timeout: 10000,
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      console.log('📊 Full API Response:', JSON.stringify(response.data, null, 2));
-      
-      console.log('📊 API Response analysis:', {
-        success: response.data?.success,
-        message: response.data?.message,
-        dataExists: !!response.data?.data,
-        propertiesExists: !!response.data?.data?.properties,
-        propertiesType: typeof response.data?.data?.properties,
-        isPropertiesArray: Array.isArray(response.data?.data?.properties),
-        propertiesLength: response.data?.data?.properties?.length || 0,
-        totalFound: response.data?.data?.pagination?.total,
-        searchCriteria: response.data?.data?.searchCriteria
-      });
-      
-      if (response.data && response.data.success) {
-        // API response structure: data.properties should be array
-        let properties = response.data.data?.properties;
-        
-        // Debug raw properties
-        console.log('🔍 Raw properties:', {
-          type: typeof properties,
-          isArray: Array.isArray(properties),
-          length: properties?.length,
-          keys: properties ? Object.keys(properties).slice(0, 5) : 'none'
-        });
-        
-        // Convert object to array nếu cần
-        if (properties && typeof properties === 'object' && !Array.isArray(properties)) {
-          // Nếu properties là object, convert sang array
-          properties = Object.values(properties);
-          console.log('🔄 Converted object to array:', properties.length);
-        }
-        
-        // Fallback nếu vẫn không có properties
-        if (!Array.isArray(properties) || properties.length === 0) {
-          console.log('⚠️ Properties not found in expected location, checking alternatives...');
-          
-          // Thử các locations khác có thể
-          const alternatives = [
-            response.data.data,
-            response.data.properties,
-            response.data
-          ];
-          
-          for (const alt of alternatives) {
-            if (Array.isArray(alt) && alt.length > 0) {
-              properties = alt;
-              console.log('✅ Found properties in alternative location:', properties.length);
-              break;
-            }
-          }
-        }
-        
-        // Final validation
-        if (!Array.isArray(properties)) {
-          console.error('❌ Could not extract properties array from response');
-          return [];
-        }
-        
-        // Kiểm tra mismatch giữa totalFound và properties.length
-        const totalFound = response.data?.data?.pagination?.total || 0;
-        if (totalFound > 0 && properties.length === 0) {
-          console.warn(`⚠️ Data mismatch: API says ${totalFound} results found but properties array is empty!`);
-          console.warn('This could be a pagination issue or search criteria filtering problem');
-        }
-        
-        console.log(`✅ Successfully extracted ${properties.length} properties (expected: ${totalFound})`);
-        return properties.slice(0, 8);
-      } else {
-        console.log('❌ API call unsuccessful:', response.data?.message || 'Unknown error');
-        return [];
-      }
-      
-    } catch (error) {
-      console.error('Error searching properties:', error.message);
-      
-      // Log more details for debugging
-      if (error.response) {
-        console.error('Property API error response:', error.response.status, error.response.data);
-      }
-      
-      return [];
-    }
   }
 
   /**

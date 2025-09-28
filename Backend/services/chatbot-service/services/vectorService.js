@@ -16,11 +16,11 @@ class VectorService {
     // Ollama embedding settings
     this.ollamaUrl = process.env.OLLAMA_URL || 'http://localhost:11434';
     this.embeddingModel = process.env.EMBEDDING_MODEL || 'nomic-embed-text:latest'; // Tạm dùng lại để match existing data
-    this.embeddingDimension = 768; // llama3.2 có 768 dimensions - match với data hiện tại
+    this.embeddingDimension = 768; // nomic-embed-text:latest có 768 dimensions - match với data hiện tại
     this.embeddingTimeout = 15000; // Reduced timeout to 15s for faster response
     
     // Cache settings - sử dụng cosine similarity trong Node.js
-    this.similarityThreshold = 0.3; // Ngưỡng cosine similarity để match câu hỏi
+    this.similarityThreshold = 0.85; // Ngưỡng cao để đảm bảo chỉ match khi rất tương đồng
     this.maxCacheSize = 10000; // Giới hạn số lượng entries trong cache
     this.maxSearchDocs = 200; // Giới hạn số docs để tìm kiếm (tối ưu performance)
     
@@ -187,11 +187,11 @@ class VectorService {
       
       const questionEmbedding = await this.createEmbedding(question);
       
-      // Kiểm tra xem câu hỏi đã tồn tại chưa (similarity > 0.3)
-      const existing = await this.findSimilarQuestion(question, 0.3);
+      // Kiểm tra xem câu hỏi đã tồn tại chưa với threshold cao hơn (0.85 để tránh duplicate không cần thiết)
+      const existing = await this.findSimilarQuestion(question, 0.85);
       
       if (existing) {
-        // Update existing entry using Mongoose
+        // Update existing entry using Mongoose chỉ khi thực sự giống nhau
         const existingEntry = await ChatbotEmbedding.findById(existing._id);
         if (existingEntry) {
           existingEntry.response = response;
@@ -227,6 +227,7 @@ class VectorService {
         
         await newEmbedding.save();
         console.log('Saved new Q&A entry:', question.substring(0, 50));
+        console.log(`Database now has ${await ChatbotEmbedding.countDocuments()} total entries`);
       }
       
       // Cleanup old entries nếu vượt quá limit
@@ -296,8 +297,8 @@ class VectorService {
         validEmbeddings++;
         const similarity = this.calculateCosineSimilarity(questionEmbedding, doc.embedding);
         
-        // Sử dụng threshold thấp hơn để test
-        if (similarity >= 0.1) {
+        // Chỉ lưu similarities >= threshold để enforce nghiêm ngặt
+        if (similarity >= useThreshold) {
           similarities.push({
             ...doc,
             similarity: similarity,
@@ -306,13 +307,34 @@ class VectorService {
         }
       }
       
-      console.log(`Processed ${validEmbeddings} valid embeddings, found ${similarities.length} matches above threshold`);
+      console.log(`Processed ${validEmbeddings} valid embeddings, found ${similarities.length} matches above threshold ${useThreshold}`);
       
       // Sắp xếp theo similarity descending
       similarities.sort((a, b) => b.similarity - a.similarity);
       
       if (similarities.length > 0) {
         const bestMatch = similarities[0];
+        console.log(`✅ bestMatch found:`, {
+          id: bestMatch._id,
+          question: bestMatch.question.substring(0, 50),
+          similarity: bestMatch.similarity,
+          hasMetadata: !!bestMatch.metadata,
+          metadataSearchParams: bestMatch.metadata?.searchParams,
+          responseSearchParams: (() => {
+            try {
+              const parsed = JSON.parse(bestMatch.response);
+              return parsed.searchParams;
+            } catch (e) {
+              return 'parse_error';
+            }
+          })()
+        });
+        
+        // Double-check threshold để đảm bảo
+        if (bestMatch.similarity < useThreshold) {
+          console.log(`❌ Best match similarity ${bestMatch.similarity.toFixed(4)} still below threshold ${useThreshold}`);
+          return await this.fallbackTextSearch(question);
+        }
         
         // Update usage statistics
         try {
@@ -327,24 +349,25 @@ class VectorService {
           console.log('Error updating entry stats:', updateError.message);
         }
         
-        console.log(`Found cached response with cosine similarity: ${bestMatch.similarity.toFixed(4)} for question: "${bestMatch.question.substring(0, 50)}..."`);
-        
+        console.log(`✅ Found cached response with cosine similarity: ${bestMatch.similarity.toFixed(4)} for question: "${bestMatch.question.substring(0, 50)}..."`);
+        console.log(`bestMatch`, bestMatch);
         return {
           ...bestMatch,
           confidence: bestMatch.similarity,
           source: 'cosine_similarity'
         };
       } else {
-        console.log(`No matches found above threshold ${useThreshold}, trying text search fallback`);
-        return await this.fallbackTextSearch(question);
+        console.log(`❌ No matches found above threshold ${useThreshold}`);
+        console.log(`🔄 Returning null to trigger fresh OllamaService processing and auto-save for future cache`);
+        return null; // Để OllamaService xử lý và tự động lưu kết quả
       }
       
     } catch (error) {
       console.error('Error in cosine similarity search:', error);
       
-      // Final fallback: text search
-      console.log('Falling back to text search due to error');
-      return await this.fallbackTextSearch(question);
+      // Return null để OllamaService xử lý thay vì fallback text search
+      console.log('🔄 Vector search error - returning null for fresh OllamaService processing');
+      return null;
     }
   }
 

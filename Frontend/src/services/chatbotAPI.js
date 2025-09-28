@@ -132,7 +132,8 @@ const chatbotService = {
       });
 
       if (response.data.success) {
-        console.log('Chatbot Response Data:', response.data);
+        console.log('📡 Chatbot Response Full:', JSON.stringify(response.data, null, 2));
+        console.log('🔍 Properties in response:', response.data.data?.properties);
         return {
           success: true,
           data: {
