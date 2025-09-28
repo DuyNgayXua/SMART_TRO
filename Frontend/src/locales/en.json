@@ -233,6 +233,67 @@
     },
     "confirm": {
       "cancelDeposit": "Are you sure you want to cancel deposit for room {{roomNumber}}?"
+    },
+    "transfer": {
+      "modalTitle": "Room Transfer",
+      "description": "Select an empty room to transfer tenants from current room:",
+      "currentRoomInfo": "Current room information:",
+      "availableRooms": "Available rooms:",
+      "loading": "Loading available rooms...",
+      "noAvailableRooms": "No available rooms at the moment.",
+      "confirm": "Confirm Transfer",
+      "transferring": "Transferring...",
+      "select": "Select",
+      "rent": "Rent",
+      "deposit": "Deposit",
+      "currentTenants": "Current Tenants",
+      "currentVehicles": "Current Vehicles",
+      "area": "Area",
+      "electricityPrice": "Electricity Price",
+      "waterPrice": "Water Price",
+      "servicePrice": "Service Fee",
+      "noDeposit": "No deposit",
+      "perMonth": "/month",
+      "perKwh": "/kWh",
+      "people": "people",
+      "vehicles": "vehicles",
+      "sqm": "m²"
+    },
+    "invoice": {
+      "title": "Create Invoice",
+      "loading": "Loading invoice information...",
+      "contractInfo": "Contract Information",
+      "monthlyRent": "Monthly Rent",
+      "periodInfo": "Period Information",
+      "dueDate": "Due Date",
+      "periodStart": "From Date",
+      "periodEnd": "To Date",
+      "charges": "Charges",
+      "addCharge": "Add Charge",
+      "removeCharge": "Remove Charge",
+      "chargeType": "Charge Type",
+      "description": "Description",
+      "descriptionPlaceholder": "Enter charge description",
+      "quantity": "Quantity",
+      "unitPrice": "Unit Price",
+      "amount": "Amount",
+      "chargeTypes": {
+        "rent": "Room Rent",
+        "electricity": "Electricity",
+        "water": "Water",
+        "internet": "Internet",
+        "parking": "Parking Fee",
+        "cleaning": "Cleaning Fee",
+        "other": "Other"
+      },
+      "summary": "Summary",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "total": "Total",
+      "notes": "Notes",
+      "notesPlaceholder": "Additional notes about the invoice (optional)",
+      "create": "Create Invoice",
+      "creating": "Creating..."
     }
   },
   "common": {
@@ -821,7 +882,9 @@
     "loading": "Loading vehicles...",
     "listTitle": "Vehicle List",
     "empty": {
-      "title": "No vehicles registered yet"
+      "title": "No vehicles registered yet",
+      "description": "This room has no registered vehicles. You can add tenant vehicle information for better management.",
+      "addFirst": "Add first vehicle"
     },
     "form": {
       "addTitle": "Add New Vehicle",

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import SideBar from "../../common/adminSidebar";
 import { useToast } from "../../../hooks/useToast";
+import { useAuth } from "../../../contexts/AuthContext";
 import "../admin-global.css";
 import "./rooms.css";
 import roomsAPI from '../../../services/roomsAPI';
@@ -9,14 +10,13 @@ import amenitiesAPI from '../../../services/amenitiesAPI';
 import depositContractsAPI from '../../../services/depositContractsAPI';
 import contractsAPI from '../../../services/contractsAPI';
 import tenantsAPI from '../../../services/tenantsAPI';
+import invoicesAPI from '../../../services/invoicesAPI';
 import api from '../../../services/api';
 
 const RoomsManagement = () => {
-  console.log('RoomsManagement component loaded');
   const { t } = useTranslation();
-  console.log('useTranslation hook working');
   const { showToast } = useToast();
-  console.log('useToast hook working');
+  const { user } = useAuth();
   const [rooms, setRooms] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
@@ -92,6 +92,47 @@ const RoomsManagement = () => {
   });
   const [vehicleFormErrors, setVehicleFormErrors] = useState({});
   const [savingVehicle, setSavingVehicle] = useState(false);
+  
+  // Room Transfer Modal States
+  const [showRoomTransferModal, setShowRoomTransferModal] = useState(false);
+  const [selectedRoomForTransfer, setSelectedRoomForTransfer] = useState(null);
+  const [currentRoomContract, setCurrentRoomContract] = useState(null);
+  const [availableRoomsForTransfer, setAvailableRoomsForTransfer] = useState([]);
+  const [loadingAvailableRooms, setLoadingAvailableRooms] = useState(false);
+  const [selectedTargetRoom, setSelectedTargetRoom] = useState(null);
+  const [transferring, setTransferring] = useState(false);
+  
+  // Invoice Modal States
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [selectedRoomForInvoice, setSelectedRoomForInvoice] = useState(null);
+  const [invoiceFormData, setInvoiceFormData] = useState({
+    issueDate: new Date().toISOString().split('T')[0], // Ngày lập hóa đơn mặc định là hôm nay
+    dueDate: '',
+    periodStart: '',
+    periodEnd: '',
+    electricOldReading: 0,
+    electricNewReading: 0,
+    electricRate: 3500, // Giá điện mặc định
+    waterOldReading: 0,
+    waterNewReading: 0,
+    waterRate: 20000, // Giá nước mặc định
+    waterBillingType: 'perCubicMeter', // 'perCubicMeter' hoặc 'perPerson'
+    waterPricePerPerson: 50000, // Giá nước theo người
+    charges: [{
+      type: 'rent',
+      description: 'Tiền phòng',
+      amount: 0,
+      quantity: 1,
+      unitPrice: 0
+    }],
+    discount: 0,
+    notes: ''
+  });
+  const [loadingInvoiceInfo, setLoadingInvoiceInfo] = useState(false);
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const [contractInfo, setContractInfo] = useState(null);
+  const [sendZaloInvoice, setSendZaloInvoice] = useState(true); // Default checked
+  const [invoiceFormErrors, setInvoiceFormErrors] = useState({});
   
   const [rentalContractData, setRentalContractData] = useState({
     tenants: [{
@@ -241,7 +282,9 @@ const RoomsManagement = () => {
   };
 
   const fetchRooms = useCallback(async () => {
-    console.log('fetchRooms called with:', { activeTab, searchFilters, pagination });
+    if (!user) {
+      return;
+    }
     setLoading(true);
     try {
       const params = {
@@ -252,9 +295,7 @@ const RoomsManagement = () => {
         search: searchFilters.search || undefined,
         status: activeTab !== 'all' ? activeTab : undefined
       };
-      console.log('API params:', params);
       const res = await roomsAPI.searchRooms(params); // { success, data: { rooms, pagination } }
-      console.log('API response:', res);
       if (res.success) {
     const list = res.data.rooms.map(r => ({
           id: r._id,
@@ -278,28 +319,35 @@ const RoomsManagement = () => {
         }));
       }
       // Lấy statistics để cập nhật counts
+      if (!user) {
+        return;
+      }
       const statsRes = await roomsAPI.getRoomStatistics();
       if (statsRes.success) {
         const stats = statsRes.data;
-        setStatusCounts({
-          all: (stats.available?.count||0)+(stats.rented?.count||0)+(stats.reserved?.count||0)+(stats.expiring?.count||0),
+        const counts = {
           available: stats.available?.count||0,
           rented: stats.rented?.count||0,
           reserved: stats.reserved?.count||0,
           expiring: stats.expiring?.count||0
+        };
+        const totalValidRooms = counts.available + counts.rented + counts.reserved + counts.expiring;
+        
+        setStatusCounts({
+          all: totalValidRooms,
+          ...counts
         });
       }
     } catch (e) {
       console.error('Error loading rooms list:', e);
       showToast('error', t('common.errors.loadFailed') || 'Lỗi tải dữ liệu');
     } finally { setLoading(false); }
-  }, [activeTab, searchFilters, pagination.currentPage, pagination.itemsPerPage, showToast, t]);
+  }, [activeTab, searchFilters, pagination.currentPage, pagination.itemsPerPage, showToast, t, user]);
 
   const fetchDepositContracts = useCallback(async () => {
     try {
       const res = await depositContractsAPI.getDepositContracts();
       if (res.success) {
-        console.log('Fetched deposit contracts:', res.data);
         setDepositContracts(res.data || []); // Change: res.data instead of res.data.contracts
       }
     } catch (e) {
@@ -308,9 +356,12 @@ const RoomsManagement = () => {
   }, []);
 
   useEffect(() => {
-    fetchRooms();
-    fetchDepositContracts();
-  }, [fetchRooms, fetchDepositContracts]);
+    // Chỉ fetch data khi user đã được load
+    if (user) {
+      fetchRooms();
+      fetchDepositContracts();
+    }
+  }, [fetchRooms, fetchDepositContracts, user]);
 
   // Helper function to check if room has deposit contract
   const hasDepositContract = (roomNumber) => {
@@ -352,6 +403,43 @@ const RoomsManagement = () => {
     console.log(`Final result for room ${roomNumber}:`, hasDeposit);
     console.log('=== END CHECK ===');
     return hasDeposit;
+  };
+
+  // Helper function to get deposit contract info for room
+  const getDepositContractInfo = (roomNumber) => {
+    if (!depositContracts || depositContracts.length === 0) {
+      return null;
+    }
+    
+    return depositContracts.find(contract => {
+      const contractRoomNumber = contract.room?.roomNumber || contract.room;
+      const statusMatch = contract.status === 'active' || 
+                         contract.status === 'confirmed' || 
+                         contract.status === 'pending' ||
+                         !contract.status;
+      const roomMatch = contractRoomNumber === roomNumber || 
+                       contractRoomNumber?.toString() === roomNumber?.toString();
+      return roomMatch && statusMatch;
+    });
+  };
+
+  // Helper function to get current rental contract info for room
+  const getRentalContractInfo = async (roomId) => {
+    try {
+      const response = await contractsAPI.getContractsByRoom(roomId);
+      if (response.success && response.data && response.data.length > 0) {
+        // Tìm contract active (chưa kết thúc)
+        const activeContract = response.data.find(contract => 
+          contract.status === 'active' && 
+          new Date(contract.endDate) > new Date()
+        );
+        return activeContract || response.data[0]; // Fallback to first contract if no active found
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching rental contract:', error);
+      return null;
+    }
   };
 
   const handleFilterChange = (key, value) => {
@@ -655,16 +743,16 @@ const RoomsManagement = () => {
     }));
   };
 
-  // Format number with commas
+  // Format number with dots (Vietnamese style)
   const formatNumberWithCommas = (num) => {
     if (!num) return '';
-    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
   };
 
   // Parse number from formatted string
   const parseFormattedNumber = (str) => {
     if (!str) return '';
-    // Remove commas and keep only digits
+    // Remove dots and keep only digits
     return str.toString().replace(/[^0-9]/g, '');
   };
 
@@ -734,7 +822,7 @@ const RoomsManagement = () => {
 
       // 2. PHASE 1: Xử lý tenant information (update existing + create new)
       // Show single loading message at the start
-      showToast('info', isContractEditMode ? t('contracts.updating') : t('contracts.creating'));
+      showToast('info', isContractEditMode ? t('contracts.form.updating') : t('contracts.form.creating'));
       
       for (let i = 0; i < rentalContractData.tenants.length; i++) {
         const tenantData = rentalContractData.tenants[i];
@@ -1131,9 +1219,48 @@ const RoomsManagement = () => {
     setShowContractOptionsModal(false);
     
     if (contractType === 'rental') {
-      // Navigate to create rental contract
-      console.log('Creating rental contract for room:', selectedRoomForContract);
-      // TODO: Navigate to contract creation page or open contract modal
+      // Open rental contract creation modal directly
+      if (!selectedRoomForContract) {
+        showToast('error', t('rooms.error.roomInfoNotFound'));
+        return;
+      }
+      
+      // Reset edit mode for new contract
+      setIsContractEditMode(false);
+      setEditingContractId(null);
+      
+      // Pre-fill rental contract data with room information
+      setRentalContractData({
+        tenants: [{
+          tenantName: '',
+          tenantPhone: '',
+          tenantId: '',
+          tenantImages: []
+        }],
+        vehicles: [{
+          licensePlate: '',
+          vehicleType: '',
+          ownerIndex: 0
+        }],
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: '',
+        deposit: selectedRoomForContract.price || '',
+        monthlyRent: selectedRoomForContract.price || '',
+        electricityPrice: 3500,
+        waterPrice: 25000,
+        waterPricePerPerson: 50000,
+        waterChargeType: 'fixed',
+        servicePrice: 150000,
+        currentElectricIndex: '',
+        currentWaterIndex: '',
+        paymentCycle: 'monthly',
+        notes: ''
+      });
+      
+      // Clear errors and open rental contract modal
+      setRentalContractErrors({});
+      setShowRentalContractModal(true);
+      
     } else if (contractType === 'deposit') {
       // Open deposit contract creation modal
       const defaultDepositAmount = selectedRoomForContract?.price ? String(selectedRoomForContract.price) : '';
@@ -1774,16 +1901,529 @@ const RoomsManagement = () => {
     // Giữ lại modal danh sách xe
   };
 
-  const handleCreateInvoice = (room) => {
-    // TODO: Implement create invoice modal/page
-    console.log('Create invoice for room:', room);
-    showToast('info', t('rooms.messages.createInvoiceDev') || 'Chức năng đang phát triển');
+  const handleCreateInvoice = async (room) => {
+    if (room.status !== 'rented') {
+      showToast('warning', 'Chỉ có thể tạo hóa đơn cho phòng đang được thuê');
+      return;
+    }
+
+    setSelectedRoomForInvoice(room);
+    setShowInvoiceModal(true);
+    setLoadingInvoiceInfo(true);
+
+    try {
+      // Lấy thông tin hợp đồng hiện tại của phòng
+      const contractResponse = await contractsAPI.getContractsByRoom(room.id);
+      
+      if (!contractResponse.success || !contractResponse.data || contractResponse.data.length === 0) {
+        showToast('error', 'Không tìm thấy hợp đồng thuê cho phòng này');
+        setShowInvoiceModal(false);
+        return;
+      }
+
+      const activeContract = contractResponse.data.find(contract => contract.status === 'active');
+      
+      if (!activeContract) {
+        showToast('error', 'Không tìm thấy hợp đồng đang hoạt động cho phòng này');
+        setShowInvoiceModal(false);
+        return;
+      }
+
+      setContractInfo(activeContract);
+
+      // Lấy thông tin để tạo hóa đơn mới
+      const contractId = activeContract._id || activeContract.id;
+      console.log('Contract ID:', contractId, 'Active Contract:', activeContract);
+      
+      const invoiceInfoResponse = await invoicesAPI.getNewInvoiceInfo(contractId);
+      
+      if (invoiceInfoResponse.success) {
+        const { contract, suggestedPeriod, lastInvoice } = invoiceInfoResponse.data;
+        
+        // Set form data với thông tin đề xuất
+        const periodEndDate = new Date(suggestedPeriod.end);
+        const paymentDueDate = new Date(periodEndDate);
+        paymentDueDate.setDate(paymentDueDate.getDate() + 5); // 5 ngày sau ngày kết thúc chu kỳ
+        
+        // Tạo charges ban đầu
+        const initialCharges = [{
+          type: 'rent',
+          description: 'Tiền phòng',
+          amount: contract.monthlyRent || 0,
+          quantity: 1,
+          unitPrice: contract.monthlyRent || 0
+        }];
+
+        // Thêm tiền dịch vụ nếu có
+        if (contract.servicePrice && contract.servicePrice > 0) {
+          initialCharges.push({
+            type: 'other',
+            description: 'Phí dịch vụ',
+            quantity: 1,
+            unitPrice: contract.servicePrice,
+            amount: contract.servicePrice
+          });
+        }
+
+        // Thêm charge nước nếu tính theo người
+        if (contract.waterChargeType === 'per_person') {
+          const tenantCount = contract.tenants?.length || 1;
+          const waterAmount = tenantCount * (contract.waterPricePerPerson || 50000);
+          initialCharges.push({
+            type: 'water',
+            description: `Tiền nước (${tenantCount} người)`,
+            quantity: tenantCount,
+            unitPrice: contract.waterPricePerPerson || 50000,
+            amount: waterAmount
+          });
+        }
+
+        setInvoiceFormData({
+          issueDate: new Date().toISOString().split('T')[0], // Ngày lập hóa đơn hôm nay
+          dueDate: paymentDueDate.toISOString().split('T')[0], // Tự động tính 5 ngày sau
+          periodStart: new Date(suggestedPeriod.start).toISOString().split('T')[0],
+          periodEnd: new Date(suggestedPeriod.end).toISOString().split('T')[0],
+          electricOldReading: lastInvoice ? lastInvoice.electricNewReading : (contract.currentElectricIndex || 0),
+          electricNewReading: lastInvoice ? lastInvoice.electricNewReading : (contract.currentElectricIndex || 0),
+          electricRate: contract.electricPrice || 3500, // Lấy từ hợp đồng
+          waterOldReading: lastInvoice ? lastInvoice.waterNewReading : (contract.currentWaterIndex || 0),
+          waterNewReading: lastInvoice ? lastInvoice.waterNewReading : (contract.currentWaterIndex || 0),
+          waterRate: contract.waterPrice || 20000, // Lấy từ hợp đồng
+          waterBillingType: contract.waterChargeType === 'per_person' ? 'perPerson' : 'perCubicMeter', // Lấy từ hợp đồng
+          waterPricePerPerson: contract.waterPricePerPerson || 50000, // Lấy từ hợp đồng
+          charges: initialCharges,
+          discount: 0,
+          notes: `Hóa đơn tiền phòng ${contract.room.roomNumber} từ ${new Date(suggestedPeriod.start).toLocaleDateString('vi-VN')} đến ${new Date(suggestedPeriod.end).toLocaleDateString('vi-VN')}`
+        });
+      }
+    } catch (error) {
+      console.error('Error loading invoice info:', error);
+      showToast('error', 'Lỗi khi tải thông tin hóa đơn');
+      setShowInvoiceModal(false);
+    } finally {
+      setLoadingInvoiceInfo(false);
+    }
   };
 
-  const handleRoomTransfer = (room) => {
-    // TODO: Implement room transfer modal/page
-    console.log('Room transfer for room:', room);
-    showToast('info', t('rooms.messages.roomTransferDev') || 'Chức năng đang phát triển');
+  const handleInvoiceFormChange = (field, value) => {
+    // Clear error for this field
+    if (invoiceFormErrors[field]) {
+      setInvoiceFormErrors(prev => ({
+        ...prev,
+        [field]: ''
+      }));
+    }
+    
+    setInvoiceFormData(prev => {
+      const updated = {
+        ...prev,
+        [field]: value
+      };
+
+      // Tự động tính ngày đến hạn thanh toán (5 ngày sau ngày kết thúc chu kỳ)
+      if (field === 'periodEnd' && value) {
+        const endDate = new Date(value);
+        const dueDate = new Date(endDate);
+        dueDate.setDate(dueDate.getDate() + 5);
+        updated.dueDate = dueDate.toISOString().split('T')[0];
+      }
+
+      // Tự động cập nhật charges khi thay đổi thông tin điện nước
+      if (field.includes('electric') || field.includes('water')) {
+        const updatedCharges = [...updated.charges];
+        
+        // Tính toán tiền điện
+        if (field.includes('electric')) {
+          const electricUsage = (updated.electricNewReading || 0) - (updated.electricOldReading || 0);
+          const electricAmount = electricUsage * (updated.electricRate || 0);
+          
+          // Tìm và cập nhật charge điện hoặc thêm mới
+          let electricIndex = updatedCharges.findIndex(c => c.type === 'electricity');
+          if (electricIndex === -1 && electricUsage > 0) {
+            // Thêm charge điện mới
+            updatedCharges.push({
+              type: 'electricity',
+              description: `Tiền điện (${electricUsage} kWh)`,
+              quantity: electricUsage,
+              unitPrice: updated.electricRate || 0,
+              amount: electricAmount
+            });
+          } else if (electricIndex !== -1) {
+            // Cập nhật charge điện hiện tại
+            updatedCharges[electricIndex] = {
+              ...updatedCharges[electricIndex],
+              description: `Tiền điện (${electricUsage} kWh)`,
+              quantity: electricUsage,
+              unitPrice: updated.electricRate || 0,
+              amount: electricAmount
+            };
+            
+            // Xóa nếu usage = 0
+            if (electricUsage <= 0) {
+              updatedCharges.splice(electricIndex, 1);
+            }
+          }
+        }
+
+        // Tính toán tiền nước
+        if (field.includes('water')) {
+          let waterAmount = 0;
+          let waterQuantity = 1;
+          let waterDescription = '';
+          let waterUnitPrice = 0;
+
+          if (updated.waterBillingType === 'perCubicMeter') {
+            // Tính theo khối (m³)
+            const waterUsage = (updated.waterNewReading || 0) - (updated.waterOldReading || 0);
+            waterAmount = waterUsage * (updated.waterRate || 0);
+            waterQuantity = waterUsage;
+            waterUnitPrice = updated.waterRate || 0;
+            waterDescription = `Tiền nước (${waterUsage} m³)`;
+          } else if (updated.waterBillingType === 'perPerson') {
+            // Tính theo người
+            const tenantCount = contractInfo?.tenants?.length || 1;
+            waterAmount = tenantCount * (updated.waterPricePerPerson || 0);
+            waterQuantity = tenantCount;
+            waterUnitPrice = updated.waterPricePerPerson || 0;
+            waterDescription = `Tiền nước (${tenantCount} người)`;
+          }
+          
+          // Tìm và cập nhật charge nước hoặc thêm mới
+          let waterIndex = updatedCharges.findIndex(c => c.type === 'water');
+          
+          if (waterAmount > 0) {
+            if (waterIndex === -1) {
+              // Thêm charge nước mới
+              updatedCharges.push({
+                type: 'water',
+                description: waterDescription,
+                quantity: waterQuantity,
+                unitPrice: waterUnitPrice,
+                amount: waterAmount
+              });
+            } else {
+              // Cập nhật charge nước hiện tại
+              updatedCharges[waterIndex] = {
+                ...updatedCharges[waterIndex],
+                description: waterDescription,
+                quantity: waterQuantity,
+                unitPrice: waterUnitPrice,
+                amount: waterAmount
+              };
+            }
+          } else if (waterIndex !== -1) {
+            // Xóa charge nước nếu amount = 0
+            updatedCharges.splice(waterIndex, 1);
+          }
+        }
+
+        updated.charges = updatedCharges;
+      }
+
+      return updated;
+    });
+  };
+
+  const handleChargeChange = (index, field, value) => {
+    setInvoiceFormData(prev => {
+      const updatedCharges = [...prev.charges];
+      updatedCharges[index] = {
+        ...updatedCharges[index],
+        [field]: value
+      };
+      
+      // Tự động tính amount khi thay đổi quantity hoặc unitPrice
+      if (field === 'quantity' || field === 'unitPrice') {
+        updatedCharges[index].amount = updatedCharges[index].quantity * updatedCharges[index].unitPrice;
+      }
+      
+      return {
+        ...prev,
+        charges: updatedCharges
+      };
+    });
+  };
+
+  const addCharge = () => {
+    setInvoiceFormData(prev => ({
+      ...prev,
+      charges: [...prev.charges, {
+        type: 'other',
+        description: '',
+        amount: 0,
+        quantity: 1,
+        unitPrice: 0
+      }]
+    }));
+  };
+
+  const removeCharge = (index) => {
+    if (invoiceFormData.charges.length > 1) {
+      setInvoiceFormData(prev => ({
+        ...prev,
+        charges: prev.charges.filter((_, i) => i !== index)
+      }));
+    }
+  };
+
+  const calculateInvoiceTotal = () => {
+    const subtotal = invoiceFormData.charges.reduce((sum, charge) => sum + charge.amount, 0);
+    return Math.max(0, subtotal - (invoiceFormData.discount || 0));
+  };
+
+  const validateInvoiceForm = () => {
+    const errors = {};
+    
+    if (!invoiceFormData.issueDate) {
+      errors.issueDate = 'Vui lòng chọn ngày lập hóa đơn';
+    }
+    
+    if (!invoiceFormData.dueDate) {
+      errors.dueDate = 'Vui lòng chọn ngày đến hạn thanh toán';
+    }
+    
+    if (!invoiceFormData.periodStart) {
+      errors.periodStart = 'Vui lòng chọn ngày bắt đầu chu kỳ';
+    }
+    
+    if (!invoiceFormData.periodEnd) {
+      errors.periodEnd = 'Vui lòng chọn ngày kết thúc chu kỳ';
+    }
+    
+    // Date logic validation
+    if (invoiceFormData.periodStart && invoiceFormData.periodEnd && 
+        new Date(invoiceFormData.periodStart) >= new Date(invoiceFormData.periodEnd)) {
+      errors.periodEnd = 'Ngày kết thúc phải sau ngày bắt đầu chu kỳ';
+    }
+    
+    if (invoiceFormData.issueDate && invoiceFormData.dueDate && 
+        new Date(invoiceFormData.issueDate) > new Date(invoiceFormData.dueDate)) {
+      errors.dueDate = 'Ngày đến hạn phải sau ngày lập hóa đơn';
+    }
+    
+    // Electric reading validation
+    if (!invoiceFormData.electricNewReading || invoiceFormData.electricNewReading < 0) {
+      errors.electricNewReading = 'Vui lòng nhập chỉ số điện mới';
+    } else if (invoiceFormData.electricNewReading < invoiceFormData.electricOldReading) {
+      errors.electricNewReading = 'Chỉ số điện mới phải lớn hơn hoặc bằng chỉ số cũ';
+    }
+    
+    // Water reading validation (if per cubic meter)
+    if (invoiceFormData.waterBillingType === 'perCubicMeter') {
+      if (!invoiceFormData.waterNewReading || invoiceFormData.waterNewReading < 0) {
+        errors.waterNewReading = 'Vui lòng nhập chỉ số nước mới';
+      } else if (invoiceFormData.waterNewReading < invoiceFormData.waterOldReading) {
+        errors.waterNewReading = 'Chỉ số nước mới phải lớn hơn hoặc bằng chỉ số cũ';
+      }
+    }
+    
+    // Charges validation
+    if (invoiceFormData.charges.length === 0) {
+      errors.charges = 'Vui lòng thêm ít nhất một khoản thu';
+    } else {
+      const invalidCharge = invoiceFormData.charges.find(charge => 
+        !charge.description.trim() || charge.amount <= 0
+      );
+      if (invalidCharge) {
+        errors.charges = 'Vui lòng điền đầy đủ thông tin các khoản thu';
+      }
+    }
+    
+    return errors;
+  };
+
+  const focusFirstError = (errors) => {
+    const errorFields = Object.keys(errors);
+    if (errorFields.length > 0) {
+      const firstErrorField = errorFields[0];
+      const element = document.querySelector(`[name="${firstErrorField}"]`) || 
+                    document.querySelector(`#${firstErrorField}`) ||
+                    document.querySelector(`input[name*="${firstErrorField}"]`);
+      if (element) {
+        element.focus();
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+  };
+
+  const handleSaveInvoice = async () => {
+    if (!contractInfo) {
+      showToast('error', 'Không tìm thấy thông tin hợp đồng');
+      return;
+    }
+
+    // Validate form
+    const errors = validateInvoiceForm();
+    setInvoiceFormErrors(errors);
+    
+    if (Object.keys(errors).length > 0) {
+      focusFirstError(errors);
+      return;
+    }
+
+
+
+    setSavingInvoice(true);
+
+    try {
+      const invoiceData = {
+        contractId: contractInfo._id || contractInfo.id,
+        issueDate: invoiceFormData.issueDate,
+        dueDate: invoiceFormData.dueDate,
+        periodStart: invoiceFormData.periodStart,
+        periodEnd: invoiceFormData.periodEnd,
+        electricOldReading: invoiceFormData.electricOldReading,
+        electricNewReading: invoiceFormData.electricNewReading,
+        electricRate: invoiceFormData.electricRate,
+        waterOldReading: invoiceFormData.waterOldReading,
+        waterNewReading: invoiceFormData.waterNewReading,
+        waterRate: invoiceFormData.waterRate,
+        waterBillingType: invoiceFormData.waterBillingType,
+        waterPricePerPerson: invoiceFormData.waterPricePerPerson,
+        charges: invoiceFormData.charges,
+        discount: invoiceFormData.discount || 0,
+        notes: invoiceFormData.notes,
+        sendZaloInvoice: sendZaloInvoice
+      };
+
+      const response = await invoicesAPI.createInvoice(invoiceData);
+
+      if (response.success) {
+        showToast('success', 'Tạo hóa đơn thành công');
+        setShowInvoiceModal(false);
+        // Reset form
+        setInvoiceFormData({
+          issueDate: new Date().toISOString().split('T')[0],
+          dueDate: '',
+          periodStart: '',
+          periodEnd: '',
+          electricOldReading: 0,
+          electricNewReading: 0,
+          electricRate: 3500, // Sẽ được cập nhật từ hợp đồng khi load
+          waterOldReading: 0,
+          waterNewReading: 0,
+          waterRate: 20000, // Sẽ được cập nhật từ hợp đồng khi load
+          waterBillingType: 'perCubicMeter', // Sẽ được cập nhật từ hợp đồng khi load
+          waterPricePerPerson: 50000, // Sẽ được cập nhật từ hợp đồng khi load
+          charges: [{
+            type: 'rent',
+            description: 'Tiền phòng',
+            amount: 0,
+            quantity: 1,
+            unitPrice: 0
+          }],
+          discount: 0,
+          notes: ''
+        });
+        setContractInfo(null);
+        setSelectedRoomForInvoice(null);
+        setSendZaloInvoice(true); // Reset to default
+        setInvoiceFormErrors({}); // Reset errors
+      } else {
+        showToast('error', response.message || 'Lỗi khi tạo hóa đơn');
+      }
+    } catch (error) {
+      console.error('Error creating invoice:', error);
+      showToast('error', 'Lỗi server khi tạo hóa đơn');
+    } finally {
+      setSavingInvoice(false);
+    }
+  };
+
+  const handleRoomTransfer = async (room) => {
+    setSelectedRoomForTransfer(room);
+    setShowRoomTransferModal(true);
+    setLoadingAvailableRooms(true);
+    setSelectedTargetRoom(null);
+    setCurrentRoomContract(null);
+    
+    try {
+      // Fetch current rental contract info for the room
+      const contractInfo = await getRentalContractInfo(room.id);
+      setCurrentRoomContract(contractInfo);
+
+      // Fetch available rooms of current landlord (exclude current room)
+      const response = await roomsAPI.searchRooms({
+        status: 'available',
+        page: 1,
+        limit: 100 // Get all available rooms for this landlord
+      });
+      
+      if (response.success) {
+        // Transform and filter out the current room
+        const availableRooms = response.data.rooms
+          .map(r => ({
+            id: r._id,
+            roomNumber: r.roomNumber,
+            price: r.price,
+            deposit: r.deposit,
+            area: r.area,
+            capacity: r.capacity,
+            vehicleCount: r.vehicleCount,
+            amenities: r.amenities,
+            description: r.description,
+            status: r.status
+          }))
+          .filter(r => r.id !== room.id);
+        
+        setAvailableRoomsForTransfer(availableRooms);
+      } else {
+        showToast('error', t('rooms.messages.loadAvailableRoomsFailed') || 'Không thể tải danh sách phòng trống');
+        setAvailableRoomsForTransfer([]);
+      }
+    } catch (error) {
+      console.error('Error loading available rooms:', error);
+      showToast('error', t('rooms.messages.loadAvailableRoomsFailed') || 'Không thể tải danh sách phòng trống');
+      setAvailableRoomsForTransfer([]);
+    } finally {
+      setLoadingAvailableRooms(false);
+    }
+  };
+
+  // Handle room transfer submission
+  const handleConfirmRoomTransfer = async () => {
+    if (!selectedTargetRoom) {
+      showToast('error', t('rooms.messages.selectTargetRoom') || 'Vui lòng chọn phòng đích');
+      return;
+    }
+
+    if (window.confirm(
+      t('rooms.messages.confirmRoomTransfer', { 
+        fromRoom: selectedRoomForTransfer.roomNumber, 
+        toRoom: selectedTargetRoom.roomNumber 
+      }) || `Bạn có chắc chắn muốn chuyển từ phòng ${selectedRoomForTransfer.roomNumber} sang phòng ${selectedTargetRoom.roomNumber}?`
+    )) {
+      setTransferring(true);
+      try {
+        // TODO: Call API to transfer room
+        const response = await roomsAPI.transferRoom({
+          fromRoomId: selectedRoomForTransfer.id,
+          toRoomId: selectedTargetRoom.id
+        });
+
+        if (response.success) {
+          showToast('success', t('rooms.messages.roomTransferSuccess') || 'Chuyển phòng thành công');
+          closeRoomTransferModal();
+          fetchRooms(); // Refresh rooms list
+        } else {
+          showToast('error', response.message || t('rooms.messages.roomTransferFailed') || 'Chuyển phòng thất bại');
+        }
+      } catch (error) {
+        console.error('Error transferring room:', error);
+        showToast('error', t('rooms.messages.roomTransferFailed') || 'Chuyển phòng thất bại');
+      } finally {
+        setTransferring(false);
+      }
+    }
+  };
+
+  // Close room transfer modal
+  const closeRoomTransferModal = () => {
+    setShowRoomTransferModal(false);
+    setSelectedRoomForTransfer(null);
+    setCurrentRoomContract(null);
+    setAvailableRoomsForTransfer([]);
+    setSelectedTargetRoom(null);
   };
 
   const handleTerminateContract = (room) => {
@@ -2024,7 +2664,7 @@ const RoomsManagement = () => {
     if (val === '' || val === null || val === undefined) return '';
     const num = Number(val);
     if (Number.isNaN(num)) return '';
-    return num.toLocaleString('en-US');
+    return num.toLocaleString('vi-VN');
   };
 
   const handleMoneyInlineChange = (field, raw, edit=false, customSetter=null) => {
@@ -3108,7 +3748,7 @@ const RoomsManagement = () => {
     {/* Deposit Contract Modal */}
     {showDepositContractModal && selectedRoomForContract && (
       <div className="room-modal-backdrop">
-        <div className="room-modal" style={{maxWidth: '600px'}}>
+        <div className="room-modal deposit-contract-modal">
           <div className="room-modal-header">
             <h2 className="room-modal-title">
               {t('contracts.create.depositTitle') || 'Tạo hợp đồng cọc'} - {selectedRoomForContract.name}
@@ -3565,7 +4205,7 @@ const RoomsManagement = () => {
                   </div>
                   <div className="room-info-item">
                     <span className="info-label">Giá phòng:</span>
-                    <span className="info-value highlight">{Number(selectedRoomForContract.price).toLocaleString()} VNĐ</span>
+                    <span className="info-value highlight">{Number(selectedRoomForContract.price).toLocaleString('vi-VN')} VNĐ</span>
                   </div>
                   
                   {/* Amenities */}
@@ -3757,7 +4397,7 @@ const RoomsManagement = () => {
                     onChange={(e) => setRentalContractData(prev => ({...prev, waterChargeType: e.target.value}))}
                   >
                     <option value="fixed">💧 Giá cố định</option>
-                    <option value="per-person">👥 Tính theo người</option>
+                    <option value="per_person">👥 Tính theo người</option>
                   </select>
                 </div>
 
@@ -3783,7 +4423,7 @@ const RoomsManagement = () => {
                   </div>
                 )}
 
-                {rentalContractData.waterChargeType === 'per-person' && (
+                {rentalContractData.waterChargeType === 'per_person' && (
                   <div className="form-group">
                     <label htmlFor="waterPricePerPerson" className="form-label">
                       Giá nước theo người (VNĐ/người/tháng)
@@ -3899,8 +4539,8 @@ const RoomsManagement = () => {
               disabled={creatingRentalContract}
             >
               {creatingRentalContract 
-                ? <><i className="fas fa-spinner fa-spin"></i> {isContractEditMode ? t('contracts.updating') : t('contracts.creating')}</>
-                : <><i className="fas fa-check"></i> {isContractEditMode ? t('contracts.update') : t('contracts.create')}</>
+                ? <><i className="fas fa-spinner fa-spin"></i> {isContractEditMode ? t('contracts.form.updating') : t('contracts.form.creating')}</>
+                : <><i className="fas fa-check"></i> {isContractEditMode ? t('contracts.form.update') : t('contracts.form.create')}</>
               }
             </button>
           </div>
@@ -4750,6 +5390,712 @@ const RoomsManagement = () => {
                 <><i className="fas fa-save"></i> {t('vehicles.form.update')}</>
               )}
             </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Room Transfer Modal */}
+    {showRoomTransferModal && selectedRoomForTransfer && (
+      <div className="room-modal-backdrop">
+        <div className="room-modal room-transfer-modal">
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              {t('rooms.transfer.modalTitle')} #{selectedRoomForTransfer.roomNumber}
+            </h2>
+            <button className="room-modal-close" onClick={closeRoomTransferModal}>×</button>
+          </div>
+          
+          <div className="room-modal-content">
+            <div className="transfer-info">
+              <p className="transfer-description">
+                {t('rooms.transfer.description')}
+              </p>
+              <div className="current-room-info">
+                <h4>{t('rooms.transfer.currentRoomInfo')} #{selectedRoomForTransfer.roomNumber}</h4>
+                <div className="room-details-grid">
+                  <div className="transfer-detail-item">
+                    <i className="fas fa-money-bill-wave" style={{ color: '#28a745' }}></i>
+                    <span>
+                      <strong>{t('rooms.transfer.rent')}:</strong> {currentRoomContract?.monthlyRent ? formatPrice(currentRoomContract.monthlyRent) : formatPrice(selectedRoomForTransfer.price)}
+                    </span>
+                  </div>
+                  <div className="transfer-detail-item">
+                    <i className="fas fa-hand-holding-usd" style={{ color: '#ffc107' }}></i>
+                    <span>
+                      <strong>{t('rooms.transfer.deposit')}:</strong> {currentRoomContract?.deposit ? formatPrice(currentRoomContract.deposit) : t('rooms.transfer.noDeposit')}
+                    </span>
+                  </div>
+                  <div className="transfer-detail-item">
+                    <i className="fas fa-users" style={{ color: '#007bff' }}></i>
+                    <span>
+                      <strong>{t('rooms.transfer.currentTenants')}:</strong> {currentRoomContract?.tenants?.length || 0} {t('rooms.transfer.people')}
+                    </span>
+                  </div>
+                  <div className="transfer-detail-item">
+                    <i className="fas fa-motorcycle" style={{ color: '#6c757d' }}></i>
+                    <span>
+                      <strong>{t('rooms.transfer.currentVehicles')}:</strong> {currentRoomContract?.vehicles?.length || 0} {t('rooms.transfer.vehicles')}
+                    </span>
+                  </div>
+                  <div className="transfer-detail-item">
+                    <i className="fas fa-expand-arrows-alt" style={{ color: '#17a2b8' }}></i>
+                    <span>
+                      <strong>{t('rooms.transfer.area')}:</strong> {selectedRoomForTransfer.area || 'N/A'} {t('rooms.transfer.sqm')}
+                    </span>
+                  </div>
+                  {currentRoomContract && (
+                    <>
+                      <div className="transfer-detail-item">
+                        <i className="fas fa-bolt" style={{ color: '#ffc107' }}></i>
+                        <span>
+                          <strong>{t('rooms.transfer.electricityPrice')}:</strong> {formatPrice(currentRoomContract.electricPrice || 0)}{t('rooms.transfer.perKwh')}
+                        </span>
+                      </div>
+                      <div className="transfer-detail-item">
+                        <i className="fas fa-tint" style={{ color: '#007bff' }}></i>
+                        <span>
+                          <strong>{t('rooms.transfer.waterPrice')}:</strong> {formatPrice(currentRoomContract.waterPrice || 0)}{t('rooms.transfer.perMonth')}
+                        </span>
+                      </div>
+                      <div className="transfer-detail-item">
+                        <i className="fas fa-concierge-bell" style={{ color: '#6f42c1' }}></i>
+                        <span>
+                          <strong>{t('rooms.transfer.servicePrice')}:</strong> {formatPrice(currentRoomContract.servicePrice || 0)}{t('rooms.transfer.perMonth')}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {loadingAvailableRooms ? (
+              <div className="loading-spinner">
+                <i className="fas fa-spinner fa-spin"></i>
+                <span>{t('rooms.transfer.loading')}</span>
+              </div>
+            ) : availableRoomsForTransfer.length === 0 ? (
+              <div className="no-available-rooms">
+                <i className="fas fa-exclamation-triangle"></i>
+                <p>{t('rooms.transfer.noAvailableRooms')}</p>
+              </div>
+            ) : (
+              <div className="available-rooms-list">
+                <h3>{t('rooms.transfer.availableRooms')}</h3>
+                <div className="rooms-table-container" style={{ overflowX: 'auto' }}>
+                  <table className="rooms-table transfer-table">
+                    <thead>
+                      <tr>
+                        <th>{t('rooms.transfer.select')}</th>
+                        <th>{t('rooms.table.room')}</th>
+                        <th>{t('rooms.table.status')}</th>
+                        <th>{t('rooms.table.price')}</th>
+                        <th>{t('rooms.table.details')}</th>
+                        <th>{t('rooms.table.amenities')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {availableRoomsForTransfer.map(room => (
+                        <tr 
+                          key={room.id}
+                          className={`transfer-room-row ${selectedTargetRoom?.id === room.id ? 'selected' : ''}`}
+                          onClick={() => setSelectedTargetRoom(room)}
+                        >
+                          <td>
+                            <div className="transfer-select-checkbox">
+                              <input 
+                                type="radio" 
+                                name="transferRoom" 
+                                checked={selectedTargetRoom?.id === room.id}
+                                onChange={() => setSelectedTargetRoom(room)}
+                              />
+                            </div>
+                          </td>
+                          <td>
+                            <div className="room-info-simple">
+                              <div className="room-name">{room.roomNumber}</div>
+                              {room.description && (
+                                <div className="room-description">
+                                  {room.description.length > 25 
+                                    ? `${room.description.substring(0, 25)}...` 
+                                    : room.description
+                                  }
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div className="room-status">
+                              <span className="status-badge status-available">
+                                {t('rooms.status.available')}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="room-price">
+                              <div className="price-main">{formatPrice(room.price)}</div>
+                              <div className="price-period">{t('rooms.transfer.perMonth')}</div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="room-details">
+                              <div className="detail-item">
+                                <i className="fas fa-expand-arrows-alt"></i>
+                                <span>{room.area || 'N/A'}{t('rooms.transfer.sqm')}</span>
+                              </div>
+                              <div className="detail-item">
+                                <i className="fas fa-user-friends"></i>
+                                <span>{room.capacity || 1} {t('rooms.transfer.people')}</span>
+                              </div>
+                              <div className="detail-item">
+                                <i className="fas fa-motorcycle"></i>
+                                <span>{room.vehicleCount || 0} {t('rooms.transfer.vehicles')}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="room-amenities">
+                              <div className="amenities-count">
+                                <i className="fas fa-list"></i>
+                                <span>{room.amenities?.length || 0} {t('rooms.amenities')}</span>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>          <div className="room-modal-footer">
+            <button 
+              className="btn-secondary" 
+              onClick={closeRoomTransferModal}
+              disabled={transferring}
+            >
+              {t('common.cancel')}
+            </button>
+            <button 
+              className="btn-primary" 
+              onClick={handleConfirmRoomTransfer}
+              disabled={!selectedTargetRoom || transferring || loadingAvailableRooms}
+            >
+              {transferring ? (
+                <><i className="fas fa-spinner fa-spin"></i> {t('rooms.transfer.transferring')}</>
+              ) : (
+                <><i className="fas fa-exchange-alt"></i> {t('rooms.transfer.confirm')}</>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Invoice Modal */}
+    {showInvoiceModal && selectedRoomForInvoice && (
+      <div className="room-modal-backdrop">
+        <div className="room-modal invoice-modal">
+          <div className="room-modal-header">
+            <h2 className="room-modal-title">
+              <i className="fas fa-file-invoice-dollar"></i>
+              Tạo hóa đơn - Phòng {selectedRoomForInvoice.roomNumber || selectedRoomForInvoice.room_number}
+            </h2>
+            <button className="room-modal-close" onClick={() => setShowInvoiceModal(false)}>×</button>
+          </div>
+          
+          <div className="room-modal-content">
+            {loadingInvoiceInfo ? (
+              <div className="loading-section">
+                <div className="loading-spinner">
+                  <i className="fas fa-spinner fa-spin"></i>
+                </div>
+                <p>{t('rooms.invoice.loading')}</p>
+              </div>
+            ) : (
+              <>
+                {/* Invoice Basic Information */}
+                <div className="room-form-grid">
+                  <div className="room-form-group">
+                    <label className="room-form-label">
+                      {t('rooms.invoice.issueDate') || 'Ngày lập hóa đơn'} *
+                    </label>
+                    <input
+                      type="date"
+                      className="room-form-input"
+                      value={invoiceFormData.issueDate}
+                      onChange={(e) => handleInvoiceFormChange('issueDate', e.target.value)}
+                    />
+                  </div>
+
+                  <div className="room-form-group">
+                    <label className="room-form-label">
+                      {t('rooms.invoice.paymentDueDate') || 'Ngày đến hạn thanh toán'} *
+                    </label>
+                    <input
+                      type="date"
+                      className="room-form-input"
+                      value={invoiceFormData.dueDate}
+                      onChange={(e) => handleInvoiceFormChange('dueDate', e.target.value)}
+                      style={{backgroundColor: '#f9fafb'}}
+                      readOnly
+                      title="Tự động tính 5 ngày sau ngày kết thúc chu kỳ"
+                    />
+                    <span className="form-helper-text" style={{color: '#6b7280', fontSize: '12px', fontStyle: 'italic'}}>
+                      Tự động tính 5 ngày sau ngày kết thúc chu kỳ
+                    </span>
+                  </div>
+                </div>
+
+                {/* Billing Period */}
+                <div className="room-form-grid">
+                  <div className="room-form-group">
+                    <label className="room-form-label">
+                      {t('rooms.invoice.periodStart')} *
+                    </label>
+                    <input
+                      type="date"
+                      name="periodStart"
+                      className={`room-form-input ${invoiceFormErrors.periodStart ? 'error' : ''}`}
+                      value={invoiceFormData.periodStart}
+                      onChange={(e) => handleInvoiceFormChange('periodStart', e.target.value)}
+                    />
+                    {invoiceFormErrors.periodStart && (
+                      <div className="error-text">{invoiceFormErrors.periodStart}</div>
+                    )}
+                  </div>
+                  
+                  <div className="room-form-group">
+                    <label className="room-form-label">
+                      {t('rooms.invoice.periodEnd')} *
+                    </label>
+                    <input
+                      type="date"
+                      name="periodEnd"
+                      className={`room-form-input ${invoiceFormErrors.periodEnd ? 'error' : ''}`}
+                      value={invoiceFormData.periodEnd}
+                      onChange={(e) => handleInvoiceFormChange('periodEnd', e.target.value)}
+                    />
+                    {invoiceFormErrors.periodEnd && (
+                      <div className="error-text">{invoiceFormErrors.periodEnd}</div>
+                    )}
+                    <span className="form-helper-text" style={{color: '#6b7280', fontSize: '12px'}}>
+                      Ngày đến hạn thanh toán sẽ tự động cập nhật (+5 ngày)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Utility Readings Section */}
+                <div className="room-form-section">
+                  <h3 style={{color: '#1f2937', fontSize: '18px', fontWeight: '600', marginBottom: '16px', paddingBottom: '8px', borderBottom: '2px solid #e5e7eb'}}>
+                    <i className="fas fa-tachometer-alt" style={{marginRight: '8px', color: '#3b82f6'}}></i>
+                    {t('rooms.invoice.utilityReadings') || 'Chỉ số điện nước'}
+                  </h3>
+
+                  {/* Electric Readings */}
+                  <div className="utility-readings-group">
+                    <h4 style={{color: '#374151', fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                      <i className="fas fa-bolt" style={{color: '#f59e0b'}}></i>
+                      Điện ({(invoiceFormData.electricRate || 0).toLocaleString('vi-VN')} VNĐ/kWh)
+                    </h4>
+                    <div className="room-form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr auto'}}>
+                      <div className="room-form-group">
+                        <label className="room-form-label">Chỉ số cũ</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          className="room-form-input"
+                          value={invoiceFormData.electricOldReading || ''}
+                          onChange={(e) => handleInvoiceFormChange('electricOldReading', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                      </div>
+
+                      <div className="room-form-group">
+                        <label className="room-form-label">Chỉ số mới *</label>
+                        <input
+                          type="number"
+                          name="electricNewReading"
+                          min="0"
+                          step="1"
+                          className={`room-form-input ${invoiceFormErrors.electricNewReading ? 'error' : ''}`}
+                          value={invoiceFormData.electricNewReading || ''}
+                          onChange={(e) => handleInvoiceFormChange('electricNewReading', parseFloat(e.target.value) || 0)}
+                          placeholder="0"
+                        />
+                        {invoiceFormErrors.electricNewReading && (
+                          <div className="error-text">{invoiceFormErrors.electricNewReading}</div>
+                        )}
+                      </div>
+
+                      <div className="room-form-group">
+                        <label className="room-form-label">Tiêu thụ</label>
+                        <input
+                          type="number"
+                          className="room-form-input"
+                          value={(invoiceFormData.electricNewReading || 0) - (invoiceFormData.electricOldReading || 0)}
+                          readOnly
+                          style={{backgroundColor: '#f9fafb'}}
+                        />
+                      </div>
+
+                      <div className="room-form-group">
+                        <label className="room-form-label">Thành tiền</label>
+                        <div style={{
+                          padding: '10px 12px',
+                          backgroundColor: '#f0f9ff',
+                          border: '2px solid #0ea5e9',
+                          borderRadius: '8px',
+                          fontWeight: '600',
+                          color: '#0369a1',
+                          textAlign: 'center',
+                          minWidth: '120px'
+                        }}>
+                          {(((invoiceFormData.electricNewReading || 0) - (invoiceFormData.electricOldReading || 0)) * (invoiceFormData.electricRate || 0)).toLocaleString('vi-VN')} VNĐ
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Water Billing */}
+                  <div className="utility-readings-group" style={{marginTop: '16px'}}>
+                    {invoiceFormData.waterBillingType === 'perCubicMeter' ? (
+                      <>
+                        <h4 style={{color: '#374151', fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <i className="fas fa-tint" style={{color: '#06b6d4'}}></i>
+                          Nước ({(invoiceFormData.waterRate || 0).toLocaleString('vi-VN')} VNĐ/m³)
+                        </h4>
+                        <div className="room-form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr auto'}}>
+                          <div className="room-form-group">
+                            <label className="room-form-label">Chỉ số cũ</label>
+                            <input
+                              type="number"
+                              min="0"
+                              step="1"
+                              className="room-form-input"
+                              value={invoiceFormData.waterOldReading || ''}
+                              onChange={(e) => handleInvoiceFormChange('waterOldReading', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                            />
+                          </div>
+
+                          <div className="room-form-group">
+                            <label className="room-form-label">Chỉ số mới *</label>
+                            <input
+                              type="number"
+                              name="waterNewReading"
+                              min="0"
+                              step="1"
+                              className={`room-form-input ${invoiceFormErrors.waterNewReading ? 'error' : ''}`}
+                              value={invoiceFormData.waterNewReading || ''}
+                              onChange={(e) => handleInvoiceFormChange('waterNewReading', parseFloat(e.target.value) || 0)}
+                              placeholder="0"
+                            />
+                            {invoiceFormErrors.waterNewReading && (
+                              <div className="error-text">{invoiceFormErrors.waterNewReading}</div>
+                            )}
+                          </div>
+
+                          <div className="room-form-group">
+                            <label className="room-form-label">Tiêu thụ</label>
+                            <input
+                              type="number"
+                              className="room-form-input"
+                              value={(invoiceFormData.waterNewReading || 0) - (invoiceFormData.waterOldReading || 0)}
+                              readOnly
+                              style={{backgroundColor: '#f9fafb'}}
+                            />
+                          </div>
+
+                          <div className="room-form-group">
+                            <label className="room-form-label">Thành tiền</label>
+                            <div style={{
+                              padding: '10px 12px',
+                              backgroundColor: '#f0fdfa',
+                              border: '2px solid #14b8a6',
+                              borderRadius: '8px',
+                              fontWeight: '600',
+                              color: '#0f766e',
+                              textAlign: 'center',
+                              minWidth: '120px'
+                            }}>
+                              {(((invoiceFormData.waterNewReading || 0) - (invoiceFormData.waterOldReading || 0)) * (invoiceFormData.waterRate || 0)).toLocaleString('vi-VN')} VNĐ
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h4 style={{color: '#374151', fontSize: '16px', fontWeight: '600', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px'}}>
+                          <i className="fas fa-tint" style={{color: '#06b6d4'}}></i>
+                          Nước ({(invoiceFormData.waterPricePerPerson || 0).toLocaleString('vi-VN')} VNĐ/người)
+                        </h4>
+                        <div className="room-form-grid" style={{gridTemplateColumns: '1fr auto'}}>
+                          <div className="room-form-group">
+                            <label className="room-form-label">Số người thuê</label>
+                            <input
+                              type="number"
+                              className="room-form-input"
+                              value={contractInfo?.tenants?.length || 1}
+                              readOnly
+                              style={{backgroundColor: '#f9fafb'}}
+                            />
+                          </div>
+
+                          <div className="room-form-group">
+                            <label className="room-form-label">Thành tiền</label>
+                            <div style={{
+                              padding: '10px 12px',
+                              backgroundColor: '#f0fdfa',
+                              border: '2px solid #14b8a6',
+                              borderRadius: '8px',
+                              fontWeight: '600',
+                              color: '#0f766e',
+                              textAlign: 'center',
+                              minWidth: '120px'
+                            }}>
+                              {((contractInfo?.tenants?.length || 1) * (invoiceFormData.waterPricePerPerson || 0)).toLocaleString('vi-VN')} VNĐ
+                            </div>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Charges Section */}
+                <div className="room-form-section">
+                  <div className="section-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px'}}>
+                    <h3 style={{color: '#1f2937', fontSize: '18px', fontWeight: '600', margin: 0}}>
+                      <i className="fas fa-list-ul" style={{marginRight: '8px', color: '#3b82f6'}}></i>
+                      {t('rooms.invoice.charges')}
+                    </h3>
+                    <button type="button" className="btn-add-charge" onClick={addCharge} style={{
+                      backgroundColor: '#3b82f6',
+                      color: 'white',
+                      border: 'none',
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      fontSize: '14px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}>
+                      <i className="fas fa-plus"></i>
+                      {t('rooms.invoice.addCharge')}
+                    </button>
+                  </div>
+
+                  {invoiceFormData.charges.map((charge, index) => (
+                    <div key={index} className="charge-item" style={{
+                      border: '1px solid #d1d5db',
+                      borderRadius: '8px',
+                      padding: '16px',
+                      marginBottom: '16px',
+                      backgroundColor: '#ffffff'
+                    }}>
+                      <div className="charge-form-grid" style={{display: 'grid', gridTemplateColumns: '1fr 2fr 1fr 1fr 1fr auto', gap: '12px', alignItems: 'end'}}>
+                        <div className="room-form-group">
+                          <label className="room-form-label">{t('rooms.invoice.chargeType')}</label>
+                          <select
+                            className="room-form-input"
+                            value={charge.type}
+                            onChange={(e) => handleChargeChange(index, 'type', e.target.value)}
+                          >
+                            <option value="rent">{t('rooms.invoice.chargeTypes.rent')}</option>
+                            <option value="electricity">{t('rooms.invoice.chargeTypes.electricity')}</option>
+                            <option value="water">{t('rooms.invoice.chargeTypes.water')}</option>
+                            <option value="internet">{t('rooms.invoice.chargeTypes.internet')}</option>
+                            <option value="parking">{t('rooms.invoice.chargeTypes.parking')}</option>
+                            <option value="cleaning">{t('rooms.invoice.chargeTypes.cleaning')}</option>
+                            <option value="other">{t('rooms.invoice.chargeTypes.other')}</option>
+                          </select>
+                        </div>
+
+                        <div className="room-form-group">
+                          <label className="room-form-label">{t('rooms.invoice.description')} *</label>
+                          <input
+                            type="text"
+                            className="room-form-input"
+                            value={charge.description}
+                            onChange={(e) => handleChargeChange(index, 'description', e.target.value)}
+                            placeholder={t('rooms.invoice.descriptionPlaceholder')}
+                          />
+                        </div>
+
+                        <div className="room-form-group">
+                          <label className="room-form-label">{t('rooms.invoice.quantity')}</label>
+                          <input
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            className="room-form-input"
+                            value={charge.quantity}
+                            onChange={(e) => handleChargeChange(index, 'quantity', parseFloat(e.target.value) || 1)}
+                          />
+                        </div>
+
+                        <div className="room-form-group">
+                          <label className="room-form-label">{t('rooms.invoice.unitPrice')}</label>
+                          <input
+                            type="text"
+                            className="room-form-input"
+                            value={charge.unitPrice ? charge.unitPrice.toLocaleString('vi-VN') : '0'}
+                            onChange={(e) => {
+                              const cleanValue = e.target.value.replace(/\D/g, '');
+                              handleChargeChange(index, 'unitPrice', parseInt(cleanValue) || 0);
+                            }}
+                          />
+                        </div>
+
+                        <div className="room-form-group">
+                          <label className="room-form-label">{t('rooms.invoice.amount')}</label>
+                          <input
+                            type="text"
+                            className="room-form-input"
+                            value={charge.amount ? charge.amount.toLocaleString('vi-VN') : '0'}
+                            readOnly
+                            style={{backgroundColor: '#f9fafb'}}
+                          />
+                        </div>
+
+                        <div className="charge-actions">
+                          {invoiceFormData.charges.length > 1 && (
+                            <button
+                              type="button"
+                              className="btn-remove-charge"
+                              onClick={() => removeCharge(index)}
+                              title={t('rooms.invoice.removeCharge')}
+                              style={{
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                padding: '8px',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                width: '36px',
+                                height: '36px'
+                              }}
+                            >
+                              <i className="fas fa-trash"></i>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Summary Section */}
+                <div className="room-form-section" style={{
+                  backgroundColor: '#f8fafc',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  marginBottom: '24px'
+                }}>
+                  <h3 style={{color: '#1f2937', fontSize: '18px', fontWeight: '600', marginBottom: '16px'}}>
+                    <i className="fas fa-calculator" style={{marginRight: '8px', color: '#3b82f6'}}></i>
+                    {t('rooms.invoice.summary')}
+                  </h3>
+                  
+                  <div className="invoice-summary">
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                      <span style={{fontWeight: '500', color: '#374151'}}>{t('rooms.invoice.subtotal')}:</span>
+                      <span style={{fontWeight: '600', color: '#1f2937'}}>
+                        {invoiceFormData.charges.reduce((sum, charge) => sum + charge.amount, 0).toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    </div>
+                    
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px'}}>
+                      <span style={{fontWeight: '500', color: '#374151'}}>{t('rooms.invoice.discount')}:</span>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
+                        <input
+                          type="text"
+                          className="room-form-input"
+                          style={{width: '120px', textAlign: 'right'}}
+                          value={invoiceFormData.discount ? invoiceFormData.discount.toLocaleString('vi-VN') : '0'}
+                          onChange={(e) => {
+                            const cleanValue = e.target.value.replace(/\D/g, '');
+                            handleInvoiceFormChange('discount', parseInt(cleanValue) || 0);
+                          }}
+                        />
+                        <span style={{color: '#6b7280', fontWeight: '500'}}>VNĐ</span>
+                      </div>
+                    </div>
+                    
+                    <hr style={{border: 'none', borderTop: '1px solid #d1d5db', margin: '12px 0'}} />
+                    
+                    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                      <span style={{fontWeight: '700', color: '#1f2937', fontSize: '18px'}}>{t('rooms.invoice.total')}:</span>
+                      <span style={{fontWeight: '700', color: '#dc2626', fontSize: '20px'}}>
+                        {calculateInvoiceTotal().toLocaleString('vi-VN')} VNĐ
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Notes Section */}
+                <div className="room-form-group full">
+                  <label className="room-form-label">
+                    {t('rooms.invoice.notes')}
+                  </label>
+                  <textarea
+                    className="room-form-textarea"
+                    rows="3"
+                    value={invoiceFormData.notes}
+                    onChange={(e) => handleInvoiceFormChange('notes', e.target.value)}
+                    placeholder={t('rooms.invoice.notesPlaceholder')}
+                  />
+                </div>
+              </>
+            )}
+          </div>
+
+          <div className="room-modal-footer">
+            <div style={{display: 'flex', alignItems: 'center', flex: 1}}>
+              <label style={{display: 'flex', alignItems: 'center', gap: '8px', color: '#374151', fontSize: '14px', cursor: 'pointer'}}>
+                <input
+                  type="checkbox"
+                  checked={sendZaloInvoice}
+                  onChange={(e) => setSendZaloInvoice(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    accentColor: '#3b82f6'
+                  }}
+                />
+                <i className="fab fa-telegram" style={{color: '#0088cc', fontSize: '16px'}}></i>
+                <span>Gửi hóa đơn Zalo cho khách thuê</span>
+              </label>
+            </div>
+            <div style={{display: 'flex', gap: '12px'}}>
+              <button 
+                className="btn-secondary" 
+                disabled={savingInvoice}
+                onClick={() => {
+                  setShowInvoiceModal(false);
+                  setSendZaloInvoice(true); // Reset to default
+                  setInvoiceFormErrors({}); // Reset errors
+                }}
+              >
+                {t('common.cancel')}
+              </button>
+              <button
+                type="button"
+                className="btn-primary"
+                onClick={handleSaveInvoice}
+                disabled={savingInvoice || loadingInvoiceInfo}
+              >
+                {savingInvoice ? (
+                  <><i className="fas fa-spinner fa-spin"></i> {t('rooms.invoice.creating')}</>
+                ) : (
+                  <><i className="fas fa-save"></i> {t('rooms.invoice.create')}</>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

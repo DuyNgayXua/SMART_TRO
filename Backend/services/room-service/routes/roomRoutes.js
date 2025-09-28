@@ -19,6 +19,7 @@ router.get('/:id', authMiddleware, landlordMiddleware, roomController.getRoom);
 
 
 router.post('/', authMiddleware, landlordMiddleware, validationMiddleware.validateRoom.bind(validationMiddleware), roomController.createRoom);
+router.post('/transfer', authMiddleware, landlordMiddleware, roomController.transferRoom);
 router.post('/:id/images', authMiddleware, landlordMiddleware, upload.array('images',5), roomController.uploadImages);
 router.delete('/:id/images', authMiddleware, landlordMiddleware, roomController.deleteImage);
 router.put('/:id', authMiddleware, landlordMiddleware, validationMiddleware.validateRoomUpdate.bind(validationMiddleware), roomController.updateRoom);

@@ -144,7 +144,12 @@ class RoomController {
     // Thống kê đơn giản
     async statistics(req, res) {
         try {
-            const stats = await roomRepository.statistics(req.query);
+            // Thêm filter theo owner nếu là landlord
+            const filter = { ...req.query };
+            if (req.user?.role === 'landlord') {
+                filter.owner = req.user.userId;
+            }
+            const stats = await roomRepository.statistics(filter);
             res.json({ success: true, data: stats });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
@@ -206,6 +211,86 @@ class RoomController {
             res.json({ success: true, message: 'Đã xóa ảnh', data: { images: room.images } });
         } catch (error) {
             res.status(500).json({ success: false, message: 'Lỗi server', error: error.message });
+        }
+    }
+
+    // Transfer room - Chuyển phòng
+    async transferRoom(req, res) {
+        try {
+            const { fromRoomId, toRoomId } = req.body;
+            const userId = req.user?.userId;
+
+            if (!fromRoomId || !toRoomId) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Thiếu thông tin phòng nguồn hoặc phòng đích' 
+                });
+            }
+
+            if (fromRoomId === toRoomId) {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Phòng nguồn và phòng đích không thể giống nhau' 
+                });
+            }
+
+            // Kiểm tra quyền sở hữu phòng nguồn
+            const fromRoom = await roomRepository.findById(fromRoomId);
+            if (!fromRoom) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy phòng nguồn' });
+            }
+
+            if (req.user?.role === 'landlord' && fromRoom.owner && fromRoom.owner.toString() !== userId) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Không có quyền chuyển phòng này' 
+                });
+            }
+
+            // Kiểm tra quyền sở hữu phòng đích
+            const toRoom = await roomRepository.findById(toRoomId);
+            if (!toRoom) {
+                return res.status(404).json({ success: false, message: 'Không tìm thấy phòng đích' });
+            }
+
+            if (req.user?.role === 'landlord' && toRoom.owner && toRoom.owner.toString() !== userId) {
+                return res.status(403).json({ 
+                    success: false, 
+                    message: 'Không có quyền chuyển đến phòng này' 
+                });
+            }
+
+            // Kiểm tra trạng thái phòng
+            if (fromRoom.status !== 'rented') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Phòng nguồn phải có trạng thái đã thuê' 
+                });
+            }
+
+            if (toRoom.status !== 'available') {
+                return res.status(400).json({ 
+                    success: false, 
+                    message: 'Phòng đích phải có trạng thái còn trống' 
+                });
+            }
+
+            // Gọi service để thực hiện transfer
+            const result = await roomRepository.transferRoom(fromRoomId, toRoomId, userId);
+
+            res.json({ 
+                success: true, 
+                message: 'Chuyển phòng thành công',
+                data: result
+            });
+
+        } catch (error) {
+            console.error('Error transferring room:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Lỗi server khi chuyển phòng', 
+                error: error.message 
+            });
         }
     }
 }

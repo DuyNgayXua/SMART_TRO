@@ -230,6 +230,17 @@ export const roomsAPI = {
       console.error('Lỗi khi lấy báo cáo doanh thu:', error);
       throw error;
     }
+  },
+
+  // Chuyển phòng - Transfer room
+  transferRoom: async (transferData) => {
+    try {
+      const response = await api.post('/rooms/transfer', transferData);
+      return response.data;
+    } catch (error) {
+      console.error('Lỗi khi chuyển phòng:', error);
+      throw error;
+    }
   }
 };
 

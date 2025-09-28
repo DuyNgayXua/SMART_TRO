@@ -791,7 +791,6 @@
   box-shadow: 
     0 25px 50px -12px rgba(0,0,0,0.25),
     0 0 0 1px rgba(255,255,255,0.05);
-  animation: modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
   border: 1px solid rgba(255,255,255,0.1);
   margin: 0 auto;
   display: flex;
@@ -807,16 +806,7 @@
   display: none;
 }
 
-@keyframes modalSlideUp { 
-  from { 
-    opacity: 0; 
-    transform: translateY(20px) scale(0.96);
-  } 
-  to {
-    opacity: 1; 
-    transform: translateY(0) scale(1);
-  } 
-}
+
 
 .room-modal-header { 
   display: flex; 
@@ -925,10 +915,316 @@
 }
 
 .amenities-input-wrapper { display:flex; gap:10px; }
-.amenities-list { display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+
+/* Enhanced horizontal amenities styling - Force override all inline styles */
+.room-modal .amenities-list[style],
+.room-modal-content .amenities-list[style],
+div[style*="gap"] .amenities-list[style],
+.amenities-list[style*="gap"] { 
+  display: flex !important; 
+  flex-direction: row !important;
+  flex-wrap: wrap !important; 
+  gap: 12px !important; 
+  margin-top: 12px !important; 
+  align-items: center !important;
+  justify-content: flex-start !important;
+  width: 100% !important;
+}
+
+/* Horizontal amenity items - Force override ALL inline styles */
+.room-modal .amenities-list label[style],
+.room-modal-content .amenities-list label[style],
+div[style] .amenities-list label[style],
+.amenities-list label[style*="display"],
+.amenities-list label[style*="flex"],
+.amenities-list label[style*="background"] {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: #f1f5f9 !important;
+  padding: 8px 14px !important;
+  border-radius: 20px !important;
+  border: 2px solid #e2e8f0 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  min-height: 36px !important;
+  white-space: nowrap !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+  margin: 0 !important;
+  margin-bottom: 0 !important;
+  flex-shrink: 0 !important;
+  width: auto !important;
+}
+
+/* Hover states - Override inline styles */
+.room-modal .amenities-list label:hover,
+.room-modal-content .amenities-list label:hover,
+.amenities-list label[style]:hover {
+  border-color: #667eea !important;
+  background: #e0e7ff !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.25) !important;
+  color: #667eea !important;
+}
+
+/* Checkbox styling - Override inline styles */
+.room-modal .amenities-list label input[type="checkbox"],
+.room-modal-content .amenities-list label input[type="checkbox"],
+.amenities-list label[style] input[type="checkbox"] {
+  width: 16px !important;
+  height: 16px !important;
+  cursor: pointer !important;
+  accent-color: #667eea !important;
+  margin: 0 !important;
+  flex-shrink: 0 !important;
+}
+
+.amenities-list label input[type="checkbox"]:checked {
+  accent-color: #667eea !important;
+}
+
+/* Icon styling - Override inline styles */
+.room-modal .amenities-list label i,
+.room-modal-content .amenities-list label i,
+.amenities-list label[style] i {
+  font-size: 14px !important;
+  color: #64748b !important;
+  width: 16px !important;
+  text-align: center !important;
+  transition: color 0.3s ease !important;
+  flex-shrink: 0 !important;
+}
+
+.room-modal .amenities-list label:hover i,
+.room-modal .amenities-list label input[type="checkbox"]:checked ~ i,
+.amenities-list label[style]:hover i,
+.amenities-list label[style] input[type="checkbox"]:checked ~ i {
+  color: #667eea !important;
+}
+
+/* Text styling - Override inline styles */
+.room-modal .amenities-list label span,
+.room-modal-content .amenities-list label span,
+.amenities-list label[style] span {
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  color: inherit !important;
+}
+
+/* Selected state styling - Force override with maximum specificity */
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label:has(input[type="checkbox"]:checked),
+.room-modal-content div.room-form-group.full div.amenities-list[style] label[style]:has(input[type="checkbox"]:checked),
+.room-modal .amenities-list label[style*="background"]:has(input[type="checkbox"]:checked) {
+  background: #667eea !important;
+  border-color: #667eea !important;
+  color: white !important;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4) !important;
+}
+
+/* Force white text on selected amenities */
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label:has(input[type="checkbox"]:checked) i,
+.room-modal-content div.room-form-group.full div.amenities-list[style] label[style]:has(input[type="checkbox"]:checked) i,
+.room-modal .amenities-list label[style*="background"]:has(input[type="checkbox"]:checked) i {
+  color: white !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label:has(input[type="checkbox"]:checked) span,
+.room-modal-content div.room-form-group.full div.amenities-list[style] label[style]:has(input[type="checkbox"]:checked) span,
+.room-modal .amenities-list label[style*="background"]:has(input[type="checkbox"]:checked) span {
+  color: white !important;
+}
+
+/* Fallback for browsers that don't support :has() - with higher specificity */
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label input[type="checkbox"]:checked ~ i,
+.room-modal-content div.room-form-group.full div.amenities-list[style] label[style] input[type="checkbox"]:checked ~ i {
+  color: white !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label input[type="checkbox"]:checked ~ span,
+.room-modal-content div.room-form-group.full div.amenities-list[style] label[style] input[type="checkbox"]:checked ~ span {
+  color: white !important;
+}
+
+/* Alternative approach - Force selected state on parent label */
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label input[type="checkbox"]:checked {
+  accent-color: #667eea !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .amenities-list label input[type="checkbox"]:checked + i + span {
+  color: white !important;
+}
+
+/* FORCE HORIZONTAL LAYOUT - Maximum specificity to override inline styles */
+.room-modal-content div.room-form-group.full div.amenities-list[style] {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+}
+
+.room-modal-content div.room-form-group.full div.amenities-list[style] label[style] {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: #f1f5f9 !important;
+  padding: 8px 14px !important;
+  border-radius: 20px !important;
+  border: 2px solid #e2e8f0 !important;
+  margin: 0 !important;
+  margin-right: 0 !important;
+  margin-bottom: 0 !important;
+  width: auto !important;
+  min-width: auto !important;
+  max-width: none !important;
+  flex-shrink: 0 !important;
+  white-space: nowrap !important;
+}
+
 .amenity-chip { background:#f3f4f6; padding:6px 10px; border-radius:20px; font-size:12px; font-weight:600; display:flex; align-items:center; gap:6px; }
 .amenity-chip button { background:none; border:none; cursor:pointer; font-size:14px; line-height:1; color:#6b7280; }
 .amenity-chip button:hover { color:#dc2626; }
+
+/* ULTIMATE OVERRIDE - Use ID-like specificity */
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list {
+  display: flex !important;
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  gap: 12px !important;
+  align-items: center !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 8px !important;
+  background: #f1f5f9 !important;
+  padding: 8px 14px !important;
+  border-radius: 20px !important;
+  border: 2px solid #e2e8f0 !important;
+  margin: 0 !important;
+  white-space: nowrap !important;
+  color: #374151 !important;
+  cursor: pointer !important;
+  transition: all 0.3s ease !important;
+}
+
+/* ONLY when checkbox is checked - no focus states */
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label:has(input[type="checkbox"]:checked) {
+  background: #667eea !important;
+  border-color: #667eea !important;
+  color: white !important;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3) !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label:has(input[type="checkbox"]:checked) i {
+  color: white !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label:has(input[type="checkbox"]:checked) span {
+  color: white !important;
+}
+
+/* Remove any focus styling on checkbox */
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label input[type="checkbox"] {
+  outline: none !important;
+}
+
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label input[type="checkbox"]:focus {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* Fallback without :has() - direct sibling approach */
+body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full .amenities-list label input[type="checkbox"]:checked ~ * {
+  color: white !important;
+}
+
+/* Only use :has() and :checked selectors - no focus states */
+
+/* Clean fallback for :has() selector */
+.amenities-list label:has(input[type="checkbox"]:checked) {
+  background-color: #667eea !important;
+  color: white !important;
+  border-color: #667eea !important;
+}
+
+.amenities-list label:has(input[type="checkbox"]:checked) i,
+.amenities-list label:has(input[type="checkbox"]:checked) span {
+  color: white !important;
+}
+
+/* Responsive design for amenities - Override inline styles */
+@media (max-width: 768px) {
+  .room-modal .amenities-list,
+  .room-modal-content .amenities-list {
+    gap: 8px !important;
+  }
+  
+  .room-modal .amenities-list label,
+  .amenities-list label[style] {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    min-height: 32px !important;
+  }
+  
+  .room-modal .amenities-list label i,
+  .amenities-list label[style] i {
+    font-size: 12px !important;
+    width: 14px !important;
+  }
+  
+  .room-modal .amenities-list label span,
+  .amenities-list label[style] span {
+    font-size: 12px !important;
+  }
+  
+  .room-modal .amenities-list label input[type="checkbox"],
+  .amenities-list label[style] input[type="checkbox"] {
+    width: 14px !important;
+    height: 14px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .room-modal .amenities-list,
+  .room-modal-content .amenities-list {
+    gap: 6px !important;
+  }
+  
+  .room-modal .amenities-list label,
+  .amenities-list label[style] {
+    padding: 4px 10px !important;
+    font-size: 11px !important;
+    min-height: 28px !important;
+    border-radius: 18px !important;
+  }
+  
+  .room-modal .amenities-list label i,
+  .amenities-list label[style] i {
+    font-size: 11px !important;
+    width: 12px !important;
+  }
+  
+  .room-modal .amenities-list label span,
+  .amenities-list label[style] span {
+    font-size: 11px !important;
+  }
+  
+  .room-modal .amenities-list label input[type="checkbox"],
+  .amenities-list label[style] input[type="checkbox"] {
+    width: 12px !important;
+    height: 12px !important;
+  }
+}
 
 .room-modal-footer { 
   display: flex; 
@@ -1175,12 +1471,12 @@
 .modal {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 20px;
-  z-index: 1000;
+  z-index: 10005 !important;
   backdrop-filter: blur(4px);
   animation: modalFadeIn 0.3s ease;
 }
@@ -1191,21 +1487,22 @@
   box-shadow: 
     0 20px 25px -5px rgba(0, 0, 0, 0.1),
     0 10px 10px -5px rgba(0, 0, 0, 0.04);
-  max-width: 500px;
-  width: 100%;
-  max-height: 90vh;
+  max-width: 380px;
+  width: 80%;
+  max-height: 60vh;
   overflow-y: auto;
-  animation: modalSlideUp 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  position: relative;
+  z-index: 10006;
 }
 
 .modal-header {
-  padding: 24px 24px 0 24px;
+  padding: 16px 16px 0 16px;
   display: flex;
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid #e5e7eb;
   margin-bottom: 0;
-  padding-bottom: 16px;
+  padding-bottom: 10px;
 }
 
 .modal-header h3 {
@@ -1237,7 +1534,7 @@
 }
 
 .modal-body {
-  padding: 24px;
+  padding: 16px;
 }
 
 .modal-body p {
@@ -1256,34 +1553,23 @@
   }
 }
 
-@keyframes modalSlideUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px) scale(0.95);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
 .contract-options {
   display: flex;
-  gap: 16px;
-  margin-top: 20px;
+  gap: 10px;
+  margin-top: 12px;
 }
 
 .btn-contract-option {
   flex: 1;
-  padding: 20px;
+  padding: 12px;
   border: 2px solid #e2e8f0;
-  border-radius: 12px;
+  border-radius: 8px;
   background: white;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   text-align: left;
 }
 
@@ -1295,13 +1581,14 @@
 }
 
 .contract-option-icon {
-  width: 48px;
-  height: 48px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  font-size: 20px;
+  border-radius: 6px;
+  font-size: 16px;
+  flex-shrink: 0;
 }
 
 .rental-option .contract-option-icon {
@@ -1315,8 +1602,8 @@
 }
 
 .contract-option-text h4 {
-  margin: 0 0 4px 0;
-  font-size: 16px;
+  margin: 0 0 1px 0;
+  font-size: 14px;
   font-weight: 600;
   color: #1f2937;
 }
@@ -1354,53 +1641,226 @@
 }
 
 /* Mobile Responsive for Contract Options */
+@media (max-width: 1024px) {
+  .modal-content {
+    width: 85%;
+    max-width: 350px;
+  }
+}
+
 @media (max-width: 768px) {
   .modal {
     padding: 16px;
-    align-items: flex-start;
-    padding-top: 60px;
+    align-items: center;
   }
   
   .modal-content {
-    max-width: 100%;
+    width: 90%;
+    max-width: 300px;
     border-radius: 12px;
+    max-height: 70vh;
   }
   
   .modal-header {
-    padding: 20px 20px 0 20px;
-    padding-bottom: 12px;
+    padding: 14px 14px 0 14px;
+    padding-bottom: 8px;
   }
   
   .modal-header h3 {
-    font-size: 18px;
+    font-size: 16px;
   }
   
   .modal-body {
-    padding: 20px;
+    padding: 14px;
   }
   
   .contract-options {
     flex-direction: column;
+    gap: 10px;
   }
   
   .btn-contract-option {
-    flex-direction: column;
-    text-align: center;
-    gap: 12px;
-    padding: 16px;
+    flex-direction: row;
+    text-align: left;
+    gap: 10px;
+    padding: 12px;
   }
   
   .contract-option-icon {
-    width: 40px;
-    height: 40px;
-    font-size: 18px;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    flex-shrink: 0;
   }
   
   .contract-option-text h4 {
-    font-size: 15px;
+    font-size: 13px;
   }
   
   .contract-option-text p {
+    font-size: 11px;
+    margin: 2px 0 0 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .modal-content {
+    width: 95%;
+    max-width: 280px;
+    margin: 0;
+  }
+  
+  .modal-header {
+    padding: 12px;
+  }
+  
+  .modal-body {
+    padding: 12px;
+  }
+  
+  .btn-contract-option {
+    padding: 10px;
+    gap: 8px;
+  }
+  
+  .contract-option-icon {
+    width: 28px;
+    height: 28px;
+    font-size: 12px;
+  }
+  
+  .contract-option-text h4 {
+    font-size: 12px;
+  }
+  
+  .contract-option-text p {
+    font-size: 10px;
+  }
+}
+
+/* Deposit Contract Modal Specific Styles */
+.deposit-contract-modal .room-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.deposit-contract-modal .room-form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.deposit-contract-modal .room-form-group.full {
+  grid-column: 1 / -1;
+}
+
+.deposit-contract-modal .room-form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.deposit-contract-modal .room-form-input,
+.deposit-contract-modal .room-form-textarea {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.deposit-contract-modal .room-form-input:focus,
+.deposit-contract-modal .room-form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.deposit-contract-modal .room-form-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.1);
+}
+
+.deposit-contract-modal .error-text {
+  color: #ef4444;
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.deposit-contract-modal .form-helper-text {
+  color: #6b7280;
+  font-size: 11px;
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.deposit-contract-modal .room-form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.deposit-contract-modal {
+  max-width: 600px !important;
+}
+
+.deposit-contract-modal .room-modal-content {
+  padding: 0;
+}
+
+.deposit-contract-modal .room-modal-header {
+  padding: 20px 24px 16px 24px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.deposit-contract-modal .room-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+}
+
+/* Room info display in deposit modal */
+.deposit-contract-modal .room-form-grid > div:first-child > div {
+  background: #f8fafc !important;
+  padding: 14px !important;
+  border-radius: 8px !important;
+  border: 1px solid #e2e8f0 !important;
+  margin-bottom: 12px !important;
+}
+
+.deposit-contract-modal .room-form-grid > div:first-child h4 {
+  margin: 0 0 8px 0 !important;
+  color: #374151 !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+}
+
+/* Responsive for Deposit Modal */
+@media (max-width: 768px) {
+  .deposit-contract-modal {
+    max-width: 95vw !important;
+    width: 95vw !important;
+  }
+  
+  .deposit-contract-modal .room-form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 12px;
+  }
+  
+  .deposit-contract-modal .room-form-input,
+  .deposit-contract-modal .room-form-textarea {
+    padding: 8px 10px;
     font-size: 13px;
   }
 }
@@ -2495,24 +2955,24 @@
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
-  max-height: 72vh;
+  max-height: 55vh;
   overflow-y: auto;
   padding: 0 4px;
 }
 
 .rental-contract-left, .rental-contract-right {
-  padding: 0 6px;
+  padding: 0 8px;
 }
 
 .rental-contract-left {
   border-right: 1px solid #e1e8ed;
-  padding-right: 12px;
+  padding-right: 16px;
 }
 
 /* Compact form styles for rental contract */
 .rental-contract-modal .form-section {
-  margin-bottom: 12px;
-  padding: 10px;
+  margin-bottom: 8px;
+  padding: 8px;
   background: #f9fafb;
   border-radius: 6px;
   border: 1px solid #e5e7eb;
@@ -2613,23 +3073,44 @@
 /* Modal size adjustments */
 .rental-contract-modal {
   max-width: 1000px !important;
-  width: 95vw;
-  max-height: 85vh;
-  margin: 2vh auto;
-  z-index: 10000;
+  width: 90vw;
+  max-height: 80vh;
+  margin: 0;
+  z-index: 10001 !important;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
 }
 
 .rental-contract-modal .room-modal-content {
-  padding: 20px;
+  padding: 16px;
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .room-modal-backdrop {
-  z-index: 9999;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 10000 !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow-y: auto;
+  padding: 20px;
 }
 
 .rental-contract-modal .room-modal-header {
-  padding: 16px 20px;
+  padding: 12px 16px;
   border-bottom: 1px solid #e1e8ed;
+  flex-shrink: 0;
 }
 
 .rental-contract-modal .room-modal-title {
@@ -2638,8 +3119,9 @@
 }
 
 .rental-contract-modal .room-modal-footer {
-  padding: 12px 20px;
+  padding: 10px 16px;
   border-top: 1px solid #e1e8ed;
+  flex-shrink: 0;
 }
 
 .rental-contract-modal .btn-cancel, 
@@ -2658,8 +3140,35 @@
 /* Button adjustments */
 .rental-contract-modal .btn-add-tenant, 
 .rental-contract-modal .btn-remove-tenant {
-  padding: 4px 8px;
+  padding: 6px 10px;
   font-size: 11px;
+  min-width: 70px;
+}
+
+.rental-contract-modal .section-header {
+  margin-bottom: 8px;
+  padding-bottom: 4px;
+}
+
+.rental-contract-modal .item-header {
+  margin-bottom: 6px;
+  padding-bottom: 3px;
+}
+
+.rental-contract-modal .item-header h4 {
+  font-size: 12px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.rental-contract-modal .tenant-item {
+  margin-bottom: 8px;
+  padding: 6px;
+  border-radius: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
 }
 
 /* Image upload styles */
@@ -2669,14 +3178,15 @@
 
 .image-upload-btn {
   display: block;
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   border: 2px dashed #ced4da;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s ease;
   overflow: hidden;
   position: relative;
+  background: #f8f9fa;
 }
 
 .image-upload-btn:hover {
@@ -2724,12 +3234,17 @@
   justify-content: center;
   height: 100%;
   color: #6c757d;
-  font-size: 7px;
+  font-size: 9px;
+  text-align: center;
 }
 
 .image-upload-placeholder i {
-  font-size: 12px;
-  margin-bottom: 1px;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.tenant-image-item:hover .remove-image-btn {
+  opacity: 1;
 }
 
 /* Vehicle section styles */
@@ -2772,26 +3287,29 @@
 
 .no-vehicles-message {
   text-align: center;
-  padding: 40px 20px;
+  padding: 20px 10px;
   color: #6c757d;
   background: #f8f9fa;
   border: 2px dashed #dee2e6;
-  border-radius: 8px;
+  border-radius: 6px;
+  margin: 8px 0;
 }
 
 .no-vehicles-message i {
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 24px;
+  margin-bottom: 8px;
   color: #adb5bd;
 }
 
 .no-vehicles-message p {
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
   font-weight: 500;
+  font-size: 12px;
 }
 
 .no-vehicles-message small {
   color: #adb5bd;
+  font-size: 10px;
 }
 
 .btn-add-vehicle, .btn-remove-vehicle {
@@ -2935,33 +3453,79 @@
   flex: 1;
 }
 
+/* Meter readings section */
+.rental-contract-modal .meter-readings-section {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.rental-contract-modal .meter-readings-section h3 {
+  font-size: 14px;
+  margin-bottom: 8px;
+  color: #2c3e50;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 /* Responsive adjustments for rental contract modal */
+@media (max-width: 1024px) {
+  .rental-contract-modal {
+    width: 95vw;
+    max-width: none;
+    margin: 3vh auto;
+    max-height: 85vh;
+  }
+  
+  .rental-contract-two-columns {
+    max-height: 60vh;
+  }
+}
+
 @media (max-width: 768px) {
   .rental-contract-two-columns {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 12px;
+    max-height: 70vh;
   }
   
   .rental-contract-left {
     border-right: none;
     border-bottom: 1px solid #e1e8ed;
-    padding-bottom: 16px;
+    padding-bottom: 12px;
+    padding-right: 4px;
   }
   
   .rental-contract-modal {
     width: 98vw;
-    margin: 1vh auto;
+    margin: 2vh auto;
     max-height: 90vh;
+  }
+  
+  .rental-contract-modal .room-modal-content {
+    padding: 12px;
   }
   
   .rental-contract-modal .form-row {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 12px;
   }
   
   .rental-contract-modal .service-pricing-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 12px;
+  }
+  
+  .tenant-images-gallery {
+    gap: 4px;
+    padding: 4px;
+  }
+  
+  .tenant-image-item, .image-upload-btn {
+    width: 60px;
+    height: 60px;
   }
 }
 
@@ -3059,18 +3623,27 @@
 
 /* Enhanced Image Upload Styles - Multiple Images */
 .tenant-image-upload-container {
-  margin-bottom: 2px;
+  margin-bottom: 8px;
 }
 
 .tenant-images-gallery {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  margin-bottom: 2px;
-  padding: 2px;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 8px;
   background: linear-gradient(135deg, #f8f9fa, #e9ecef);
-  border-radius: 3px;
+  border-radius: 6px;
   border: 1px solid #dee2e6;
+}
+
+.tenant-image-item {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid #ddd;
 }
 
 .tenant-image-item .tenant-image-preview {
@@ -3081,18 +3654,18 @@
 
 .remove-image-btn {
   position: absolute;
-  top: 0px;
-  right: 0px;
-  width: 10px;
-  height: 10px;
-  background: rgba(0,0,0,0.55);
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  background: rgba(220, 53, 69, 0.8);
   color: #fff;
   border: none;
-  border-radius: 2px;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 6px;
+  font-size: 10px;
   line-height: 1;
   cursor: pointer;
   opacity: 0;
@@ -4634,44 +5207,83 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 60px 40px;
+  padding: 24px 20px;
   text-align: center;
-  min-height: 400px;
+  min-height: 200px;
   background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-  border-radius: 16px;
+  border-radius: 12px;
   border: 2px dashed #cbd5e1;
 }
 
 .vehicle-modal .empty-icon {
-  width: 80px;
-  height: 80px;
+  width: 48px;
+  height: 48px;
   background: linear-gradient(135deg, #e0f2fe, #b3e5fc);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 24px;
-  border: 3px solid #4fc3f7;
+  margin-bottom: 12px;
+  border: 2px solid #4fc3f7;
 }
 
 .vehicle-modal .empty-icon i {
-  font-size: 32px;
+  font-size: 20px;
   color: #0277bd;
 }
 
 .vehicle-modal .empty-content h3 {
-  font-size: 24px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 600;
   color: #1e293b;
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 
 .vehicle-modal .empty-content p {
-  font-size: 16px;
+  font-size: 13px;
   color: #64748b;
-  margin-bottom: 32px;
-  line-height: 1.6;
+  margin-bottom: 16px;
+  line-height: 1.4;
+  max-width: 350px;
+}
+
+.vehicle-modal .empty-content .btn-primary {
+  padding: 8px 16px !important;
+  font-size: 14px !important;
+  border-radius: 8px !important;
+  min-height: auto !important;
+  height: auto !important;
+}
+
+/* Specific selector for vehicle modal button */
+.modal.vehicle-modal .empty-section .empty-content button.btn-primary,
+.vehicle-modal .empty-section .empty-content button,
+.vehicle-modal .empty-content button.btn-primary,
+div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
+  padding: 8px 14px !important;
+  font-size: 13px !important;
+  border-radius: 6px !important;
+  min-height: 32px !important;
+  height: auto !important;
+  line-height: 1.2 !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+  font-weight: 500 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+}
+
+/* Icon trong button của vehicle modal */
+.modal.vehicle-modal .empty-section .empty-content button.btn-primary i,
+.vehicle-modal .empty-section .empty-content button i,
+.vehicle-modal .empty-content button.btn-primary i {
+  font-size: 12px !important;
+  margin: 0 !important;
+  line-height: 1 !important;
 }
 
 /* Loading Section - giống Tenant */
@@ -5124,6 +5736,494 @@
     height: 22px;
     font-size: 10px;
   }
+
+/* ============================== */
+/* ROOM TRANSFER MODAL STYLES */
+/* ============================== */
+
+.room-transfer-modal {
+  width: 98%;
+  max-width: 1400px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background-color: #ffffff;
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+.room-transfer-modal .room-modal-header {
+  background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+  color: white;
+  padding: 20px 25px;
+  border-radius: 15px 15px 0 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.room-transfer-modal .room-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.room-transfer-modal .room-modal-content {
+  padding: 30px;
+}
+
+.transfer-info {
+  margin-bottom: 25px;
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  border-left: 4px solid #ff6b35;
+}
+
+.transfer-description {
+  margin: 0 0 15px 0;
+  font-size: 16px;
+  color: #495057;
+  line-height: 1.5;
+}
+
+.current-room-info {
+  font-size: 15px;
+  color: #212529;
+  line-height: 1.6;
+}
+
+.current-room-info .room-price {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.loading-spinner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.loading-spinner i {
+  font-size: 2rem;
+  margin-bottom: 15px;
+  color: #ff6b35;
+}
+
+.no-available-rooms {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 40px 20px;
+  color: #6c757d;
+  text-align: center;
+}
+
+.no-available-rooms i {
+  font-size: 3rem;
+  margin-bottom: 15px;
+  color: #ffc107;
+}
+
+.available-rooms-list h3 {
+  margin-bottom: 20px;
+  color: #212529;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.rooms-transfer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 20px;
+  margin-bottom: 25px;
+}
+
+/* Transfer room card styling - similar to main room cards */
+.room-card.transfer-selectable {
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: 3px solid transparent;
+  position: relative;
+}
+
+.room-card.transfer-selectable:hover {
+  border-color: #ff6b35;
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px rgba(255, 107, 53, 0.2);
+}
+
+.room-card.transfer-selectable.selected {
+  border-color: #ff6b35;
+  background: linear-gradient(135deg, #fff5f0 0%, #ffe8e0 100%);
+  box-shadow: 0 12px 40px rgba(255, 107, 53, 0.3);
+}
+
+.room-card.transfer-selectable .selection-check {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  background: #28a745;
+  color: white;
+  border-radius: 50%;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+}
+
+/* Room amenities in transfer modal */
+.room-card.transfer-selectable .room-amenities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.room-card.transfer-selectable .amenity-tag {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  background: #e7f3ff;
+  color: #0066cc;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.room-card.transfer-selectable .amenity-tag i {
+  font-size: 9px;
+}
+
+.room-card.transfer-selectable .more-amenities {
+  background: #f1f3f4;
+  color: #5f6368;
+  padding: 2px 6px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.room-card.transfer-selectable .room-description {
+  margin-top: 8px;
+  font-size: 12px;
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.transfer-notes {
+  margin-top: 25px;
+}
+
+.transfer-notes .room-form-label {
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.transfer-notes .room-form-textarea {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.3s ease;
+}
+
+.transfer-notes .room-form-textarea:focus {
+  outline: none;
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
+
+/* Responsive Design for Room Transfer Modal */
+@media (max-width: 768px) {
+  .room-transfer-modal {
+    width: 98%;
+    margin: 10px;
+    max-height: 85vh;
+  }
+  
+  .room-transfer-modal .room-modal-content {
+    padding: 20px;
+  }
+  
+  .rooms-transfer-grid {
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 15px;
+  }
+  
+  .transfer-info {
+    padding: 15px;
+    margin-bottom: 20px;
+  }
+}
+
+@media (max-width: 480px) {
+  .room-transfer-modal {
+    width: 100%;
+    height: 100vh;
+    max-height: 100vh;
+    border-radius: 0;
+    margin: 0;
+  }
+  
+  .room-transfer-modal .room-modal-header {
+    border-radius: 0;
+    padding: 15px 20px;
+  }
+  
+  .room-transfer-modal .room-modal-content {
+    padding: 15px;
+  }
+  
+  .rooms-transfer-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Transfer Table Styles */
+.rooms-table.transfer-table {
+  margin-top: 0;
+  width: 100%;
+  table-layout: fixed;
+  min-width: 800px;
+}
+
+.rooms-table.transfer-table th,
+.rooms-table.transfer-table td {
+  padding: 12px 8px;
+  vertical-align: middle;
+}
+
+/* Column width specifications */
+.rooms-table.transfer-table th:nth-child(1), 
+.rooms-table.transfer-table td:nth-child(1) {
+  width: 60px;
+  text-align: center;
+}
+
+.rooms-table.transfer-table th:nth-child(2), 
+.rooms-table.transfer-table td:nth-child(2) {
+  width: 140px;
+}
+
+.rooms-table.transfer-table th:nth-child(3), 
+.rooms-table.transfer-table td:nth-child(3) {
+  width: 110px;
+}
+
+.rooms-table.transfer-table th:nth-child(4), 
+.rooms-table.transfer-table td:nth-child(4) {
+  width: 140px;
+}
+
+.rooms-table.transfer-table th:nth-child(5), 
+.rooms-table.transfer-table td:nth-child(5) {
+  width: 180px;
+}
+
+.rooms-table.transfer-table th:nth-child(6), 
+.rooms-table.transfer-table td:nth-child(6) {
+  width: 120px;
+}
+
+.transfer-room-row {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.transfer-room-row:hover {
+  background-color: #f8fafc;
+}
+
+.transfer-room-row.selected {
+  background-color: #fff5f0;
+  border-left: 4px solid #ff6b35;
+}
+
+.transfer-room-row.selected td {
+  border-color: #ff6b35;
+}
+
+.transfer-select-checkbox {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.transfer-select-checkbox input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  accent-color: #ff6b35;
+  cursor: pointer;
+}
+
+/* Ensure table container allows horizontal scroll if needed */
+.available-rooms-list .rooms-table-container {
+  overflow-x: auto;
+  margin: 0 -24px;
+  padding: 0 24px;
+}
+
+/* Improve transfer modal content padding */
+.room-transfer-modal .room-modal-content {
+  padding: 20px;
+}
+
+.available-rooms-list {
+  padding: 0;
+}
+
+.available-rooms-list h3 {
+  margin: 0 0 20px 0;
+  color: #212529;
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 0 4px;
+}
+
+/* Responsive adjustments for transfer table */
+@media (max-width: 1024px) {
+  .room-transfer-modal {
+    width: 99%;
+    max-width: none;
+  }
+  
+  .rooms-table.transfer-table th:nth-child(5), 
+  .rooms-table.transfer-table td:nth-child(5) {
+    width: 160px;
+  }
+}
+
+@media (max-width: 768px) {
+  .rooms-table.transfer-table {
+    min-width: 600px;
+  }
+  
+  .rooms-table.transfer-table th,
+  .rooms-table.transfer-table td {
+    padding: 8px 4px;
+    font-size: 12px;
+  }
+  
+  .rooms-table.transfer-table th:nth-child(2), 
+  .rooms-table.transfer-table td:nth-child(2) {
+    width: 100px;
+  }
+  
+  .rooms-table.transfer-table th:nth-child(4), 
+  .rooms-table.transfer-table td:nth-child(4) {
+    width: 110px;
+  }
+  
+  .rooms-table.transfer-table th:nth-child(5), 
+  .rooms-table.transfer-table td:nth-child(5) {
+    width: 140px;
+  }
+  
+  .rooms-table.transfer-table th:nth-child(6), 
+  .rooms-table.transfer-table td:nth-child(6) {
+    width: 100px;
+  }
+  
+  .rooms-table.transfer-table .room-details {
+    gap: 4px;
+  }
+  
+  .rooms-table.transfer-table .detail-item {
+    padding: 2px 4px;
+    font-size: 10px;
+  }
+  
+  .room-transfer-modal .room-modal-content {
+    padding: 15px;
+  }
+}
+
+/* Transfer modal footer improvements */
+.room-transfer-modal .room-modal-footer {
+  padding: 20px 24px;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  border-radius: 0 0 15px 15px;
+}
+
+.room-transfer-modal .btn-secondary,
+.room-transfer-modal .btn-primary {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.room-transfer-modal .btn-secondary {
+  background: #6c757d;
+  color: white;
+  border: none;
+}
+
+.room-transfer-modal .btn-secondary:hover:not(:disabled) {
+  background: #545b62;
+}
+
+.room-transfer-modal .btn-primary {
+  background: #ff6b35;
+  color: white;
+  border: none;
+}
+
+.room-transfer-modal .btn-primary:hover:not(:disabled) {
+  background: #e55a2b;
+}
+
+.room-transfer-modal .btn-primary:disabled,
+.room-transfer-modal .btn-secondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Transfer notes styling */
+.transfer-notes {
+  margin-top: 25px;
+  padding: 0 4px;
+}
+
+.transfer-notes .room-form-label {
+  font-weight: 600;
+  color: #212529;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.transfer-notes .room-form-textarea {
+  width: 100%;
+  padding: 12px 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  resize: vertical;
+  transition: all 0.3s ease;
+  box-sizing: border-box;
+}
+
+.transfer-notes .room-form-textarea:focus {
+  outline: none;
+  border-color: #ff6b35;
+  box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
+}
   
   .btn-add-vehicle {
     padding: 6px 12px;
@@ -5256,4 +6356,506 @@
   font-size: 13px;
   color: #64748b;
   font-weight: 500;
+}
+
+/* Room Transfer Modal Styles */
+.room-transfer-modal {
+  max-width: 1200px !important;
+  width: 95% !important;
+  max-height: 90vh !important;
+  overflow: auto !important;
+}
+
+.room-details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 10px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.transfer-detail-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  font-size: 14px !important;
+  padding: 8px !important;
+  background-color: white !important;
+  border-radius: 6px !important;
+  border: 1px solid #dee2e6 !important;
+  margin: 0 !important;
+}
+
+.transfer-detail-item i {
+  width: 18px !important;
+  text-align: center !important;
+}
+
+.transfer-detail-item span {
+  white-space: nowrap;
+}
+
+/* ============================== */
+/* INVOICE MODAL STYLES */
+/* ============================== */
+
+.invoice-modal {
+  width: 95%;
+  max-width: 1000px;
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.invoice-form-container {
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+/* Contract Info Section */
+.contract-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.info-label {
+  font-weight: 600;
+  color: #475569;
+  font-size: 14px;
+}
+
+.info-value {
+  font-weight: 500;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+/* Form Grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-label {
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.form-input {
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+}
+
+.form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Section Headers */
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.section-title i {
+  color: #3b82f6;
+  font-size: 16px;
+}
+
+.btn-add-charge {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.btn-add-charge:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  transform: translateY(-1px);
+}
+
+/* Charge Items */
+.charge-item {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.2s ease;
+}
+
+.charge-item:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.charge-form-grid {
+  display: grid;
+  grid-template-columns: 150px 1fr 100px 120px 120px 40px;
+  gap: 16px;
+  align-items: end;
+}
+
+.charge-actions {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.btn-remove-charge {
+  background: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 12px;
+}
+
+.btn-remove-charge:hover {
+  background: #fecaca;
+  border-color: #f87171;
+  transform: scale(1.05);
+}
+
+/* Invoice Summary */
+.invoice-summary {
+  background: #f1f5f9;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 20px;
+  margin-top: 16px;
+}
+
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.summary-row:last-child {
+  border-bottom: none;
+}
+
+.summary-row.total-row {
+  border-top: 2px solid #3b82f6;
+  margin-top: 8px;
+  padding-top: 16px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.summary-label {
+  font-weight: 600;
+  color: #475569;
+  font-size: 14px;
+}
+
+.summary-value {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 14px;
+}
+
+.total-value {
+  color: #3b82f6;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.discount-input-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.discount-input {
+  width: 120px;
+  padding: 8px 12px;
+  font-size: 14px;
+}
+
+.currency {
+  font-weight: 500;
+  color: #6b7280;
+  font-size: 12px;
+}
+
+/* Form Textarea */
+.form-textarea {
+  padding: 12px 16px;
+  border: 2px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  resize: vertical;
+  min-height: 80px;
+  transition: all 0.2s ease;
+}
+
+.form-textarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* Responsive Design for Invoice */
+@media (max-width: 1024px) {
+  .charge-form-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+  
+  .contract-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .invoice-modal {
+    width: 95%;
+    max-height: 95vh;
+  }
+  
+  .invoice-form-container {
+    padding: 16px;
+    gap: 20px;
+  }
+  
+  .section-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+  }
+  
+  .btn-add-charge {
+    align-self: stretch;
+    justify-content: center;
+  }
+  
+  .charge-item {
+    padding: 16px;
+  }
+  
+  .invoice-summary {
+    padding: 16px;
+  }
+}
+
+/* Invoice modal room info section styles */
+.room-info-section {
+  background-color: #f8fafc;
+  padding: 20px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+}
+
+.room-info-title {
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-info-title i {
+  color: #3b82f6;
+}
+
+.room-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+}
+
+.room-info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+}
+
+.room-info-label {
+  font-weight: 500;
+  color: #374151;
+}
+
+.room-info-value {
+  font-weight: 600;
+  color: #1f2937;
+}
+
+/* Utility readings styling */
+.utility-readings-group {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.utility-readings-group h4 {
+  margin: 0 0 12px 0;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.utility-readings-group .room-form-grid {
+  margin-bottom: 0;
+}
+
+.room-form-section {
+  margin-bottom: 24px;
+}
+
+.room-form-section h3 {
+  color: #1f2937;
+  font-size: 18px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-form-section h3 i {
+  color: #3b82f6;
+}
+
+/* Water billing type selector */
+.water-billing-selector {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.water-billing-selector span {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.water-billing-selector select {
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 14px;
+  background-color: white;
+  min-width: 120px;
+}
+
+.rooms-table.transfer-table {
+  min-width: 1000px;
+  table-layout: fixed;
+}
+
+.rooms-table.transfer-table th:nth-child(1) { width: 60px; }
+.rooms-table.transfer-table th:nth-child(2) { width: 120px; }
+.rooms-table.transfer-table th:nth-child(3) { width: 120px; }
+.rooms-table.transfer-table th:nth-child(4) { width: 150px; }
+.rooms-table.transfer-table th:nth-child(5) { width: 250px; }
+.rooms-table.transfer-table th:nth-child(6) { width: 200px; }
+
+/* Invoice Modal Styling - Match Deposit Contract Modal */
+.invoice-modal .room-form-input,
+.invoice-modal .room-form-select,
+.invoice-modal select.room-form-input {
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #fff;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.invoice-modal .room-form-input:focus,
+.invoice-modal .room-form-select:focus,
+.invoice-modal select.room-form-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.invoice-modal .room-form-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 6px;
+  text-transform: none;
+  letter-spacing: 0;
 }

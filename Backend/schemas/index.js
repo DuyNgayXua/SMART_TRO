@@ -6,12 +6,14 @@ import Property from './Property.js';
 import Room from './Room.js';
 import Payment from './Payment.js';
 import Contract from './Contract.js';
+import Tenant from './Tenant.js';
 import OTP from './OTP.js';
 import EmailVerification from './EmailVerification.js';
 import Amenity from './Amenity.js';
 import DepositContract from './DepositContract.js';
 import Report from './Report.js';
 import Comment from './Comment.js';
+import Invoice from './Invoice.js';
 
 export default {
     User,
@@ -19,12 +21,14 @@ export default {
     Room,
     Payment,
     Contract,
+    Tenant,
     OTP,
     EmailVerification,
     Amenity,
     DepositContract,
     Report,
-    Comment
+    Comment,
+    Invoice
 };
 
 export {
@@ -33,10 +37,12 @@ export {
     Room,
     Payment,
     Contract,
+    Tenant,
     OTP,
     EmailVerification,
     Amenity,
     DepositContract,
     Report,
-    Comment
+    Comment,
+    Invoice
 };

@@ -18,6 +18,7 @@ import reportRoutes from './report-service/routes/reportRoutes.js';
 import commentRoutes from './comment-service/routes/commentRoutes.js';
 import chatbotRoutes from './chatbot-service/routes/chatbotRoutes.js';
 import adminPropertyRoutes from './property-service/routes/adminPropertyRoutes.js';
+import invoiceRoutes from './invoice-service/routes/invoiceRoutes.js';
 
 const router = express.Router();
 
@@ -38,6 +39,7 @@ router.use('/api/reports', reportRoutes);
 router.use('/api/comments', commentRoutes);
 router.use('/api/chatbot', chatbotRoutes);
 router.use('/api/admin', adminPropertyRoutes);
+router.use('/api/invoices', invoiceRoutes);
 
 
 // API documentation route
