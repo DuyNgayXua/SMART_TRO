@@ -314,10 +314,11 @@ class TenantController {
   async getByRoom(req, res) {
     try {
       const { roomId } = req.params;
-      const { status, sortBy = 'status', sortOrder = 'asc' } = req.query;
+      const { status = 'active', sortBy = 'status', sortOrder = 'asc' } = req.query;
       
       const filters = {};
-      if (status) filters.status = status;
+      // Mặc định chỉ lấy tenant đang thuê (active)
+      filters.status = status;
       
       const tenants = await tenantRepository.findByRoom(roomId, filters, sortBy, sortOrder);
       

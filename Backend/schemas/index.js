@@ -6,6 +6,7 @@ import Property from './Property.js';
 import Room from './Room.js';
 import Payment from './Payment.js';
 import Contract from './Contract.js';
+import Tenant from './Tenant.js';
 import OTP from './OTP.js';
 import EmailVerification from './EmailVerification.js';
 import Amenity from './Amenity.js';
@@ -14,6 +15,7 @@ import Report from './Report.js';
 import Comment from './Comment.js';
 import Upload from './Upload.js';
 import ModerationLog from './ModerationLog.js';
+import Invoice from './Invoice.js';
 
 export default {
     User,
@@ -21,6 +23,7 @@ export default {
     Room,
     Payment,
     Contract,
+    Tenant,
     OTP,
     EmailVerification,
     Amenity,
@@ -28,7 +31,8 @@ export default {
     Report,
     Comment,
     Upload,
-    ModerationLog
+    ModerationLog,
+    Invoice
 };
 
 export {
@@ -37,6 +41,7 @@ export {
     Room,
     Payment,
     Contract,
+    Tenant,
     OTP,
     EmailVerification,
     Amenity,
@@ -44,5 +49,6 @@ export {
     Report,
     Comment,
     Upload,
-    ModerationLog
+    ModerationLog,
+    Invoice
 };

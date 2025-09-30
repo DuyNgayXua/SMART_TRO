@@ -137,6 +137,7 @@ class RoomRepository {
         try {
             const match = {};
             if (filter.property) match.property = new mongoose.Types.ObjectId(filter.property);
+            if (filter.owner) match.owner = new mongoose.Types.ObjectId(filter.owner);
 
             const pipeline = [
                 { $match: match },
@@ -165,6 +166,129 @@ class RoomRepository {
             return await Room.exists(filter);
         } catch (error) {
             throw new Error('Error checking existence: ' + error.message);
+        }
+    }
+
+    async transferRoom(fromRoomId, toRoomId, userId) {
+        const session = await mongoose.startSession();
+        
+        try {
+            const result = await session.withTransaction(async () => {
+                // Import models
+                const Contract = (await import('../../../schemas/Contract.js')).default;
+                const Tenant = (await import('../../../schemas/Tenant.js')).default;
+                
+                // 1. Lấy thông tin phòng nguồn và đích
+                const fromRoom = await Room.findById(fromRoomId).session(session);
+                const toRoom = await Room.findById(toRoomId).session(session);
+                
+                if (!fromRoom || !toRoom) {
+                    throw new Error('Không tìm thấy phòng');
+                }
+
+                // 2. Tìm hợp đồng thuê hiện tại của phòng nguồn
+                const currentContract = await Contract.findOne({
+                    room: fromRoomId,
+                    status: 'active'
+                }).populate('tenants').session(session);
+
+                if (!currentContract) {
+                    throw new Error('Không tìm thấy hợp đồng thuê hiện tại cho phòng nguồn');
+                }
+
+                // 3. Cập nhật hợp đồng - chuyển sang phòng mới
+                currentContract.room = toRoomId;
+                
+                // Thêm lịch sử chuyển phòng vào hợp đồng
+                if (!currentContract.transferHistory) {
+                    currentContract.transferHistory = [];
+                }
+                
+                currentContract.transferHistory.push({
+                    fromRoom: fromRoomId,
+                    toRoom: toRoomId,
+                    transferDate: new Date(),
+                    transferBy: userId,
+                    reason: 'Room transfer'
+                });
+
+                await currentContract.save({ session });
+
+                // 4. Cập nhật thông tin phòng cho tất cả tenant
+                if (currentContract.tenants && currentContract.tenants.length > 0) {
+                    const transferNote = `Chuyển từ phòng ${fromRoom.roomNumber} sang phòng ${toRoom.roomNumber} vào ${new Date().toLocaleDateString('vi-VN')}`;
+                    
+                    // Lấy thông tin tenants hiện tại để lấy notes cũ
+                    const tenants = await Tenant.find({ 
+                        _id: { $in: currentContract.tenants.map(t => t._id || t) } 
+                    }, 'notes').session(session);
+
+                    // Cập nhật từng tenant với updateOne để tránh validation issues
+                    for (const tenant of tenants) {
+                        const newNotes = tenant.notes 
+                            ? `${tenant.notes}\n${transferNote}`
+                            : transferNote;
+                        
+                        await Tenant.updateOne(
+                            { _id: tenant._id },
+                            { 
+                                room: toRoomId,
+                                notes: newNotes
+                            }
+                        ).session(session);
+                    }
+                }
+
+                // 5. Cập nhật trạng thái phòng
+                // Phòng cũ về available
+                fromRoom.status = 'available';
+                fromRoom.tenants = [];
+                fromRoom.statusHistory.push({
+                    status: 'available',
+                    changedAt: new Date(),
+                    note: `Tenant chuyển sang phòng ${toRoom.roomNumber}`,
+                    changedBy: userId
+                });
+
+                // Phòng mới thành rented
+                toRoom.status = 'rented';
+                toRoom.tenants = currentContract.tenants.map(t => t._id || t);
+                toRoom.statusHistory.push({
+                    status: 'rented',
+                    changedAt: new Date(),
+                    note: `Tenant chuyển từ phòng ${fromRoom.roomNumber}`,
+                    changedBy: userId
+                });
+
+                // Lưu cả hai phòng
+                await fromRoom.save({ session });
+                await toRoom.save({ session });
+
+                return {
+                    fromRoom: {
+                        id: fromRoom._id,
+                        roomNumber: fromRoom.roomNumber,
+                        status: fromRoom.status
+                    },
+                    toRoom: {
+                        id: toRoom._id,
+                        roomNumber: toRoom.roomNumber,
+                        status: toRoom.status
+                    },
+                    contract: {
+                        id: currentContract._id,
+                        room: currentContract.room
+                    },
+                    transferDate: new Date()
+                };
+            });
+
+            return result;
+            
+        } catch (error) {
+            throw new Error('Error transferring room: ' + error.message);
+        } finally {
+            await session.endSession();
         }
     }
 }
