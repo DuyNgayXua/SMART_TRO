@@ -43,8 +43,8 @@ const chatbotController = {
         });
       }
 
-      // Xử lý tin nhắn bằng Ollama service với cache info từ middleware
-      const ollamaResult = await ollamaService.processMessage(message.trim(), req.vectorCache);
+      // Xử lý tin nhắn bằng Ollama service với cache info và metadata từ middleware
+      const ollamaResult = await ollamaService.processMessage(message.trim(), req.vectorCache, req.userMetadata);
       console.log('🔍 Full Ollama Result:', JSON.stringify(ollamaResult, null, 2));
       
       if (!ollamaResult.success) {
@@ -55,7 +55,7 @@ const chatbotController = {
       // Tìm kiếm properties nếu có search params
       const searchParams = ollamaResult.data?.searchParams;
       const searchResults = searchParams ? await chatbotController.handlePropertySearch(searchParams) : [];
-      console.log(`🏠 Search Results: ${searchResults.length} properties found`);
+      console.log(`Search Results: ${searchResults.length} properties found`);
       
       // Tạo AI response
       const aiResponse = chatbotController.buildAIResponse(
@@ -63,7 +63,7 @@ const chatbotController = {
         searchResults,
         searchParams
       );
-      console.log('🎯 Final AI Response:', aiResponse);
+      // console.log('Final AI Response:', aiResponse);
 
       // Trả về response
       const finalResponse = {
@@ -71,7 +71,6 @@ const chatbotController = {
         data: aiResponse
       };
       
-      console.log('📤 Final Backend Response:', JSON.stringify(finalResponse, null, 2));
       console.log('🔍 Properties count in final response:', finalResponse.data?.properties?.length || 0);
       
       return res.json(finalResponse);
@@ -98,22 +97,6 @@ const chatbotController = {
       // Convert search params sang format MongoDB query
       const query = chatbotController.buildMongoQuery(searchParams);
       console.log('MongoDB Query:', JSON.stringify(query, null, 2));
-      
-      // Debug: Kiểm tra total properties trong DB
-      const totalProperties = await Property.countDocuments({
-        approvalStatus: 'approved',
-        status: 'available',
-        isDeleted: { $ne: true }
-      });
-    
-      
-      // Debug: Kiểm tra sample property structure
-      const sampleProperty = await Property.findOne({
-        approvalStatus: 'approved',
-        status: 'available',
-        isDeleted: { $ne: true }
-      }).lean();
-
 
       // Thực hiện tìm kiếm
       const properties = await Property.find(query)
@@ -123,12 +106,9 @@ const chatbotController = {
         .populate('amenities', 'name icon')
         .lean();
 
-    
-      
       // Debug: Thử query đơn giản hơn
       if (properties.length === 0) {
        
-        
         // Chỉ filter theo province  
         if (searchParams.provinceId) {
           const provinceOnly = await Property.countDocuments({
@@ -297,7 +277,7 @@ const chatbotController = {
 
 
   /**
-   * Gợi ý chung
+   * Gợi ý chung .
    */
   getGeneralSuggestions: () => {
     return [
@@ -308,167 +288,7 @@ const chatbotController = {
     ];
   },
 
-  /**
-   * Tìm kiếm trong vector database - Public endpoint
-   */
-  searchVector: async (req, res) => {
-    try {
-      const { question, threshold = 0.85 } = req.body;
 
-      if (!question?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Câu hỏi không được để trống'
-        });
-      }
-
-      console.log(`Vector search request: "${question}" (threshold: ${threshold})`);
-
-      // Tìm kiếm trong vector database
-      const startTime = Date.now();
-      const result = await vectorService.findSimilarQuestion(question.trim(), threshold);
-      const searchTime = Date.now() - startTime;
-
-      if (result) {
-        console.log(`Found cached response in ${searchTime}ms with similarity: ${result.score}`);
-        
-        // Parse response nếu là JSON string
-        let responseData = result.response;
-        if (typeof result.response === 'string') {
-          try {
-            responseData = JSON.parse(result.response);
-          } catch (e) {
-            responseData = result.response;
-          }
-        }
-
-        return res.json({
-          success: true,
-          data: {
-            found: true,
-            question: result.question,
-            response: responseData,
-            similarity: result.score,
-            metadata: result.metadata,
-            searchTime: `${searchTime}ms`,
-            source: 'vector-cache'
-          }
-        });
-      } else {
-        console.log(`No cached response found in ${searchTime}ms`);
-        
-        return res.json({
-          success: true,
-          data: {
-            found: false,
-            message: 'Không tìm thấy câu hỏi tương tự trong cache',
-            searchTime: `${searchTime}ms`,
-            suggestion: 'Hãy sử dụng /api/chatbot/message để xử lý câu hỏi mới'
-          }
-        });
-      }
-
-    } catch (error) {
-      console.error('Error in vector search:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Lỗi khi tìm kiếm trong vector database',
-        error: error.message
-      });
-    }
-  },
-
-  /**
-   * Lưu câu hỏi/trả lời vào vector database - Admin endpoint
-   */
-  saveVector: async (req, res) => {
-    try {
-      const { 
-        question, 
-        response, 
-        metadata = {},
-        overwrite = false 
-      } = req.body;
-
-      if (!question?.trim()) {
-        return res.status(400).json({
-          success: false,
-          message: 'Câu hỏi không được để trống'
-        });
-      }
-
-      if (!response) {
-        return res.status(400).json({
-          success: false,
-          message: 'Câu trả lời không được để trống'
-        });
-      }
-
-      console.log(`Manual save request: "${question.substring(0, 50)}..."`);
-
-      // Kiểm tra xem đã có câu hỏi tương tự chưa (nếu không overwrite)
-      if (!overwrite) {
-        const existing = await vectorService.findSimilarQuestion(question.trim(), 0.3);
-        if (existing) {
-          return res.status(409).json({
-            success: false,
-            message: 'Đã có câu hỏi tương tự trong database',
-            data: {
-              existingQuestion: existing.question,
-              similarity: existing.score,
-              suggestion: 'Sử dụng overwrite=true để ghi đè'
-            }
-          });
-        }
-      }
-
-      // Chuẩn bị metadata
-      const saveMetadata = {
-        type: metadata.type || 'manual',
-        source: 'manual',
-        priority: metadata.priority || 'normal',
-        tags: metadata.tags || ['manual-entry'],
-        createdBy: req.user?.name || req.user?._id || 'admin',
-        verified: true,
-        adminNotes: metadata.adminNotes || 'Manual entry via API',
-        ...metadata
-      };
-
-      // Lưu vào vector database
-      const startTime = Date.now();
-      const success = await vectorService.saveQnA(
-        question.trim(),
-        typeof response === 'string' ? response : JSON.stringify(response),
-        saveMetadata
-      );
-      const saveTime = Date.now() - startTime;
-
-      if (success) {
-        console.log(`Manual save completed in ${saveTime}ms`);
-        
-        res.json({
-          success: true,
-          message: 'Đã lưu câu hỏi/trả lời vào vector database',
-          data: {
-            question: question.trim(),
-            saved: true,
-            saveTime: `${saveTime}ms`,
-            metadata: saveMetadata
-          }
-        });
-      } else {
-        throw new Error('Không thể lưu vào vector database');
-      }
-
-    } catch (error) {
-      console.error('Error saving to vector database:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Lỗi khi lưu vào vector database',
-        error: error.message
-      });
-    }
-  }
 };
 
 export default chatbotController;

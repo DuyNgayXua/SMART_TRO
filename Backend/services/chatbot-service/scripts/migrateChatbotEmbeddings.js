@@ -53,8 +53,6 @@ class EmbeddingMigration {
     
     for (const entry of entries) {
       try {
-        console.log(`Migrating: "${entry.question.substring(0, 50)}..."`);
-        
         // Tạo embedding mới cho question
         const newEmbedding = await this.createNewEmbedding(entry.question);
         
@@ -68,8 +66,7 @@ class EmbeddingMigration {
         });
         
         results.success++;
-        console.log(`Successfully migrated entry ${entry._id}`);
-        
+
         // Delay giữa các requests để tránh overload
         await new Promise(resolve => setTimeout(resolve, 200));
         
@@ -92,8 +89,6 @@ class EmbeddingMigration {
    */
   async runMigration() {
     try {
-      console.log('Starting embedding migration to nomic-embed-text:latest...');
-      
       // Connect to MongoDB
       if (!mongoose.connection.readyState) {
         await mongoose.connect(process.env.MONGODB_ATLAS_URI || 
@@ -111,7 +106,6 @@ class EmbeddingMigration {
 
       // Lấy tất cả entries cần migrate
       const totalEntries = await ChatbotEmbedding.countDocuments({ isDeleted: false });
-      console.log(`Found ${totalEntries} entries to migrate`);
 
       if (totalEntries === 0) {
         console.log('ℹNo entries to migrate');
@@ -123,40 +117,8 @@ class EmbeddingMigration {
       let totalResults = { success: 0, failed: 0, errors: [] };
 
       const totalBatches = Math.ceil(totalEntries / this.batchSize);
-      
-      for (let batch = 0; batch < totalBatches; batch++) {
-        const skip = batch * this.batchSize;
-        console.log(`\nProcessing batch ${batch + 1}/${totalBatches} (entries ${skip + 1}-${Math.min(skip + this.batchSize, totalEntries)})`);
-        
-        const entries = await ChatbotEmbedding
-          .find({ isDeleted: false })
-          .select('_id question embedding metadata')
-          .skip(skip)
-          .limit(this.batchSize)
-          .lean();
 
-        const batchResults = await this.migrateBatch(entries);
-        
-        // Merge results
-        totalResults.success += batchResults.success;
-        totalResults.failed += batchResults.failed;
-        totalResults.errors.push(...batchResults.errors);
-        
-        processed += entries.length;
-        console.log(`Progress: ${processed}/${totalEntries} (${Math.round(processed/totalEntries*100)}%)`);
-        
-        // Delay giữa các batches
-        if (batch < totalBatches - 1) {
-          console.log('⏱Waiting 2 seconds before next batch...');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-        }
-      }
 
-      // Summary
-      console.log('\nMigration completed!');
-      console.log(`Successfully migrated: ${totalResults.success} entries`);
-      console.log(`Failed: ${totalResults.failed} entries`);
-      
       if (totalResults.errors.length > 0) {
         console.log('\nFailed entries:');
         totalResults.errors.forEach(error => {
@@ -165,7 +127,6 @@ class EmbeddingMigration {
       }
 
       // Update collection metadata về dimension mới
-      console.log('\nUpdating collection metadata...');
       await mongoose.connection.db.collection('chatbot_embeddings').updateMany(
         { isDeleted: false },
         {
@@ -188,7 +149,6 @@ class EmbeddingMigration {
    * Rollback migration (khôi phục embeddings cũ nếu có backup)
    */
   async rollbackMigration() {
-    console.log('Rolling back migration...');
     // Implementation for rollback if needed
     // Có thể backup embeddings cũ trước khi migrate
   }
@@ -198,13 +158,11 @@ class EmbeddingMigration {
    */
   async verifyMigration() {
     try {
-      console.log('\nVerifying migration results...');
-      
       const entries = await ChatbotEmbedding.find({ isDeleted: false }).limit(5);
       
       for (const entry of entries) {
         if (entry.embedding) {
-          console.log(`✓ Entry ${entry._id}: ${entry.embedding.length} dimensions (expected: ${this.newDimension})`);
+          console.log(`Entry ${entry._id}: ${entry.embedding.length} dimensions (expected: ${this.newDimension})`);
         }
       }
       

@@ -12,6 +12,8 @@ import Amenity from './Amenity.js';
 import DepositContract from './DepositContract.js';
 import Report from './Report.js';
 import Comment from './Comment.js';
+import Upload from './Upload.js';
+import ModerationLog from './ModerationLog.js';
 
 export default {
     User,
@@ -24,7 +26,9 @@ export default {
     Amenity,
     DepositContract,
     Report,
-    Comment
+    Comment,
+    Upload,
+    ModerationLog
 };
 
 export {
@@ -38,5 +42,7 @@ export {
     Amenity,
     DepositContract,
     Report,
-    Comment
+    Comment,
+    Upload,
+    ModerationLog
 };

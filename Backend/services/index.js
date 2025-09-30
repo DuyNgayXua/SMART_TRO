@@ -18,6 +18,8 @@ import reportRoutes from './report-service/routes/reportRoutes.js';
 import commentRoutes from './comment-service/routes/commentRoutes.js';
 import chatbotRoutes from './chatbot-service/routes/chatbotRoutes.js';
 import adminPropertyRoutes from './property-service/routes/adminPropertyRoutes.js';
+import uploadRoutes from './upload-service/routes/uploadRoutes.js';
+import moderationRoutes from './shared/routes/moderationRoutes.js';
 
 const router = express.Router();
 
@@ -38,6 +40,8 @@ router.use('/api/reports', reportRoutes);
 router.use('/api/comments', commentRoutes);
 router.use('/api/chatbot', chatbotRoutes);
 router.use('/api/admin', adminPropertyRoutes);
+router.use('/api/upload', uploadRoutes);
+router.use('/api/moderation', moderationRoutes);
 
 
 // API documentation route
@@ -57,7 +61,9 @@ router.get('/api', (req, res) => {
             auth: '/api/auth',
             myProperties: '/api/my-properties',
             reports: '/api/reports',
-            comments: '/api/comments'
+            comments: '/api/comments',
+            upload: '/api/upload',
+            moderation: '/api/moderation'
         },
         documentation: {
             users: {
@@ -105,6 +111,30 @@ router.get('/api', (req, res) => {
                 'PUT /api/my-properties/:propertyId': 'Cập nhật thông tin bài đăng',
                 'DELETE /api/my-properties/:propertyId': 'Xóa bài đăng',
                 'PATCH /api/my-properties/:propertyId/toggle-status': 'Chuyển trạng thái bài đăng (available/draft/inactive)'
+            },
+            upload: {
+                'POST /api/upload/single': 'Upload 1 ảnh với AI moderation (require auth)',
+                'POST /api/upload/multiple': 'Upload nhiều ảnh (max 10) với AI moderation (require auth)',
+                'POST /api/upload/analyze-url': 'Phân tích ảnh từ URL (require auth)',
+                'POST /api/upload/batch-analyze': 'Phân tích batch nhiều URLs (require auth)',
+                'GET /api/upload/my-uploads': 'Lấy danh sách uploads của user (require auth)',
+                'DELETE /api/upload/:uploadId': 'Xóa ảnh đã upload (require auth)',
+                'GET /api/upload/stats': 'Thống kê moderation (admin only)',
+                'PUT /api/upload/threshold': 'Cập nhật threshold AI moderation (admin only)',
+                'POST /api/upload/test-webhook': 'Test webhook configuration (admin only)',
+                'GET /api/upload/health': 'Health check upload service',
+                'GET /api/upload/config': 'Lấy cấu hình upload',
+                'POST /api/upload/webhook/moderation': 'Webhook nhận kết quả AI moderation từ Cloudinary',
+                'GET /api/upload/webhook/health': 'Health check webhook service'
+            },
+            moderation: {
+                'POST /api/moderation/analyze': 'Phân tích 1 ảnh từ URL với AI',
+                'POST /api/moderation/batch-analyze': 'Phân tích nhiều ảnh cùng lúc (max 20)',
+                'POST /api/moderation/check-url': 'Kiểm tra ảnh và block nếu vi phạm',
+                'GET /api/moderation/stats': 'Thống kê kiểm duyệt (admin only)',
+                'PUT /api/moderation/thresholds': 'Cập nhật ngưỡng phát hiện (admin only)',
+                'GET /api/moderation/test': 'Test hệ thống moderation',
+                'GET /api/moderation/health': 'Health check moderation service'
             }
         }
     });

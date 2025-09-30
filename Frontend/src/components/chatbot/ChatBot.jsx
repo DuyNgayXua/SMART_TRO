@@ -54,16 +54,14 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     }
   }, [messages.length, isChatbotOpen]);
 
-  // Load conversation on component mount if user is logged in
+  // Load conversation on component mount (works for both logged in and guest users)
   useEffect(() => {
-    if (user?._id) {
-      loadConversationFromStorage();
-    }
+    loadConversationFromStorage();
   }, [user]);
 
-  // Save conversation whenever messages change
+  // Save conversation whenever messages change (works for both logged in and guest users)
   useEffect(() => {
-    if (user?._id && (guidedMessages.length > 0 || freeMessages.length > 0)) {
+    if (guidedMessages.length > 0 || freeMessages.length > 0) {
       const timeoutId = setTimeout(() => {
         saveConversationToStorage();
       }, 1000); // Debounce save
@@ -224,10 +222,8 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     }
   };
 
-  // Save conversation to localStorage by user
+  // Save conversation to localStorage (works for both logged in and guest users)
   const saveConversationToStorage = () => {
-    if (!user?._id) return;
-    
     try {
       const conversationData = {
         guidedMessages,
@@ -239,13 +235,14 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
         lastUpdated: new Date().toISOString()
       };
       
-      const storageKey = `chatbot_conversation_${user._id}`;
+      // Use user ID if logged in, otherwise use 'guest' key
+      const storageKey = user?._id ? `chatbot_conversation_${user._id}` : 'chatbot_conversation_guest';
       localStorage.setItem(storageKey, JSON.stringify(conversationData));
     } catch (error) {
       console.error('Error saving conversation to storage:', error);
       // Clear storage if there's an error
       try {
-        const storageKey = `chatbot_conversation_${user._id}`;
+        const storageKey = user?._id ? `chatbot_conversation_${user._id}` : 'chatbot_conversation_guest';
         localStorage.removeItem(storageKey);
       } catch (clearError) {
         console.error('Error clearing corrupted storage:', clearError);
@@ -253,11 +250,10 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     }
   };
 
-  // Load conversation from localStorage by user
+  // Load conversation from localStorage (works for both logged in and guest users)
   const loadConversationFromStorage = () => {
-    if (!user?._id) return;
-    
-    const storageKey = `chatbot_conversation_${user._id}`;
+    // Use user ID if logged in, otherwise use 'guest' key
+    const storageKey = user?._id ? `chatbot_conversation_${user._id}` : 'chatbot_conversation_guest';
     const savedData = localStorage.getItem(storageKey);
     
     if (savedData) {
@@ -287,7 +283,7 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
           setConversationState(conversationData.conversationState || null);
           setCurrentStep(conversationData.currentStep || 'greeting');
           
-          console.log('Loaded conversation from storage for user:', user._id);
+          console.log('Loaded conversation from storage for:', user?._id || 'guest');
           
           return true;
         } else {
@@ -302,12 +298,11 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     return false;
   };
 
-  // Clear conversation storage for user
+  // Clear conversation storage (works for both logged in and guest users)
   const clearConversationStorage = () => {
-    if (!user?._id) return;
-    const storageKey = `chatbot_conversation_${user._id}`;
+    const storageKey = user?._id ? `chatbot_conversation_${user._id}` : 'chatbot_conversation_guest';
     localStorage.removeItem(storageKey);
-    console.log('Cleared conversation storage for user:', user._id);
+    console.log('Cleared conversation storage for:', user?._id || 'guest');
   };
 
   // Helper function to create message with proper timestamp
@@ -360,7 +355,7 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
         response = await chatbotAPI.sendMessage(message, sessionId);
       }
       
-      console.log('=== CHATBOT SEND MESSAGE RESPONSE ===');
+      console.log('=== CHATBOT SEND MESSAGE RESPONSE');
       console.log('Message sent:', message);
       console.log('Mode:', guidedMode ? 'Guided' : 'Free');
       console.log('Full response:', JSON.stringify(response, null, 2));
@@ -396,13 +391,6 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
           showGrid: response.data.showGrid || false,
           placeholder: response.data.placeholder
         };
-        
-        console.log('🔍 Bot message created with properties:', {
-          hasProperties: !!response.data.properties,
-          propertiesLength: response.data.properties?.length || 0,
-          properties: response.data.properties,
-          botMessage: botMessage
-        });
         
         setMessages(prev => [...prev, botMessage]);
         playSuccessSound();

@@ -1485,7 +1485,7 @@ const handleVideoUpload = (e) => {
                             <img src={img.url} alt={`Preview ${index}`} />
                             <button
                               type="button"
-                              className="remove-image"
+                              className="remove-image-new-property"
                               onClick={() => {
                                 setFormData(prev => ({
                                   ...prev,

@@ -1260,7 +1260,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                         <img src={img} alt={`Existing ${index}`} />
                         <button
                           type="button"
-                          className="remove-image"
+                          className="remove-image-new-property"
                           onClick={() => handleRemoveExistingImage(index)}
                         >
                           <i className="fa fa-times"></i>
@@ -1298,7 +1298,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                         <img src={img.url} alt={`New ${index}`} />
                         <button
                           type="button"
-                          className="remove-image"
+                          className="remove-image-new-property"
                           onClick={() => handleRemoveNewImage(index)}
                         >
                           <i className="fa fa-times"></i>

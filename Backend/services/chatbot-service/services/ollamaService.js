@@ -41,7 +41,7 @@ class OllamaService {
         provinces = [];
       }
       
-      console.log(`Loaded ${provinces.length} provinces from API`);
+      // console.log(`Loaded ${provinces.length} provinces from API`);
 
       this.provinceCache.set(cacheKey, {
         data: provinces,
@@ -78,7 +78,7 @@ class OllamaService {
         districts = [];
       }
       
-      console.log(`Loaded ${districts.length} districts for province ${provinceId} from API`);
+      // console.log(`Loaded ${districts.length} districts for province ${provinceId} from API`);
 
       this.districtCache.set(cacheKey, {
         data: districts,
@@ -105,7 +105,7 @@ class OllamaService {
 
     try {
       const response = await axios.get('http://localhost:5000/api/amenities/all', { timeout: 5000 });
-      console.log('Amenities API response:', response.data);
+      // console.log('Amenities API response:', response.data);
       
       // API trả về response.data.data.amenities
       let amenities = response.data.data?.amenities || response.data.data || response.data;
@@ -121,11 +121,11 @@ class OllamaService {
         }
       }
       
-      console.log(`Loaded ${amenities.length} amenities from API`);
+      // console.log(`Loaded ${amenities.length} amenities from API`);
 
       // Fallback: Tạo danh sách amenities cơ bản nếu API không có data
       if (amenities.length === 0) {
-        console.log('Using fallback amenities list');
+        // console.log('Using fallback amenities list');
         amenities = [
           { _id: '68c6bab2ab13f9d982ee9995', name: 'WiFi' },
           { _id: '68be84191b3b9b4fa53e7d57', name: 'Điều hòa' },
@@ -144,7 +144,7 @@ class OllamaService {
       return amenities;
     } catch (error) {
       console.error('Error fetching amenities:', error.message);
-      console.log('Using fallback amenities list due to error');
+      // console.log('Using fallback amenities list due to error');
       
       // Fallback amenities nếu API lỗi
       const fallbackAmenities = [
@@ -290,7 +290,7 @@ class OllamaService {
 
       return { available: true, status: response.status };
     } catch (error) {
-      console.log('Ollama server not available:', error.message);
+      // console.log('Ollama server not available:', error.message);
       return { available: false, reason: error.message };
     }
   }
@@ -298,29 +298,37 @@ class OllamaService {
   /**
    * Xử lý tin nhắn bằng Ollama model với Vector Database caching
    */
-  async processMessage(userMessage, vectorCache = null) {
+  async processMessage(userMessage, vectorCache = null, userMetadata = null) {
     try {
-      console.log('Processing message via Ollama model with vector caching...');
+      // console.log('Processing message via Ollama model with vector caching...');
       const startTime = Date.now();
 
-      // Bước 1: Sử dụng cache từ middleware nếu có, nếu không thì tìm kiếm
+      // Bước 1: Sử dụng cache từ middleware (đã được check trong middleware)
       let cachedResponse = vectorCache;
-      if (!cachedResponse) {
-        cachedResponse = await vectorService.findSimilarQuestion(userMessage);
-      }
-      
-      console.log('🔍 Cached Response Check:', {
-        found: !!cachedResponse,
-        fromMiddleware: !!vectorCache,
-        similarity: cachedResponse?.score,
-        question: cachedResponse?.question?.substring(0, 50),
-        response: cachedResponse?.response?.substring(0, 50)
-      });
-      console.log('cachedResponse', cachedResponse);
+
+      // console.log('cachedResponse', cachedResponse);
       
       if (cachedResponse) {
-        console.log('📋 Found cached response, extracting searchParams...');
-        
+        // HANDLE MERGED PARAMS RESULT
+        if (cachedResponse.source === 'merged_params' && cachedResponse.needsPropertySearch) {
+          // console.log('Processing merged parameters for direct property search');
+          
+          return {
+            success: true,
+            data: {
+              isRoomSearchQuery: true,
+              searchParams: cachedResponse.mergedSearchParams,
+              processingTime: `${Date.now() - startTime}ms (merged-params)`,
+              source: 'merged-params',
+              similarity: cachedResponse.confidence,
+              mergedFrom: {
+                cached: cachedResponse.originalCachedParams,
+                user: cachedResponse.userParams
+              }
+            }
+          };
+        }
+
         // Parse cached response data
         let responseData;
         try {
@@ -333,17 +341,6 @@ class OllamaService {
         
         // Ưu tiên lấy searchParams từ metadata nếu có, nếu không thì từ response
         const searchParams = cachedResponse.metadata?.searchParams || responseData.searchParams;
-        
-        console.log('🔍 Parsed cached data:', {
-          hasResponseSearchParams: !!responseData.searchParams,
-          responseSearchParams: responseData.searchParams,
-          hasMetadataSearchParams: !!cachedResponse.metadata?.searchParams,
-          metadataSearchParams: cachedResponse.metadata?.searchParams,
-          finalSearchParams: searchParams,
-          hasProperties: !!responseData.properties,
-          propertiesLength: responseData.properties?.length
-        });
-        
         // Nếu là room có searchParams, return searchParams để controller xử lý
         if (searchParams) {
           return {
@@ -374,7 +371,6 @@ class OllamaService {
       // Bước 2: Kiểm tra nhanh trước khi gọi Ollama để tránh xử lý các câu hỏi vô nghĩa
       const quickCheck = this.quickRoomSearchCheck(userMessage);
       if (!quickCheck) {
-        console.log('Quick check: Non-room search query detected');
         const nonRoomResponse = {
           success: true,
           data: {
@@ -401,19 +397,22 @@ class OllamaService {
         this.getAmenities()
       ]);
 
-      // Bước 4: Phân tích tin nhắn bằng Ollama
-      const extractedData = await this.analyzeWithOllama(userMessage);
-      console.log('Extracted data from Ollama:', extractedData);
+      // Bước 4: Phân tích tin nhắn - sử dụng userMetadata nếu có, nếu không thì gọi Ollama
+      let extractedData;
+      if (userMetadata) {
+        extractedData = userMetadata;
+      } else {
+        // console.log('Analyzing with Ollama (no userMetadata)...');
+        extractedData = await this.analyzeWithOllama(userMessage);
+      }
+      // console.log('Extracted data:', extractedData);
 
       const processingTime = Date.now() - startTime;
-      console.log(`Ollama processing completed in ${processingTime}ms`);
-
       // Bước 5: Xử lý kết quả và lưu vào cache
       let finalResponse;
       
       // Kiểm tra xem có phải câu hỏi về tìm phòng trọ không
       if (!extractedData.isRoomSearchQuery) {
-        console.log('Non-room search query detected, returning polite response');
         finalResponse = {
           success: true,
           data: {
@@ -435,9 +434,20 @@ class OllamaService {
           }
         );
       } else {
-        // Enhance data với real IDs cho room search queries
-        const searchParams = await this.enhanceWithRealIds(extractedData, provinces, amenities);
-        console.log('Final search params:', searchParams);
+        // Xử lý room search queries
+        let searchParams;
+        
+        if (extractedData.searchParams) {
+          // Đã được enhanced từ middleware (rule-based)
+       
+          searchParams = extractedData.searchParams;
+        } else {
+          // Raw data từ Ollama, cần enhance
+        
+          searchParams = await this.enhanceWithRealIds(extractedData, provinces, amenities);
+        }
+        
+       
 
         finalResponse = {
           success: true,
@@ -445,21 +455,11 @@ class OllamaService {
             isRoomSearchQuery: true,
             searchParams: searchParams,
             processingTime: `${processingTime}ms`,
-            source: 'ollama'
+            source: extractedData.extractionMethod === 'rule-based' ? 'rule-based' : 'ollama',
+            extractionMethod: extractedData.extractionMethod
           }
         };
         
-        // Lưu vào cache với metadata chi tiết
-        await vectorService.saveQnA(
-          userMessage, 
-          JSON.stringify(finalResponse.data),
-          { 
-            type: 'room-search-query',
-            extractedData: extractedData,
-            searchParams: searchParams,
-            processingTimeMs: processingTime
-          }
-        );
       }
 
       return finalResponse;
@@ -537,9 +537,6 @@ AREA:
 - Nếu diện tích khác → tính tương tự.
 - Nếu không có thông tin gán null.
 Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác, không giải thích.`;
-
-      console.log('Calling Ollama API...');
-
       const response = await axios.post('http://localhost:11434/api/generate', {
         model: 'llama3.2:latest', // Sử dụng llama3.2 cho text generation
         prompt: prompt,
@@ -570,10 +567,10 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
       let parsedCriteria;
       try {
         parsedCriteria = JSON.parse(ollamaResponse);
-        console.log('Parsed criteria:', parsedCriteria);
+   
       } catch (parseError) {
         console.error('JSON parse error:', parseError.message);
-        console.log('Trying to extract and fix JSON from response...');
+     
         
         // Thử extract JSON nếu có text bao quanh
         let jsonMatch = ollamaResponse.match(/\{[\s\S]*?\}/);
@@ -589,7 +586,6 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
             
             if (missingBrackets > 0) {
               jsonStr += '}'.repeat(missingBrackets);
-              console.log('Fixed incomplete JSON:', jsonStr);
               jsonMatch = [jsonStr];
             }
           }
@@ -598,14 +594,11 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
         if (jsonMatch) {
           try {
             parsedCriteria = JSON.parse(jsonMatch[0]);
-            console.log('Extracted and parsed criteria:', parsedCriteria);
           } catch (secondParseError) {
             console.error('Second JSON parse failed:', secondParseError.message);
-            console.log('Falling back to basic extraction...');
             parsedCriteria = this.basicKeywordExtraction(userMessage);
           }
         } else {
-          console.log('No JSON structure found, using basic extraction...');
           parsedCriteria = this.basicKeywordExtraction(userMessage);
         }
       }
@@ -626,7 +619,6 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
       }
 
       // Fallback: basic keyword extraction
-      console.log('Falling back to basic keyword extraction...');
       return this.basicKeywordExtraction(userMessage);
     }
   }
@@ -660,7 +652,6 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
       try {
         const districts = await this.getDistricts(searchParams.provinceId);
         searchParams.districtId = this.findDistrictId(districts, extractedData.districtName);
-        console.log(`Found districtId: ${searchParams.districtId} for district: ${extractedData.districtName}`);
       } catch (error) {
         console.error('Error getting districts:', error.message);
       }
@@ -690,56 +681,51 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
    * Kiểm tra nhanh xem có phải câu hỏi về phòng trọ không
    */
   quickRoomSearchCheck(message) {
-    console.log(`Quick room search check for: "${message}"`);
-    
     if (!message) {
-      console.log('Empty message - returning false');
       return false;
     }
 
     const lowerMessage = message.toLowerCase().trim();
-    console.log(`Normalized message: "${lowerMessage}"`);
-    
     // Nếu tin nhắn quá ngắn
     if (lowerMessage.length < 2) {
-      console.log('Message too short - returning false');
       return false;
     }
 
     // Kiểm tra ký tự lặp lại quá nhiều (như "aaaaaaa", "hhhhhh")
     const repeatedChars = lowerMessage.match(/(.)\1{4,}/g);
     if (repeatedChars) {
-      console.log('Repeated characters detected:', repeatedChars, '- returning false');
       return false;
     }
 
     // Kiểm tra tin nhắn chỉ chứa ký tự đặc biệt hoặc số
     if (/^[^a-zA-ZÀ-ỹ]*$/.test(lowerMessage)) {
-      console.log('Only special characters/numbers - returning false');
       return false;
     }
 
     // Kiểm tra ký tự vô nghĩa (chuỗi dài không có nghĩa)
     const meaninglessPattern = /^[a-z]{8,}$|^\d{5,}$|^[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]{5,}$/;
     if (meaninglessPattern.test(lowerMessage)) {
-      console.log('Meaningless pattern detected - returning false');
       return false;
     }
 
-    // Từ khóa KHÔNG liên quan - kiểm tra trước
+    // Từ khóa KHÔNG liên quan - kiểm tra trước (sử dụng word boundaries để tránh false positive)
     const nonRoomKeywords = [
       'model', 'train', 'ai', 'artificial intelligence', 'machine learning', 
-      'thời tiết', 'weather', 'tin tức', 'news', 'học tập', 'study', 'công nghệ', 'technology', 
-      'lập trình', 'programming', 'code', 'coding',
+      'thời tiết', 'weather', 'tin tức', 'news', 'study', 'lập trình', 'programming', 'code', 'coding',
       'github', 'api', 'database', 'server', 'frontend', 'backend',
-      'react', 'nodejs', 'python', 'javascript', 'html', 'css',
-      'bạn là ai', 'bạn tên gì', 'who are you', 'what is your name',
-      'xin chào', 'hello', 'hi', 'chào bạn', 'greetings'
+      'react', 'nodejs', 'python', 'javascript', 'html', 'css'
     ];
+    
+    // Riêng "công nghệ" và "technology" cần kiểm tra chính xác để không nhầm với "công nghiệp"
+    const hasSpecificTechKeywords = /\bcông nghệ\b|\btechnology\b/.test(lowerMessage);
 
-    const hasNonRoomKeywords = nonRoomKeywords.some(keyword => lowerMessage.includes(keyword));
+    // Kiểm tra từ khóa non-room với word boundaries để tránh false positive
+    const hasNonRoomKeywords = nonRoomKeywords.some(keyword => {
+      const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+      return regex.test(lowerMessage);
+    }) || hasSpecificTechKeywords;
+    
     if (hasNonRoomKeywords) {
-      console.log('Non-room keywords found - returning false');
       return false;
     }
 
@@ -753,14 +739,17 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
       'gửi xe', 'parking', 'bảo vệ', 'security', 'room', 'apartment', 'house'
     ];
 
+    // Ưu tiên các từ khóa mạnh về phòng trọ
+    const strongRoomKeywords = ['phòng trọ', 'căn hộ', 'thuê phòng', 'tìm phòng', 'chung cư', 'homestay'];
+    const hasStrongRoomKeywords = strongRoomKeywords.some(keyword => lowerMessage.includes(keyword));
+    
+    // Nếu có từ khóa mạnh thì chắc chắn là room search
+    if (hasStrongRoomKeywords) {
+      return true;
+    }
+
     const hasRoomKeywords = roomKeywords.some(keyword => lowerMessage.includes(keyword));
-    
-    console.log(`Has room keywords: ${hasRoomKeywords}`);
-    console.log(`Has non-room keywords: ${hasNonRoomKeywords}`);
-    
     const result = hasRoomKeywords;
-    console.log(`Quick check result: ${result}`);
-    
     return result;
   }
 
@@ -870,3 +859,4 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
 }
 
 export default new OllamaService();
+
