@@ -1,7 +1,8 @@
 import cloudinary from '../../../config/cloudinary.js';
+import { analyzeImageContent, analyzeVideoContent } from './awsRekognition.js';
 
 /**
- * Upload với AI Moderation kiểm tra nội dung
+ * Simple upload to Cloudinary without moderation
  */
 export const uploadToCloudinary = async (buffer, folder = 'uploads') => {
   return new Promise((resolve, reject) => {
@@ -22,85 +23,75 @@ export const uploadToCloudinary = async (buffer, folder = 'uploads') => {
 };
 
 /**
- * Upload với AI Moderation - Enhanced version
+ * Upload image với AWS Rekognition moderation
  */
 export const uploadWithModeration = async (buffer, options = {}) => {
   const {
     folder = 'uploads',
     filename,
     enableModeration = true,
-    tags = [],
-    transformation = []
+    tags = []
   } = options;
 
-  return new Promise((resolve, reject) => {
+  try {
+    // 1. Upload to Cloudinary first
+    console.log('📤 Uploading to Cloudinary...');
+    
     const uploadOptions = {
       folder: folder,
-      resource_type: 'auto',
+      resource_type: 'image',
       tags: [...tags, 'moderated'],
       transformation: [
-        { width: 1200, height: 1200, crop: 'limit', quality: 'auto' },
-        ...transformation
+        { width: 1200, height: 1200, crop: 'limit', quality: 'auto' }
       ]
     };
 
-    // Thêm filename nếu có
     if (filename) {
       uploadOptions.public_id = filename;
     }
 
-    // Bật AI moderation
+    const uploadResult = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(buffer);
+    });
+
+    // 2. Analyze with AWS Rekognition if moderation enabled
     if (enableModeration) {
-      uploadOptions.moderation = 'ai_moderation';
+      console.log('🔍 Analyzing content with AWS Rekognition...');
       
-      // Thêm webhook nếu có
-      const webhookUrl = getWebhookUrl();
-      if (webhookUrl) {
-        uploadOptions.notification_url = webhookUrl;
+      const moderationResult = await analyzeImageContent(buffer);
+      
+      // 3. If rejected, delete from Cloudinary
+      if (!moderationResult.isApproved) {
+        await deleteFromCloudinary(uploadResult.public_id);
+        throw new Error(moderationResult.message);
       }
+
+      return {
+        ...uploadResult,
+        moderation: moderationResult
+      };
     }
 
-    cloudinary.uploader.upload_stream(
-      uploadOptions,
-      async (error, result) => {
-        if (error) {
-          console.error('❌ Cloudinary upload error:', error);
-          reject(error);
-          return;
-        }
-
-        try {
-          // Xử lý kết quả moderation
-          const moderationResult = await processModerationResult(result);
-          
-          // Nếu bị từ chối, xóa ảnh
-          if (!moderationResult.isApproved) {
-            await deleteFromCloudinary(result.public_id);
-            reject(new Error(`Upload rejected: ${moderationResult.message}`));
-            return;
-          }
-
-          // Trả về kết quả với moderation data
-          resolve({
-            ...result,
-            moderation: moderationResult
-          });
-
-        } catch (moderationError) {
-          console.error('❌ Moderation processing error:', moderationError);
-          // Vẫn trả về result nhưng có warning
-          resolve({
-            ...result,
-            moderation: {
-              isApproved: true,
-              warning: 'Moderation check failed but upload succeeded',
-              error: moderationError.message
-            }
-          });
-        }
+    // Return without moderation
+    return {
+      ...uploadResult,
+      moderation: {
+        isApproved: true,
+        status: 'approved',
+        message: 'Uploaded without moderation check'
       }
-    ).end(buffer);
-  });
+    };
+
+  } catch (error) {
+    console.error('❌ Upload with moderation error:', error);
+    throw error;
+  }
 };
 
 export const deleteFromCloudinary = async (publicId) => {
@@ -113,209 +104,101 @@ export const deleteFromCloudinary = async (publicId) => {
   }
 };
 
-/**
- * Phân tích ảnh từ URL với AI Moderation
- */
-export const analyzeImage = async (imageUrl) => {
-  try {
-    console.log('🔍 Analyzing image:', imageUrl);
 
-    const result = await cloudinary.api.analyze_image(imageUrl, {
-      analysis_type: ['ai_moderation']
+export default deleteFromCloudinary;
+
+
+
+
+/**
+ * Upload video với AWS Rekognition moderation
+ */
+export const uploadVideoWithModeration = async (buffer, options = {}) => {
+  const {
+    folder = 'uploads/videos',
+    filename,
+    enableModeration = true,
+    tags = []
+  } = options;
+
+  try {
+    // 1. Upload to Cloudinary first
+    console.log('📤 Uploading video to Cloudinary...');
+    
+    const uploadOptions = {
+      folder: folder,
+      resource_type: 'video',
+      tags: [...tags, 'moderated', 'video'],
+      transformation: [
+        { 
+          quality: 'auto',
+          format: 'mp4',
+          video_codec: 'h264'
+        }
+      ]
+    };
+
+    if (filename) {
+      uploadOptions.public_id = filename;
+    }
+
+    const uploadResult = await new Promise((resolve, reject) => {
+      cloudinary.uploader.upload_stream(
+        uploadOptions,
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      ).end(buffer);
     });
 
-    return processModerationAnalysis(result.data.analysis);
+    // 2. Analyze with AWS Rekognition if moderation enabled
+    if (enableModeration) {
+      console.log('Analyzing video content with AWS Rekognition...');
+      
+      try {
+        // Pass original filename to help with S3 upload
+        const originalFilename = filename || uploadResult.original_filename || 'video.mp4';
+        const moderationResult = await analyzeVideoContent(uploadResult.secure_url, originalFilename);
+        
+        // 3. If rejected, delete from Cloudinary immediately
+        if (!moderationResult.isApproved) {
+          console.log('Video rejected, deleting from Cloudinary...');
+          await deleteFromCloudinary(uploadResult.public_id);
+          throw new Error(`Video rejected: ${moderationResult.message}`);
+        }
 
-  } catch (error) {
-    console.error('❌ Image analysis error:', error);
-    throw new Error(`Analysis failed: ${error.message}`);
-  }
-};
-
-/**
- * Kiểm tra nhiều ảnh cùng lúc (batch)
- */
-export const batchAnalyzeImages = async (imageUrls) => {
-  try {
-    const results = await Promise.allSettled(
-      imageUrls.map(url => analyzeImage(url))
-    );
-
-    return results.map((result, index) => ({
-      imageUrl: imageUrls[index],
-      success: result.status === 'fulfilled',
-      moderation: result.status === 'fulfilled' ? result.value : null,
-      error: result.status === 'rejected' ? result.reason.message : null
-    }));
-  } catch (error) {
-    console.error('❌ Batch analysis error:', error);
-    throw new Error(`Batch analysis failed: ${error.message}`);
-  }
-};
-
-/**
- * Xử lý kết quả moderation từ upload ảnh
- */
-const processModerationResult = (uploadResult) => {
-  const moderation = uploadResult.moderation && uploadResult.moderation[0];
-  
-  if (!moderation) {
-    return {
-      isApproved: true,
-      status: 'approved',
-      confidence: 1.0,
-      categories: {},
-      message: 'No moderation data available',
-      details: {}
-    };
-  }
-
-  // Threshold cho từng loại nội dung
-  const thresholds = {
-    violence: 0.7,      // Bạo lực
-    weapons: 0.7,       // Vũ khí  
-    gore: 0.6,          // Máu me
-    explicit: 0.8,      // Nội dung khiêu dâm
-    drugs: 0.7,         // Ma túy
-    terrorism: 0.8      // Khủng bố (nếu có)
-  };
-
-  const categories = {
-    violence: moderation.violence || 0,
-    weapons: moderation.weapons || 0,
-    gore: moderation.gore || 0,
-    explicit: moderation.explicit || 0,
-    drugs: moderation.drugs || 0,
-    terrorism: moderation.terrorism || 0
-  };
-
-  const violations = [];
-  let isApproved = true;
-
-  // Kiểm tra từng category
-  Object.keys(categories).forEach(category => {
-    const score = categories[category];
-    const threshold = thresholds[category] || 0.7;
-    
-    if (score > threshold) {
-      isApproved = false;
-      violations.push({
-        category,
-        score: Math.round(score * 100),
-        threshold: Math.round(threshold * 100),
-        message: getCategoryMessage(category, score)
-      });
+        console.log('Video approved and kept on Cloudinary');
+        return {
+          ...uploadResult,
+          moderation: moderationResult
+        };
+      } catch (analysisError) {
+        console.error(' Video analysis failed:', analysisError.message);
+        
+        // If analysis fails, delete video to be safe
+        console.log(' Analysis failed, deleting video from Cloudinary for safety...');
+        await deleteFromCloudinary(uploadResult.public_id);
+        
+        // Throw error instead of allowing upload
+        throw new Error(`Video upload failed: Analysis error - ${analysisError.message}`);
+      }
     }
-  });
 
-  // Tính confidence tổng thể
-  const maxScore = Math.max(...Object.values(categories));
-  const confidence = isApproved ? 1 - maxScore : maxScore;
-
-  return {
-    isApproved,
-    status: isApproved ? 'approved' : 'rejected',
-    confidence: Math.round(confidence * 100) / 100,
-    categories,
-    violations,
-    message: isApproved 
-      ? 'Ảnh được phê duyệt' 
-      : `Ảnh bị từ chối: ${violations.map(v => v.message).join(', ')}`,
-    details: {
-      moderationStatus: moderation.status,
-      totalViolations: violations.length,
-      riskLevel: getRiskLevel(maxScore)
-    }
-  };
-};
-
-/**
- * Xử lý kết quả analysis API
- */
-const processModerationAnalysis = (analysis) => {
-  const moderation = analysis.ai_moderation;
-  
-  if (!moderation) {
+    // Return without moderation
     return {
-      isApproved: true,
-      status: 'approved',
-      confidence: 1.0,
-      categories: {},
-      message: 'No moderation data available'
+      ...uploadResult,
+      moderation: {
+        isApproved: true,
+        status: 'approved',
+        message: 'Video uploaded without moderation check'
+      }
     };
-  }
 
-  return processModerationResult({ moderation: [moderation] });
-};
-
-/**
- * Lấy message cho từng category
- */
-const getCategoryMessage = (category, score) => {
-  const messages = {
-    violence: `Phát hiện nội dung bạo lực (${Math.round(score * 100)}%)`,
-    weapons: `Phát hiện vũ khí (${Math.round(score * 100)}%)`,
-    gore: `Phát hiện nội dung máu me (${Math.round(score * 100)}%)`,
-    explicit: `Phát hiện nội dung khiêu dâm (${Math.round(score * 100)}%)`,
-    drugs: `Phát hiện nội dung ma túy (${Math.round(score * 100)}%)`,
-    terrorism: `Phát hiện nội dung khủng bố (${Math.round(score * 100)}%)`
-  };
-
-  return messages[category] || `Phát hiện nội dung không phù hợp (${Math.round(score * 100)}%)`;
-};
-
-/**
- * Xác định mức độ rủi ro
- */
-const getRiskLevel = (maxScore) => {
-  if (maxScore < 0.3) return 'low';
-  if (maxScore < 0.6) return 'medium';
-  if (maxScore < 0.8) return 'high';
-  return 'critical';
-};
-
-/**
- * Lấy webhook URL
- */
-const getWebhookUrl = () => {
-  if (process.env.CLOUDINARY_WEBHOOK_URL) {
-    return process.env.CLOUDINARY_WEBHOOK_URL;
-  }
-
-  const baseUrl = process.env.BASE_URL || process.env.APP_URL;
-  if (baseUrl) {
-    return `${baseUrl}/api/upload/webhook/moderation`;
-  }
-
-  const port = process.env.PORT || 5000;
-  return `http://localhost:${port}/api/upload/webhook/moderation`;
-};
-
-/**
- * Cập nhật threshold cho moderation
- */
-export const updateModerationThresholds = (newThresholds) => {
-  // Có thể implement để update thresholds runtime
-  console.log('📊 Updating moderation thresholds:', newThresholds);
-  return true;
-};
-
-/**
- * Lấy thống kê moderation
- */
-export const getModerationStats = async (timeRange = 30) => {
-  try {
-    // Có thể implement để lấy stats từ Cloudinary hoặc database
-    return {
-      timeRange,
-      totalImages: 0,
-      approved: 0,
-      rejected: 0,
-      categories: {},
-      generatedAt: new Date().toISOString()
-    };
   } catch (error) {
-    console.error('❌ Error getting moderation stats:', error);
+    console.error('❌ Video upload with moderation error:', error);
     throw error;
   }
 };
+
+

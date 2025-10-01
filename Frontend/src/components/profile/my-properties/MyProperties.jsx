@@ -39,6 +39,9 @@ const MyProperties = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedProperty, setSelectedProperty] = useState(null);
 
+  // Rejected files state
+  const [rejectedFiles, setRejectedFiles] = useState({ images: [], videos: [] });
+
   // Dropdown menu state
   const [activeDropdown, setActiveDropdown] = useState(null);
 

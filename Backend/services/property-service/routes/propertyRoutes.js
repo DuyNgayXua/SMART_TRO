@@ -5,8 +5,7 @@ import express from 'express';
 import multer from 'multer';
 import propertyController from '../controllers/propertyController.js';
 import authMiddleware from '../../shared/middleware/authMiddleware.js';
-import landlordMiddleware from '../../shared/middleware/landlordMiddleware.js';
-import validationMiddleware from '../../shared/middleware/validationMiddleware.js';
+import { uploadMixedWithModeration } from '../../shared/middleware/moderationMiddleware.js';
 
 const router = express.Router();
 
@@ -28,14 +27,10 @@ const upload = multer({
 });
 
 
-// Landlord only routes
+// Landlord only routes với AI Moderation cho cả images và video
 router.post('/', 
     authMiddleware,
-    landlordMiddleware,
-    upload.fields([
-        { name: 'images', maxCount: 5 },
-        { name: 'video', maxCount: 1 }
-    ]),
+    uploadMixedWithModeration(5, 1), // AI check cho 5 ảnh + 1 video, tự động reject ảnh vi phạm
     propertyController.createProperty
 );
 

@@ -78,7 +78,7 @@ export const myPropertiesAPI = {
     }
   },
 
-  // Lấy thông tin tin đăng để edit
+  // Lấy thông tin tin đăng để edit .
   getPropertyForEdit: async (propertyId) => {
     try {
       const response = await api.get(`/my-properties/${propertyId}/edit`);
@@ -99,6 +99,11 @@ export const myPropertiesAPI = {
         headers: {
           'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
         },
+        timeout: 120000, // Tăng timeout lên 2 phút cho upload files
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          console.log(`Upload Progress: ${percentCompleted}%`);
+        }
       });
       return response.data;
     } catch (error) {

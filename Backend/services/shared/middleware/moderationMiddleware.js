@@ -3,7 +3,8 @@
  * Tích hợp với hệ thống upload hiện tại
  */
 import multer from 'multer';
-import { uploadWithModeration, analyzeImage } from '../utils/cloudinary.js';
+import { uploadImageWithModeration, uploadVideoWithModeration } from '../utils/s3Service.js';
+import { analyzeImageContent } from '../utils/awsRekognition.js';
 
 // Multer configuration
 const storage = multer.memoryStorage();
@@ -23,94 +24,159 @@ const upload = multer({
 });
 
 /**
- * Middleware upload với kiểm tra AI moderation .
+ * Enhanced middleware hỗ trợ cả images và video với AI moderation
  */
-export const uploadWithAIModeration = (fieldName = 'images', maxCount = 10) => {
+export const uploadMixedWithModeration = (maxImages = 5, maxVideos = 1) => {
+  // Multer configuration cho mixed files
+  const mixedStorage = multer.memoryStorage();
+  const mixedUpload = multer({
+    storage: mixedStorage,
+    limits: {
+      fileSize: 50 * 1024 * 1024, // 50MB limit for videos
+      files: maxImages + maxVideos
+    },
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Chỉ chấp nhận file hình ảnh và video'), false);
+      }
+    }
+  });
+
   return [
-    // Multer middleware
-    upload.array(fieldName, maxCount),
-    
+    // Sử dụng fields() để phân biệt images và video
+    mixedUpload.fields([
+      { name: 'images', maxCount: maxImages },
+      { name: 'video', maxCount: maxVideos }
+    ]),
+
     // AI Moderation middleware
     async (req, res, next) => {
       try {
-        if (!req.files || req.files.length === 0) {
-          return res.status(400).json({
-            success: false,
-            message: 'Không có file nào được upload'
-          });
-        }
+        const imageFiles = req.files?.images || [];
+        const videoFiles = req.files?.video || [];
+        
+        console.log(`Processing ${imageFiles.length} images and ${videoFiles.length} videos with AI moderation...`);
 
-        console.log(`🔍 Processing ${req.files.length} files with AI moderation...`);
+        const approvedImages = [];
+        const rejectedImages = [];
+        const approvedVideos = [];
+        const rejectedVideos = [];
 
-        const results = [];
-        const rejectedFiles = [];
-
-        // Xử lý từng file
-        for (let i = 0; i < req.files.length; i++) {
-          const file = req.files[i];
+        // Xử lý images với AI moderation
+        for (let i = 0; i < imageFiles.length; i++) {
+          const file = imageFiles[i];
           
           try {
-            console.log(`📤 Uploading file ${i + 1}/${req.files.length}: ${file.originalname}`);
+            console.log(`Uploading image ${i + 1}/${imageFiles.length}: ${file.originalname}`);
 
-            // Upload với moderation
-            const result = await uploadWithModeration(file.buffer, {
-              folder: req.body.folder || 'property_images',
-              filename: `${Date.now()}_${i}_${file.originalname.replace(/\s+/g, '_')}`,
-              enableModeration: true,
-              tags: ['property', 'moderated']
+            const result = await uploadImageWithModeration(file.buffer, file.originalname, {
+              folder: 'properties/images',
+              contentType: file.mimetype
             });
 
-            results.push({
-              originalName: file.originalname,
-              url: result.secure_url,
-              publicId: result.public_id,
+            approvedImages.push({
+              originalname: file.originalname,
+              url: result.url,
+              publicId: result.key,
+              s3Key: result.key,
               moderation: result.moderation,
-              status: 'approved'
+              type: 'image',
+              provider: 'AWS S3'
             });
 
-            console.log(`✅ File approved: ${file.originalname}`);
+            console.log(`Image approved: ${file.originalname}`);
 
           } catch (error) {
-            console.log(`❌ File rejected: ${file.originalname} - ${error.message}`);
+            console.log(`Image rejected: ${file.originalname} - ${error.message}`);
             
-            rejectedFiles.push({
-              originalName: file.originalname,
+            rejectedImages.push({
+              originalname: file.originalname,
               reason: error.message,
-              status: 'rejected'
+              type: 'image'
+            });
+          }
+        }
+
+        // Xử lý videos với AI moderation cho bạo lực và máu me
+        for (let i = 0; i < videoFiles.length; i++) {
+          const file = videoFiles[i];
+          
+          try {
+            console.log(`Uploading video ${i + 1}/${videoFiles.length}: ${file.originalname}`);
+
+            // Upload video với AI moderation trực tiếp lên S3
+            const result = await uploadVideoWithModeration(file.buffer, file.originalname, {
+              folder: 'properties/videos',
+              contentType: file.mimetype
+            });
+
+            approvedVideos.push({
+              originalname: file.originalname,
+              url: result.url,
+              publicId: result.key,
+              s3Key: result.key,
+              moderation: result.moderation,
+              type: 'video',
+              provider: 'AWS S3'
+            });
+
+            console.log(`Video approved: ${file.originalname}`);
+
+          } catch (error) {
+            console.log(`Video rejected: ${file.originalname} - ${error.message}`);
+            
+            rejectedVideos.push({
+              originalname: file.originalname,
+              reason: error.message,
+              type: 'video'
             });
           }
         }
 
         // Gắn kết quả vào request
         req.uploadResults = {
-          approved: results,
-          rejected: rejectedFiles,
+          approved: [...approvedImages, ...approvedVideos],
+          rejected: [...rejectedImages, ...rejectedVideos],
+          images: {
+            approved: approvedImages,
+            rejected: rejectedImages
+          },
+          videos: {
+            approved: approvedVideos,
+            rejected: rejectedVideos
+          },
           summary: {
-            total: req.files.length,
-            approved: results.length,
-            rejected: rejectedFiles.length
+            totalFiles: imageFiles.length + videoFiles.length,
+            totalApproved: approvedImages.length + approvedVideos.length,
+            totalRejected: rejectedImages.length + rejectedVideos.length,
+            imagesApproved: approvedImages.length,
+            imagesRejected: rejectedImages.length,
+            videosApproved: approvedVideos.length,
+            videosRejected: rejectedVideos.length
           }
         };
 
-        // Nếu có ít nhất 1 ảnh được approve thì cho phép tiếp tục
-        if (results.length > 0) {
-          next();
-        } else {
-          return res.status(400).json({
-            success: false,
-            message: 'Tất cả ảnh đều bị từ chối do vi phạm nội dung',
-            data: {
-              rejected: rejectedFiles,
-              summary: req.uploadResults.summary
-            }
-          });
+        // Thêm thông tin về files bị từ chối vào request để frontend xử lý
+        req.rejectedFiles = {
+          images: rejectedImages,
+          videos: rejectedVideos
+        };
+
+        // Luôn pass qua controller, kể cả khi có files bị reject
+        console.log(`Moderation completed: ${approvedImages.length} images, ${approvedVideos.length} videos approved`);
+        if (rejectedImages.length > 0 || rejectedVideos.length > 0) {
+          console.log(`Files rejected: ${rejectedImages.length} images, ${rejectedVideos.length} videos`);
         }
+        
+        next();
 
       } catch (error) {
-        console.error('❌ AI Moderation middleware error:', error);
+        console.error('Mixed AI Moderation middleware error:', error);
         res.status(500).json({
           success: false,
-          message: 'Lỗi khi xử lý kiểm duyệt ảnh',
+          message: 'Lỗi khi xử lý kiểm duyệt files',
           error: error.message
         });
       }
@@ -118,113 +184,6 @@ export const uploadWithAIModeration = (fieldName = 'images', maxCount = 10) => {
   ];
 };
 
-/**
- * Middleware kiểm tra ảnh từ URL
- */
-export const checkImageFromUrl = async (req, res, next) => {
-  try {
-    const { imageUrl, imageUrls } = req.body;
-    
-    if (!imageUrl && !imageUrls) {
-      return next(); // Không có URL để check
-    }
-
-    const urlsToCheck = imageUrls || [imageUrl];
-    const results = [];
-
-    for (const url of urlsToCheck) {
-      try {
-        const moderation = await analyzeImage(url);
-        
-        if (!moderation.isApproved) {
-          return res.status(400).json({
-            success: false,
-            message: `Ảnh chứa nội dung không phù hợp: ${moderation.message}`,
-            moderation,
-            imageUrl: url
-          });
-        }
-
-        results.push({
-          imageUrl: url,
-          moderation,
-          status: 'approved'
-        });
-
-      } catch (error) {
-        console.error(`❌ Error checking image ${url}:`, error);
-        return res.status(400).json({
-          success: false,
-          message: `Không thể kiểm tra ảnh: ${error.message}`,
-          imageUrl: url
-        });
-      }
-    }
-
-    // Gắn kết quả vào request
-    req.moderationResults = results;
-    next();
-
-  } catch (error) {
-    console.error('❌ Image URL check error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi kiểm tra ảnh từ URL',
-      error: error.message
-    });
-  }
-};
-
-/**
- * Single file upload với moderation
- */
-export const uploadSingleWithModeration = (fieldName = 'image') => {
-  return [
-    upload.single(fieldName),
-    
-    async (req, res, next) => {
-      try {
-        if (!req.file) {
-          return res.status(400).json({
-            success: false,
-            message: 'Không có file nào được upload'
-          });
-        }
-
-        console.log(`📤 Processing single file: ${req.file.originalname}`);
-
-        const result = await uploadWithModeration(req.file.buffer, {
-          folder: req.body.folder || 'uploads',
-          filename: `${Date.now()}_${req.file.originalname.replace(/\s+/g, '_')}`,
-          enableModeration: true,
-          tags: ['single_upload', 'moderated']
-        });
-
-        req.uploadResult = {
-          originalName: req.file.originalname,
-          url: result.secure_url,
-          publicId: result.public_id,
-          moderation: result.moderation,
-          status: 'approved'
-        };
-
-        console.log(`✅ Single file approved: ${req.file.originalname}`);
-        next();
-
-      } catch (error) {
-        console.error(`❌ Single file rejected: ${req.file?.originalname} -`, error);
-        res.status(400).json({
-          success: false,
-          message: `Upload bị từ chối: ${error.message}`,
-          file: req.file?.originalname
-        });
-      }
-    }
-  ];
-};
-
 export default {
-  uploadWithAIModeration,
-  checkImageFromUrl,
-  uploadSingleWithModeration
+  uploadMixedWithModeration
 };

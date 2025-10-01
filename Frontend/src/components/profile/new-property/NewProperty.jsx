@@ -11,6 +11,8 @@ import { locationAPI } from '../../../services/locationAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
 import './../ProfilePages.css';
 import './NewProperty.css';
+import './RejectedFiles.css';
+
 
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
@@ -65,6 +67,8 @@ const NewProperty = () => {
   
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
+  const [images, setImages] = useState([]);
+  const [videos, setVideos] = useState([]);
 
   // Cấu hình dayjs
   dayjs.extend(relativeTime);
@@ -113,6 +117,7 @@ const NewProperty = () => {
   });
 
   const [errors, setErrors] = useState({});
+  const [rejectedFiles, setRejectedFiles] = useState({ images: [], videos: [] });
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
@@ -134,7 +139,15 @@ const NewProperty = () => {
   // Amenities data from API
   const [amenitiesList, setAmenitiesList] = useState([]);
   const [loadingAmenities, setLoadingAmenities] = useState(false);
+  
 
+
+  // Helper function to find file by name
+  const findFileByName = (filename, fileList) => {
+    return fileList.find(file => file.name === filename);
+  };
+
+ 
   // Options data
   const categories = [
     { value: 'phong_tro', label: 'Phòng trọ' },
@@ -241,6 +254,39 @@ const NewProperty = () => {
     }
     getUserLocation();
   }, []);
+
+  // Show toast when there are media errors (images or videos)
+  useEffect(() => {
+    let errorMessage = '';
+    
+    if (errors.images) {
+      errorMessage += errors.images;
+    }
+    
+    if (errors.video) {
+      if (errorMessage) {
+        errorMessage += '\n\n' + errors.video;
+      } else {
+        errorMessage = errors.video;
+      }
+    }
+    
+    if (errorMessage) {
+      toast.error(errorMessage, {
+        position: "top-center",
+        autoClose: 10000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
+    }
+  }, [errors.images, errors.video]);
+
+  // Debug rejected files state changes
+  useEffect(() => {
+    console.log('🔄 rejectedFiles state changed:', rejectedFiles);
+  }, [rejectedFiles]);
 
   // Load amenities from API
   useEffect(() => {
@@ -685,6 +731,23 @@ const handleImageUpload = (e) => {
     reader.readAsDataURL(file);
   });
 
+  // Xóa lỗi validation và clear rejected files cache khi upload ảnh mới
+  if (errors.images) {
+    setErrors(prev => ({
+      ...prev,
+      images: ''
+    }));
+  }
+  
+  // Clear rejected files cache khi có ảnh mới được upload
+  if (rejectedFiles.images?.length > 0) {
+    console.log('Clearing rejected files cache on new image upload');
+    setRejectedFiles(prev => ({
+      ...prev,
+      images: []
+    }));
+  }
+
   e.target.value = null; // luôn reset input sau mỗi lần up
 };
 
@@ -745,11 +808,20 @@ const handleVideoUpload = (e) => {
   // Reset input để chọn cùng file liên tiếp vẫn trigger được
   e.target.value = null;
 
-  // clear error nếu có
+  // clear error và rejected files cache nếu có
   if (errors.video) {
     setErrors(prev => ({
       ...prev,
       video: ''
+    }));
+  }
+  
+  // Clear rejected videos cache khi có video mới được upload
+  if (rejectedFiles.videos?.length > 0) {
+    console.log('Clearing rejected videos cache on new video upload');
+    setRejectedFiles(prev => ({
+      ...prev,
+      videos: []
     }));
   }
 };
@@ -850,45 +922,99 @@ const handleVideoUpload = (e) => {
 
       const result = await postAPI.createPost(dataToSubmit);
 
+      console.log('🔍 Full API response:', result);
+      console.log('🔍 Result success:', result.success);
+      console.log('🔍 Result data:', result.data);
+
       if (result.success) {
-        toast.success(`Đăng tin thành công! "${formData.title}" - Trạng thái: Chờ admin duyệt`, {
-          position: "top-right",
-          autoClose: 5000,
-          hideProgressBar: false,
-        });
+        // Kiểm tra nếu có files bị từ chối
+        console.log('Checking rejectedFiles:', result.data?.rejectedFiles);
+        if (result.data?.rejectedFiles) {
+          console.log('Rejected files from backend:', result.data.rejectedFiles);
+          console.log('Images rejected:', result.data.rejectedFiles.images);
+          console.log('Videos rejected:', result.data.rejectedFiles.videos);
+          setRejectedFiles(result.data.rejectedFiles);
+          console.log('Updated rejectedFiles state');
+          
+          // Hiển thị toast với thông tin chi tiết về files bị từ chối
+          if (result.data.rejectedFiles.images?.length > 0 || result.data.rejectedFiles.videos?.length > 0) {
+            let rejectedMessage = 'Đăng tin thành công, nhưng một số file bị từ chối:\n';
+            
+            if (result.data.rejectedFiles.images?.length > 0) {
+              rejectedMessage += '\nẢnh bị từ chối:\n';
+              result.data.rejectedFiles.images.forEach((img, index) => {
+                rejectedMessage += `${index + 1}. "${img.originalname}" - ${img.reason}\n`;
+              });
+            }
+            
+            if (result.data.rejectedFiles.videos?.length > 0) {
+              rejectedMessage += '\nVideo bị từ chối:\n';
+              result.data.rejectedFiles.videos.forEach((vid, index) => {
+                rejectedMessage += `${index + 1}. "${vid.originalname}" - ${vid.reason}\n`;
+              });
+            }
+            
+            toast.warn(rejectedMessage.trim(), {
+              position: "top-center",
+              autoClose: 15000,
+              hideProgressBar: false,
+            });
+          } else {
+            toast.success(`Đăng tin thành công! "${formData.title}" - Trạng thái: Chờ admin duyệt`, {
+              position: "top-right",
+              autoClose: 5000,
+              hideProgressBar: false,
+            });
+          }
+        } else {
+          console.log('⚠️ No rejectedFiles in response or rejectedFiles is undefined/null');
+          toast.success(`Đăng tin thành công! "${formData.title}" - Trạng thái: Chờ admin duyệt`, {
+            position: "top-right",
+            autoClose: 5000,
+            hideProgressBar: false,
+          });
+        } 
 
         setShowModal(false);
 
-        // Reset form
-        setFormData({
-          title: '',
-          category: 'phong_tro',
-          contactName: '',
-          contactPhone: '',
-          description: '',
-          rentPrice: '',
-          promotionPrice: '',
-          deposit: '',
-          area: '',
-          electricPrice: '',
-          waterPrice: '',
-          maxOccupants: '1',
-          availableDate: '',
-          amenities: [],
-          fullAmenities: false,
-          timeRules: '',
-          houseRules: [],
-          province: '',
-          district: '',
-          ward: '',
-          detailAddress: '',
-          coordinates: defaultCenter,
-          images: [],
-          video: null,
-          isForRent: true
-        });
+        // Không reset form nếu có files bị từ chối để user có thể chỉnh sửa
+        if (!result.data?.rejectedFiles?.images?.length && !result.data?.rejectedFiles?.videos?.length) {
+          // Reset form chỉ khi không có files bị từ chối
+          setFormData({
+            title: '',
+            category: 'phong_tro',
+            contactName: '',
+            contactPhone: '',
+            description: '',
+            rentPrice: '',
+            promotionPrice: '',
+            deposit: '',
+            area: '',
+            electricPrice: '',
+            waterPrice: '',
+            maxOccupants: '1',
+            availableDate: '',
+            amenities: [],
+            fullAmenities: false,
+            timeRules: '',
+            houseRules: [],
+            province: '',
+            district: '',
+            ward: '',
+            detailAddress: '',
+            coordinates: defaultCenter,
+            images: [],
+            video: null,
+            isForRent: true
+          });
 
-        setErrors({});
+          setErrors({});
+          setRejectedFiles({ images: [], videos: [] });
+          
+          if (fileInputRef.current) fileInputRef.current.value = '';
+          if (videoInputRef.current) videoInputRef.current.value = '';
+        }
+
         // Reset manual coordinate flags
         isManuallySetRef.current = false;
         setIsManuallySet(false);
@@ -896,13 +1022,19 @@ const handleVideoUpload = (e) => {
         lastAddressRef.current = "";
         lastCoordsRef.current = null;
         
-        if (fileInputRef.current) fileInputRef.current.value = '';
-        if (videoInputRef.current) videoInputRef.current.value = '';
         getUserLocation();
 
       } else {
         if (result.errors) {
           setErrors(result.errors);
+          
+          // Xử lý rejected files từ validation error trong success case
+          if (result.rejectedFiles) {
+            console.log('📥 Rejected files from validation error (success case):', result.rejectedFiles);
+            setRejectedFiles(result.rejectedFiles);
+            console.log('📥 Updated rejectedFiles state from validation error (success case)');
+          }
+          
           const errorCount = Object.keys(result.errors).length;
           toast.error(`${result.message || 'Dữ liệu không hợp lệ'}\nCó ${errorCount} lỗi cần sửa. Vui lòng kiểm tra lại form.`, {
             position: "top-right",
@@ -933,6 +1065,16 @@ const handleVideoUpload = (e) => {
 
         if (error.response.status === 400 && responseData.errors) {
           setErrors(responseData.errors);
+          
+          // Xử lý rejected files từ validation error
+          if (responseData.rejectedFiles) {
+            console.log('📥 Rejected files from validation error:', responseData.rejectedFiles);
+            console.log('📥 Images rejected:', responseData.rejectedFiles.images);
+            console.log('📥 Videos rejected:', responseData.rejectedFiles.videos);
+            setRejectedFiles(responseData.rejectedFiles);
+            console.log('📥 Updated rejectedFiles state from validation error');
+          }
+          
           const errorCount = Object.keys(responseData.errors).length;
 
           toast.error(`${responseData.message || 'Dữ liệu không hợp lệ'}\nCó ${errorCount} lỗi cần sửa. Vui lòng kiểm tra lại form.`, {
@@ -1476,29 +1618,82 @@ const handleVideoUpload = (e) => {
                       <i className="fa fa-upload"></i>
                       Chọn hình ảnh
                     </button>
-                    {errors.images && <span className="error-text">{errors.images}</span>}
+                    {/* {errors.images && <span className="error-text">{errors.images}</span>} */}
 
                     {formData.images.length > 0 && (
                       <div className="image-preview-grid">
-                        {formData.images.map((img, index) => (
-                          <div key={index} className="image-preview">
-                            <img src={img.url} alt={`Preview ${index}`} />
-                            <button
-                              type="button"
-                              className="remove-image-new-property"
-                              onClick={() => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  images: prev.images.filter((_, i) => i !== index)
-                                }));
-                              }}
-                            >
-                              <i className="fa fa-times"></i>
-                            </button>
-                          </div>
-                        ))}
+                        {formData.images.map((img, index) => {
+                          // Kiểm tra xem ảnh này có bị từ chối không
+                          console.log('Checking image:', img.name, 'against rejected files:', rejectedFiles.images);
+                          console.log('Current rejectedFiles state:', rejectedFiles);
+                          const isRejected = rejectedFiles.images?.some(rejected => rejected.originalname === img.name);
+                          const rejectedInfo = rejectedFiles.images?.find(rejected => rejected.originalname === img.name);
+                          console.log('Image rejected status:', isRejected, 'Info:', rejectedInfo);
+                          
+                          return (
+                            <div key={index} className={`image-preview ${isRejected ? 'rejected' : ''}`}>
+                              <img 
+                                src={img.url} 
+                                alt={`Preview ${index}`}
+                                style={{
+                                  filter: isRejected ? 'blur(3px) grayscale(50%) opacity(0.6)' : 'none',
+                                  transition: 'filter 0.3s ease'
+                                }}
+                              />
+                              {isRejected && (
+                                <div className="rejection-overlay">
+                                  <div className="rejection-icon">⚠️</div>
+                                  <div className="rejection-text">Bị từ chối</div>
+                                  <div className="rejection-reason">{rejectedInfo?.reason}</div>
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                className="remove-image-new-property"
+                                onClick={() => {
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    images: prev.images.filter((_, i) => i !== index)
+                                  }));
+                                  // Xóa khỏi danh sách rejected nếu có
+                                  if (isRejected) {
+                                    setRejectedFiles(prev => {
+                                      const newRejectedFiles = {
+                                        ...prev,
+                                        images: prev.images.filter(rejected => rejected.originalname !== img.name)
+                                      };
+                                      
+                                      // Nếu không còn rejected files nào, clear toàn bộ errors liên quan
+                                      if (newRejectedFiles.images.length === 0 && newRejectedFiles.videos.length === 0) {
+                                        setErrors(prevErrors => {
+                                          const newErrors = { ...prevErrors };
+                                          delete newErrors.images;
+                                          delete newErrors.video;
+                                          return newErrors;
+                                        });
+                                      }
+                                      
+                                      return newRejectedFiles;
+                                    });
+                                  } else {
+                                    // Xóa lỗi validation khi xóa ảnh (trường hợp không phải rejected file)
+                                    if (errors.images) {
+                                      setErrors(prev => ({
+                                        ...prev,
+                                        images: ''
+                                      }));
+                                    }
+                                  }
+                                }}
+                              >
+                                <i className="fa fa-times"></i>
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
+                    
                   </div>
 
                   <div className="form-group">
@@ -1518,24 +1713,93 @@ const handleVideoUpload = (e) => {
                       <i className="fa fa-video-camera"></i>
                       Chọn video
                     </button>
-                    {errors.video && <span className="error-text">{errors.video}</span>}
+                    {/* {errors.video && <span className="error-text">{errors.video}</span>} */}
 
                     {formData.video && (
                       <div className="video-preview">
-                        <video controls style={{ maxWidth: '300px', height: 'auto' }}>
-                          <source src={formData.video.url} type={formData.video.file.type} />
-                        </video>
+                        {(() => {
+                          const isRejected = rejectedFiles.videos?.some(rejected => rejected.originalname === formData.video.name);
+                          const rejectedInfo = rejectedFiles.videos?.find(rejected => rejected.originalname === formData.video.name);
+                          
+                          return (
+                            <div className={`video-container ${isRejected ? 'rejected' : ''}`} style={{ position: 'relative' }}>
+                              <video 
+                                controls 
+                                style={{ 
+                                  maxWidth: '300px', 
+                                  height: 'auto',
+                                  filter: isRejected ? 'blur(3px) grayscale(50%) opacity(0.6)' : 'none',
+                                  transition: 'filter 0.3s ease'
+                                }}
+                              >
+                                <source src={formData.video.url} type={formData.video.file.type} />
+                              </video>
+                              {isRejected && (
+                                <div className="rejection-overlay" style={{
+                                  position: 'absolute',
+                                  top: 0,
+                                  left: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  background: 'rgba(201, 42, 42, 0.8)',
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  justifyContent: 'center',
+                                  alignItems: 'center',
+                                  color: 'white',
+                                  fontWeight: 'bold',
+                                  borderRadius: '4px',
+                                  maxWidth: '300px'
+                                }}>
+                                  <div style={{ fontSize: '24px', marginBottom: '4px' }}>⚠️</div>
+                                  <div style={{ fontSize: '12px', textTransform: 'uppercase' }}>Bị từ chối</div>
+                                  <div style={{ fontSize: '10px', marginTop: '4px', textAlign: 'center', padding: '0 8px' }}>{rejectedInfo?.reason}</div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        
                         <button
                           type="button"
                           className="remove-video"
                           onClick={() => {
+                            const isRejected = rejectedFiles.videos?.some(rejected => rejected.originalname === formData.video.name);
                             setFormData(prev => ({
                               ...prev,
                               video: null
                             }));
+                            // Xóa khỏi danh sách rejected nếu có
+                            if (isRejected) {
+                              setRejectedFiles(prev => {
+                                const newRejectedFiles = {
+                                  ...prev,
+                                  videos: prev.videos.filter(rejected => rejected.originalname !== formData.video.name)
+                                };
+                                
+                                // Nếu không còn rejected files nào, clear toàn bộ errors liên quan
+                                if (newRejectedFiles.images.length === 0 && newRejectedFiles.videos.length === 0) {
+                                  setErrors(prevErrors => {
+                                    const newErrors = { ...prevErrors };
+                                    delete newErrors.images;
+                                    delete newErrors.video;
+                                    return newErrors;
+                                  });
+                                }
+                                
+                                return newRejectedFiles;
+                              });
+                            } else {
+                              // Xóa lỗi validation khi xóa video (trường hợp không phải rejected file)
+                              if (errors.video) {
+                                setErrors(prev => ({
+                                  ...prev,
+                                  video: ''
+                                }));
+                              }
+                            }
                           }}
                         >
-
                           Xóa video
                         </button>
                       </div>

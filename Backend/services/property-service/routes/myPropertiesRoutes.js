@@ -2,6 +2,7 @@ import express from 'express';
 import authMiddleware from '../../shared/middleware/authMiddleware.js';
 import myPropertiesController from '../controllers/myPropertiesController.js';
 import upload from '../../shared/utils/upload.js'; // import upload
+import { uploadMixedWithModeration } from '../../shared/middleware/moderationMiddleware.js';
 
 const router = express.Router();
 
@@ -18,11 +19,11 @@ router.get('/approved-location', myPropertiesController.getMyApprovedPropertiesB
 router.get('/stats', authMiddleware, myPropertiesController.getMyPropertiesStats);
 router.get('/:propertyId/edit', authMiddleware, myPropertiesController.getPropertyForEdit);
 
-// PUT update property với upload
+// PUT update property với upload và AI moderation.
 router.put(
   '/:propertyId',
   authMiddleware,
-  uploadFields,
+  uploadMixedWithModeration,
   myPropertiesController.updateProperty
 );
 

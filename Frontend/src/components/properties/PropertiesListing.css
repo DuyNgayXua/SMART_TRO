@@ -868,7 +868,7 @@
 }
 
 .widget-title {
-  font-size: 1.15rem;
+  font-size: 16px;
   font-weight: 700;
   color: #1e293b;
   margin: 0 0 18px 0;
@@ -880,6 +880,7 @@
   position: relative;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  white-space: nowrap;
 }
 
 /* Thêm hiệu ứng gradient line dưới tiêu đề */
@@ -1226,7 +1227,7 @@
 
 /* Hero Section */
 .hero {
-  background: linear-gradient(180deg, #28d579 0%, #26c394 50%, rgba(40, 213, 121, 0.7) 100%);
+  background: #1B8156;
   color: white;
   padding: 35px 0 10px;
   position: relative;
@@ -1405,7 +1406,7 @@
 .btn-search {
   width: 150px;
   height: 48px;
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  border-color: #00ff77;
   color: white;
   border: none;
   border-radius: 8px;
@@ -1418,6 +1419,8 @@
   justify-content: center;
   gap: 8px;
   white-space: nowrap;
+  background-color: none;
+
 }
 
 .btn-search:hover {
@@ -1429,7 +1432,7 @@
 .btn-reset-hero {
   width: 120px;
   height: 48px;
-  background: linear-gradient(135deg, #e4311d, #bd0000);
+  background: #e44819;
   color: white;
   border: none;
   border-radius: 8px;

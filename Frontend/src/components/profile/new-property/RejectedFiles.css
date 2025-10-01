@@ -1,0 +1,89 @@
+/* Rejected files styling */
+.image-preview.rejected {
+  position: relative;
+  border: 2px solid #ff6b6b;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.rejection-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(201, 42, 42, 0.8);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  color: white;
+  font-weight: bold;
+  border-radius: 6px;
+  z-index: 2;
+}
+
+.rejection-icon {
+  font-size: 24px;
+  margin-bottom: 4px;
+}
+
+.rejection-text {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.rejection-reason {
+  font-size: 10px;
+  text-align: center;
+  padding: 0 8px;
+  opacity: 0.9;
+  line-height: 1.2;
+}
+
+/* Animation for rejected files */
+.image-preview.rejected {
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  }
+  50% {
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.6);
+  }
+  100% {
+    box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
+  }
+}
+
+/* Video container for rejected videos */
+.video-container.rejected {
+  position: relative;
+  border: 2px solid #ff6b6b;
+  border-radius: 8px;
+  animation: pulse-red 2s ease-in-out infinite;
+}
+
+/* Hover effects */
+.image-preview.rejected:hover img {
+  filter: blur(2px) grayscale(30%) opacity(0.8) !important;
+}
+
+.image-preview.rejected:hover .rejection-overlay {
+  background: rgba(201, 42, 42, 0.9);
+}
+
+/* Remove button styling for rejected files */
+.image-preview.rejected .remove-image-new-property {
+  background: #ff8787;
+  border-color: #ff6b6b;
+}
+
+.image-preview.rejected .remove-image-new-property:hover {
+  background: #ff6b6b;
+  transform: scale(1.1);
+}

@@ -13,8 +13,6 @@ import Amenity from './Amenity.js';
 import DepositContract from './DepositContract.js';
 import Report from './Report.js';
 import Comment from './Comment.js';
-import Upload from './Upload.js';
-import ModerationLog from './ModerationLog.js';
 import Invoice from './Invoice.js';
 
 export default {
@@ -30,8 +28,6 @@ export default {
     DepositContract,
     Report,
     Comment,
-    Upload,
-    ModerationLog,
     Invoice
 };
 
@@ -48,7 +44,5 @@ export {
     DepositContract,
     Report,
     Comment,
-    Upload,
-    ModerationLog,
     Invoice
 };

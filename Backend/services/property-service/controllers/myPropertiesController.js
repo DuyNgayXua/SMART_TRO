@@ -19,7 +19,7 @@ const myPropertiesController = {
       const limit = parseInt(req.query.limit) || 10;
       const skip = (page - 1) * limit;
 
-      // Filter params
+      // Filter params .
       const approvalStatus = req.query.approvalStatus || 'all';
       const sortBy = req.query.sortBy || 'createdAt';
       const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
@@ -699,20 +699,94 @@ const myPropertiesController = {
         }
       }
 
-      // Images & video validation
+      // Initialize arrays for approved and rejected files
+      let finalApprovedImages = [];
+      let finalApprovedVideos = [];
+      let rejectedImages = [];
+      let rejectedVideos = [];
+
+      // Xử lý AI moderation results từ middleware
+      if (!req.uploadResults) {
+        validationErrors.images = 'Lỗi xử lý files. Vui lòng thử lại';
+      } else {
+        console.log('Upload results from moderation middleware:', req.uploadResults);
+        console.log('Rejected images:', req.uploadResults.images?.rejected);
+        console.log('Rejected videos:', req.uploadResults.videos?.rejected);
+        
+        // Handle both old and new structure
+        let approvedImages, rejectedImagesFromMiddleware, approvedVideos, rejectedVideosFromMiddleware;
+        
+        if (req.uploadResults.images && req.uploadResults.videos) {
+          // New nested structure
+          approvedImages = req.uploadResults.images?.approved || [];
+          rejectedImagesFromMiddleware = req.uploadResults.images?.rejected || [];
+          approvedVideos = req.uploadResults.videos?.approved || [];
+          rejectedVideosFromMiddleware = req.uploadResults.videos?.rejected || [];
+        } else {
+          // Old flat structure - filter by type
+          const allApproved = req.uploadResults.approved || [];
+          const allRejected = req.uploadResults.rejected || [];
+          
+          approvedImages = allApproved.filter(file => file.type === 'image');
+          rejectedImagesFromMiddleware = allRejected.filter(file => file.type === 'image');
+          approvedVideos = allApproved.filter(file => file.type === 'video');
+          rejectedVideosFromMiddleware = allRejected.filter(file => file.type === 'video');
+        }
+        
+        console.log('Processed results - Approved images:', approvedImages.length, 'Rejected images:', rejectedImagesFromMiddleware.length);
+        console.log('Processed results - Approved videos:', approvedVideos.length, 'Rejected videos:', rejectedVideosFromMiddleware.length);
+        
+        finalApprovedImages = approvedImages;
+        finalApprovedVideos = approvedVideos;
+        rejectedImages = rejectedImagesFromMiddleware;
+        rejectedVideos = rejectedVideosFromMiddleware;
+
+        // Validation logic for files
+        const totalImages = approvedImages.length + rejectedImagesFromMiddleware.length;
+        const hasImagesInForm = req.files && req.files.some(file => file.fieldname === 'images');
+        
+        console.log('Image validation check:', {
+          totalImages,
+          approvedImages: approvedImages.length,
+          rejectedImages: rejectedImagesFromMiddleware.length,
+          hasImagesInForm,
+          filesCount: req.files?.length || 0
+        });
+        
+        // Kiểm tra video bị từ chối (nếu có upload video)
+        const totalVideos = approvedVideos.length + rejectedVideosFromMiddleware.length;
+        let hasVideoInForm = false;
+        
+        if (req.files) {
+          if (Array.isArray(req.files)) {
+            hasVideoInForm = req.files.some(file => file.fieldname === 'video');
+          } else if (typeof req.files === 'object') {
+            hasVideoInForm = req.files.video && req.files.video.length > 0;
+          }
+        }
+        
+        console.log('Video validation check:', {
+          totalVideos,
+          approvedVideos: approvedVideos.length,
+          rejectedVideos: rejectedVideosFromMiddleware.length,
+          hasVideoInForm
+        });
+        
+        // Video validation - chỉ báo lỗi nếu thực sự có video trong form
+        if (totalVideos > 0 && rejectedVideosFromMiddleware.length > 0 && hasVideoInForm) {
+          console.log('Some videos were rejected, notifying user for replacement');
+          validationErrors.video = `${rejectedVideosFromMiddleware.length} video bị từ chối do vi phạm nội quy. Vui lòng thay thế bằng video phù hợp.`;
+        }
+      }
+
+      // Images & video handling
       let images = existingProperty.images || [];
       let video = existingProperty.video || null; 
 
-      // Xử lý upload ảnh mới từ req.files.images
-      if (req.files?.images && req.files.images.length > 0) {
-        const uploadedImages = await Promise.all(
-          req.files.images.map(file => uploadToCloudinary(file.buffer, 'properties/images'))
-        );
-    
-        // uploadedImages là mảng, lấy tất cả secure_url
-        const newImageUrls = uploadedImages.map(img => img.secure_url);
-        images = [...images, ...newImageUrls]; // giữ ảnh cũ + ảnh mới
-     
+      // Thêm ảnh mới đã được approved
+      if (finalApprovedImages.length > 0) {
+        const newImageUrls = finalApprovedImages.map(img => img.url);
+        images = [...images, ...newImageUrls]; // giữ ảnh cũ + ảnh mới approved
       }
 
       // Xử lý removedImages
@@ -732,32 +806,34 @@ const myPropertiesController = {
         validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh';
       }
 
-      // Video processing - Sửa lại logic xử lý video
+      // Video processing - Sử dụng approved video từ AI moderation
       // Nếu user xoá video (frontend gửi removeVideo=true)
       if (req.body.removeVideo === "true") {
         video = null; // Set thành null thay vì empty string
-      } else if (req.files?.video && req.files.video.length > 0) {
-        // Nếu user upload video mới
-        try {
-          const uploadedVideo = await uploadToCloudinary(
-            req.files.video[0].buffer,
-            'properties/videos'
-          );
-          video = uploadedVideo.secure_url;
-        } catch (uploadError) {
-          console.error('Video upload error:', uploadError);
-          validationErrors.video = 'Lỗi khi tải video lên';
-        }
+      } else if (finalApprovedVideos.length > 0) {
+        // Nếu có video mới được approved từ AI moderation
+        video = finalApprovedVideos[0].url; // Chỉ lấy video đầu tiên
       }
       // Nếu không có hành động nào với video, giữ nguyên video hiện tại
 
 
       if (Object.keys(validationErrors).length > 0) {
-        return res.status(400).json({
+        const errorResponse = {
           success: false,
           message: 'Thông tin không hợp lệ',
           errors: validationErrors
-        });
+        };
+
+        // Thêm thông tin về files bị từ chối vào validation error response
+        if (rejectedImages.length > 0 || rejectedVideos.length > 0) {
+          errorResponse.rejectedFiles = {
+            images: rejectedImages,
+            videos: rejectedVideos
+          };
+          console.log('Returning rejected files with validation errors:', errorResponse.rejectedFiles);
+        }
+
+        return res.status(400).json(errorResponse);
       }
 
       // 3. Chuẩn bị update data
@@ -804,10 +880,24 @@ const myPropertiesController = {
         { new: true, runValidators: true }
       );
 
+      // Prepare response với rejected files info
+      const responseData = {
+        property: updatedProperty
+      };
+
+      // Thêm thông tin về files bị từ chối nếu có
+      if (rejectedImages.length > 0 || rejectedVideos.length > 0) {
+        responseData.rejectedFiles = {
+          images: rejectedImages,
+          videos: rejectedVideos
+        };
+        console.log('Files rejected during update:', responseData.rejectedFiles);
+      }
+
       return res.json({
         success: true,
         message: 'Cập nhật tin đăng thành công. Tin đăng sẽ được admin duyệt lại.',
-        data: updatedProperty
+        data: responseData
       });
 
     } catch (error) {
