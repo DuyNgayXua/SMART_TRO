@@ -100,7 +100,7 @@ class PropertyController {
                 }
             }
 
-            // 3. VALIDATION - Địa chỉ bắt buộc (không được để trống)
+            // 3. VALIDATION - Địa chỉ bắt buộc (không được để trống).
             if (!req.body.province || req.body.province.trim() === '') {
                 validationErrors.province = 'Tỉnh/Thành phố không được để trống';
             }

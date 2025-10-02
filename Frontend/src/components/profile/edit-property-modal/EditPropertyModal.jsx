@@ -3,7 +3,7 @@ import { toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
-import amenitiesAPI  from '../../../services/amenitiesAPI';
+import amenitiesAPI from '../../../services/amenitiesAPI';
 import dayjs from 'dayjs';
 import './EditPropertyModal.css';
 import '../new-property/RejectedFiles.css';
@@ -72,10 +72,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     const loadAmenities = async () => {
       try {
         setAmenitiesData(prev => ({ ...prev, loading: true, error: null }));
-        
+
         const response = await amenitiesAPI.getAllAmenities();
         console.log('Amenities API response:', response);
-        
+
         // Handle different response structures
         let amenitiesArray = [];
         if (Array.isArray(response)) {
@@ -130,20 +130,14 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
 
   useEffect(() => {
     if (property) {
-      // Initialize form với tất cả dữ liệu property
-      console.log('Loading property for edit:', property);
-      console.log('Property amenities:', property.amenities);
-      
       // Process amenities - handle both populated objects and ID strings
-      const processedAmenities = property.amenities ? 
+      const processedAmenities = property.amenities ?
         property.amenities.map(amenity => {
           const id = typeof amenity === 'object' ? amenity._id : amenity;
-          console.log('Processing amenity:', amenity, '-> ID:', id);
+
           return id;
         }) : [];
-      
-      console.log('Processed amenities for form:', processedAmenities);
-      
+
       setFormData({
         title: property.title || '',
         category: property.category || 'phong_tro',
@@ -591,10 +585,30 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
 
   // Remove new image
   const handleRemoveNewImage = (index) => {
+    const imageToRemove = formData.newImages[index];
+
     setFormData(prev => ({
       ...prev,
       newImages: prev.newImages.filter((_, i) => i !== index)
     }));
+
+    // Clear rejected files state và errors nếu ảnh bị remove
+    if (imageToRemove) {
+      setRejectedFiles(prev => ({
+        ...prev,
+        images: prev.images?.filter(rejected => rejected.originalname !== imageToRemove.name) || []
+      }));
+
+      // Clear error nếu không còn ảnh bị reject
+      setErrors(prev => {
+        const remainingRejected = rejectedFiles.images?.filter(rejected => rejected.originalname !== imageToRemove.name) || [];
+        if (remainingRejected.length === 0) {
+          const { newImages, ...otherErrors } = prev;
+          return otherErrors;
+        }
+        return prev;
+      });
+    }
   };
 
 
@@ -708,6 +722,51 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
 
 
 
+  // Helper function để xử lý rejected files một cách đồng nhất
+  const handleRejectedFiles = (rejectedFilesData, showToast = true) => {
+    if (!rejectedFilesData ||
+      (!rejectedFilesData.images?.length && !rejectedFilesData.videos?.length)) {
+      return false; // Không có files bị reject
+    }
+
+    console.log('Files rejected - blocking update:', rejectedFilesData);
+    setRejectedFiles(rejectedFilesData);
+
+    // Chỉ hiển thị toast cho ảnh bị từ chối (theo yêu cầu user)
+    if (showToast && rejectedFilesData.images?.length > 0) {
+      let rejectedMessage = '';
+
+      rejectedFilesData.images.forEach((img, index) => {
+        rejectedMessage += `${index + 1}. "${img.originalname}" - ${img.reason}\n`;
+      });
+
+
+
+      // Luôn log thông tin video bị reject để debug (không toast nhưng vẫn hiển thị trong UI)
+      if (rejectedFilesData.videos?.length > 0) {
+        console.log('Videos rejected:', rejectedFilesData.videos.map(v => `${v.originalname}: ${v.reason}`));
+      }
+
+      toast.error(rejectedMessage.trim(), {
+        position: "top-center",
+        autoClose: 20000,
+        hideProgressBar: false,
+      });
+    }
+
+    return true; // Có files bị reject
+  };
+
+  // Hàm xử lý lỗi tập trung
+  const showError = (message) => {
+    toast.error(message || "Có lỗi xảy ra khi cập nhật tin đăng", {
+      position: "top-center",
+      autoClose: 7000,
+      hideProgressBar: false,
+    });
+  };
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -777,20 +836,20 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         }
         formDataToSend.append("video", formData.video.file);
       } else if (formData.removeVideo) {
-              // nếu user chọn xoá video
-              formDataToSend.append("removeVideo", "true");
+        // nếu user chọn xoá video
+        formDataToSend.append("removeVideo", "true");
       }
 
-
+      console.log("Existing images:", formData.newImages);
       console.log("Existing video:", formData.video);
       console.log("Payload FormData gửi lên:", Object.fromEntries(formDataToSend.entries()));
 
       // Hiển thị toast thông báo đang xử lý
       toast.info('Đang xử lý cập nhật tin đăng... Vui lòng đợi (có thể mất 1-2 phút do AI moderation)', {
         position: "top-center",
-        autoClose: false, // Không tự đóng
+        autoClose: 5000,
         hideProgressBar: false,
-        closeOnClick: false,
+        closeOnClick: true,
         pauseOnHover: false,
         draggable: false,
       });
@@ -805,104 +864,65 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       console.log('🔍 Result data:', response.data);
 
       if (response.success) {
-        // Kiểm tra nếu có files bị từ chối
-        console.log('Checking rejectedFiles:', response.data?.rejectedFiles);
-        if (response.data?.rejectedFiles) {
-          console.log('Rejected files from backend:', response.data.rejectedFiles);
-          console.log('Images rejected :', response.data.rejectedFiles.images);
-          console.log('Videos rejected:', response.data.rejectedFiles.videos);
-          setRejectedFiles(response.data.rejectedFiles);
-          console.log('Updated rejectedFiles state');
-          
-          // Hiển thị toast với thông tin chi tiết về files bị từ chối
-          if (response.data.rejectedFiles.images?.length > 0 || response.data.rejectedFiles.videos?.length > 0) {
-            let rejectedMessage = 'Cập nhật thành công, nhưng một số file bị từ chối:\n';
-            
-            if (response.data.rejectedFiles.images?.length > 0) {
-              rejectedMessage += '\nẢnh bị từ chối:\n';
-              response.data.rejectedFiles.images.forEach((img, index) => {
-                rejectedMessage += `${index + 1}. "${img.originalname}" - ${img.reason}\n`;
-              });
-            }
-            
-            if (response.data.rejectedFiles.videos?.length > 0) {
-              rejectedMessage += '\nVideo bị từ chối:\n';
-              response.data.rejectedFiles.videos.forEach((vid, index) => {
-                rejectedMessage += `${index + 1}. "${vid.originalname}" - ${vid.reason}\n`;
-              });
-            }
-            
-            toast.warn(rejectedMessage.trim(), {
-              position: "top-center",
-              autoClose: 15000,
-              hideProgressBar: false,
-            });
-          } else {
-            toast.success("Cập nhật tin đăng thành công!");
-          }
-        } else {
-          console.log('⚠️ No rejectedFiles in response or rejectedFiles is undefined/null');
-          toast.success("Cập nhật tin đăng thành công!");
-        }
-        
+        const hasRejectedFiles = handleRejectedFiles(response.data?.rejectedFiles);
+        if (hasRejectedFiles) return;
+
+        toast.success("Cập nhật tin đăng thành công!");
         onSuccess();
       } else {
+        // ===== Trường hợp API trả về lỗi ====
         if (response.errors) {
           setErrors(response.errors);
-          
-          // Xử lý rejected files từ validation error trong success case
-          if (response.rejectedFiles) {
-            console.log('📥 Rejected files from validation error (success case):', response.rejectedFiles);
-            setRejectedFiles(response.rejectedFiles);
-            console.log('📥 Updated rejectedFiles state from validation error (success case)');
+
+          // rejectedFiles
+          const hasRejectedFiles = handleRejectedFiles(response.rejectedFiles, false);
+          if (hasRejectedFiles) {
+            const rejectedErrors = { ...response.errors };
+            if (response.rejectedFiles.images?.length > 0) {
+              rejectedErrors.newImages = `${response.rejectedFiles.images.length} ảnh bị từ chối do vi phạm nội quy.`;
+            }
+            if (response.rejectedFiles.videos?.length > 0) {
+              const videoReasons = response.rejectedFiles.videos
+                .map(v => `"${v.originalname}": ${v.reason}`)
+                .join('; ');
+              rejectedErrors.video = `Video bị từ chối - ${videoReasons}.`;
+            }
+            setErrors(rejectedErrors);
           }
-          
-          const errorCount = Object.keys(response.errors).length;
-          toast.error(`${response.message || 'Dữ liệu không hợp lệ'}\nCó ${errorCount} lỗi cần sửa. Vui lòng kiểm tra lại form.`, {
-            position: "top-right",
-            autoClose: 7000,
-            hideProgressBar: false,
-          });
+
+          showError(response.message || "");
         } else {
-          toast.error(response.message || "Có lỗi xảy ra");
+          showError(response.message);
         }
       }
     } catch (error) {
       console.error("Error updating property:", error);
-      
+
       if (error.response) {
-        const responseData = error.response.data;
+        const data = error.response.data;
 
-        if (error.response.status === 400 && responseData.errors) {
-          setErrors(responseData.errors);
-          
-          // Xử lý rejected files từ validation error
-          if (responseData.rejectedFiles) {
-            console.log('📥 Rejected files from validation error:', responseData.rejectedFiles);
-            console.log('📥 Images rejected:', responseData.rejectedFiles.images);
-            console.log('📥 Videos rejected:', responseData.rejectedFiles.videos);
-            setRejectedFiles(responseData.rejectedFiles);
-            console.log('📥 Updated rejectedFiles state from validation error');
+        if (error.response.status === 400 && data.errors) {
+          setErrors(data.errors);
+
+          const hasRejectedFiles = handleRejectedFiles(data.rejectedFiles, false);
+          let errorMessage = data.message || "";
+          if (hasRejectedFiles && data.rejectedFiles.images?.length > 0) {
+            errorMessage += "\nCó ảnh vi phạm nội quy cần thay thế.";
           }
-          
-          const errorCount = Object.keys(responseData.errors).length;
-
-          toast.error(`${responseData.message || 'Dữ liệu không hợp lệ'}\nCó ${errorCount} lỗi cần sửa. Vui lòng kiểm tra lại form.`, {
-            position: "top-right",
-            autoClose: 7000,
-            hideProgressBar: false,
-          });
+           if (hasRejectedFiles && data.rejectedFiles.videos?.length > 0) {
+            errorMessage += "\nCó video vi phạm nội quy cần thay thế.";
+          }
+          showError(errorMessage);
         } else {
-          toast.error(responseData?.message || "Lỗi khi cập nhật tin đăng");
+          showError(data?.message);
         }
       } else {
-        toast.error("Lỗi khi cập nhật tin đăng");
+        showError("Lỗi kết nối tới server");
       }
     } finally {
       setLoading(false);
     }
   };
-
 
 
   // Draggable Marker component
@@ -1155,17 +1175,17 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     <i className="fa fa-spinner fa-spin"></i> Đang tải tiện ích...
                   </div>
                 )}
-                
+
                 {amenitiesData.error && (
                   <div className="error-amenities">
                     <i className="fa fa-exclamation-triangle"></i> {amenitiesData.error}
                   </div>
                 )}
-                
+
                 {!amenitiesData.loading && !amenitiesData.error && amenitiesData.amenities.map((amenity) => {
                   const isChecked = formData.amenities?.includes(amenity.value) || false;
-  
-                  
+
+
                   return (
                     <label
                       key={amenity.value}
@@ -1351,17 +1371,17 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   <div className="image-preview-grid">
                     {formData.existingImages.map((img, index) => {
                       // Kiểm tra xem ảnh này có bị từ chối không (dựa trên URL)
-                      const isRejected = rejectedFiles.images?.some(rejected => 
+                      const isRejected = rejectedFiles.images?.some(rejected =>
                         rejected.url === img || rejected.originalname === img
                       );
-                      const rejectedInfo = rejectedFiles.images?.find(rejected => 
+                      const rejectedInfo = rejectedFiles.images?.find(rejected =>
                         rejected.url === img || rejected.originalname === img
                       );
-                      
+
                       return (
                         <div key={index} className={`image-preview ${isRejected ? 'rejected' : ''}`}>
-                          <img 
-                            src={img} 
+                          <img
+                            src={img}
                             alt={`Existing ${index}`}
                             style={{
                               filter: isRejected ? 'blur(3px) grayscale(50%) opacity(0.6)' : 'none',
@@ -1415,11 +1435,11 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                       // Kiểm tra xem ảnh này có bị từ chối không
                       const isRejected = rejectedFiles.images?.some(rejected => rejected.originalname === img.name);
                       const rejectedInfo = rejectedFiles.images?.find(rejected => rejected.originalname === img.name);
-                      
+
                       return (
                         <div key={index} className={`image-preview ${isRejected ? 'rejected' : ''}`}>
-                          <img 
-                            src={img.url} 
+                          <img
+                            src={img.url}
                             alt={`New ${index}`}
                             style={{
                               filter: isRejected ? 'blur(3px) grayscale(50%) opacity(0.6)' : 'none',
@@ -1454,7 +1474,9 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     })}
                   </div>
                 )}
-                {errors.newImages && <p className="text-danger">{errors.newImages}</p>}
+
+                {/* Hiển thị lỗi ảnh mới nếu có */}
+                {errors.newImages && <span className="error-text">{errors.newImages}</span>}
               </div>
 
               <div className="form-group" style={{ position: "relative" }}>
@@ -1464,7 +1486,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   const videoName = formData.video.name || formData.video.file?.name || 'video';
                   const isRejected = rejectedFiles.videos?.some(rejected => rejected.originalname === videoName);
                   const rejectedInfo = rejectedFiles.videos?.find(rejected => rejected.originalname === videoName);
-                  
+
                   return (
                     <div
                       className={`video-preview ${isRejected ? 'rejected' : ''}`}
@@ -1477,8 +1499,8 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                       <video
                         key={formData.video?.url}
                         controls
-                        style={{ 
-                          maxWidth: "200px", 
+                        style={{
+                          maxWidth: "200px",
                           height: "auto",
                           filter: isRejected ? 'blur(3px) grayscale(50%) opacity(0.6)' : 'none',
                           transition: 'filter 0.3s ease'
@@ -1528,18 +1550,29 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                           alignItems: "center",
                         }}
                         onClick={() => {
+                          const videoNameToRemove = formData.video?.name || formData.video?.file?.name;
+
                           setFormData((prev) => ({
                             ...prev,
                             video: null,
                             removeVideo: true, // gửi flag cho backend
                           }));
-                          // Xóa khỏi rejected files nếu có
-                          if (isRejected) {
-                            setRejectedFiles(prev => ({
-                              ...prev,
-                              videos: prev.videos.filter(rejected => rejected.originalname !== videoName)
-                            }));
-                          }
+
+                          // Clear rejected files và errors cho video
+                          setRejectedFiles(prev => ({
+                            ...prev,
+                            videos: prev.videos?.filter(rejected => rejected.originalname !== videoNameToRemove) || []
+                          }));
+
+                          // Clear video error nếu không còn video bị reject
+                          setErrors(prev => {
+                            const remainingRejectedVideos = rejectedFiles.videos?.filter(rejected => rejected.originalname !== videoNameToRemove) || [];
+                            if (remainingRejectedVideos.length === 0) {
+                              const { video, ...otherErrors } = prev;
+                              return otherErrors;
+                            }
+                            return prev;
+                          });
                         }}
                       >
                         <i className="fa fa-trash" style={{ fontSize: "20px", alignItems: "center", marginLeft: "5px" }}></i>
@@ -1565,7 +1598,8 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   {formData.video ? "Thay đổi video" : "Chọn video"}
                 </button>
 
-                {errors.video && <p className="text-danger">{errors.video}</p>}
+                {/* Hiển thị lỗi video nếu có */}
+                {errors.video && <span className="error-text">{errors.video}</span>}
               </div>
 
 

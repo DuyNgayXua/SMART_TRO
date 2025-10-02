@@ -23,7 +23,7 @@ const MyProperties = () => {
 
   // Filters & Search
   const [filters, setFilters] = useState({
-    approvalStatus: 'all', // all, pending, approved, rejected, hidden
+    approvalStatus: 'all', // all, pending, approved, rejected, hidden .
     sortBy: 'createdAt',
     sortOrder: 'desc',
     search: ''
@@ -40,7 +40,7 @@ const MyProperties = () => {
   const [selectedProperty, setSelectedProperty] = useState(null);
 
   // Rejected files state
-  const [rejectedFiles, setRejectedFiles] = useState({ images: [], videos: [] });
+  const [rejectedFiles, setRejectedFiles] = useState({ images: [], video: [] });
 
   // Dropdown menu state
   const [activeDropdown, setActiveDropdown] = useState(null);

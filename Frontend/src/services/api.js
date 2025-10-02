@@ -3,7 +3,7 @@ import axios from 'axios';
 // Global logout handler
 let globalLogoutHandler = null;
 
-// Set global logout handler.
+// Set global logout handler
 export const setGlobalLogoutHandler = (handler) => {
   globalLogoutHandler = handler;
 };
@@ -14,7 +14,7 @@ const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:500
 // Tạo instance axios với cấu hình mặc định
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000, // 120 seconds timeout cho upload với AI moderation
+  timeout: 45000, // 45 seconds timeout cho upload
   headers: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
@@ -125,12 +125,6 @@ api.interceptors.response.use(
           break;
         default:
           console.error('Có lỗi xảy ra:', data?.message || error.message);
-      }
-    } else if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      console.error('Request timeout. Server đang xử lý quá lâu, có thể do upload file lớn hoặc AI moderation.');
-      // Thêm thông tin chi tiết cho timeout
-      if (error.config?.url?.includes('/my-properties/')) {
-        console.error('Timeout khi update property. Có thể do AWS S3 upload hoặc AI moderation quá lâu.');
       }
     } else if (error.request) {
       console.error('Lỗi kết nối mạng. Vui lòng kiểm tra kết nối internet của bạn.');

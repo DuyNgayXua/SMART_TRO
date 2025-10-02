@@ -138,7 +138,7 @@ export const uploadImageWithModeration = async (buffer, filename, options = {}) 
         console.log(`Cleaned up rejected image: ${uploadResult.key}`);
       } catch (cleanupError) {
         console.warn(`Could not delete rejected file: ${uploadResult.key} - ${cleanupError.message}`);
-        // Continue without failing - file will remain on S3
+        // Continue without failing - file will remain on S3 .
       }
     }
     

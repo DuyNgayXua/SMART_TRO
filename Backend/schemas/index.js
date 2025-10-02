@@ -1,5 +1,5 @@
 /**
- * Export tất cả schemas
+ * Export tất cả schemas để dễ dàng import ở các nơi khác
  */
 import User from './User.js';
 import Property from './Property.js';

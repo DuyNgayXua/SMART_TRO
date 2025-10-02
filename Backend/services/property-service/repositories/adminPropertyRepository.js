@@ -6,13 +6,16 @@ class AdminPropertyRepository {
     const { page = 1, limit = 10, sortBy = 'createdAt', sortOrder = -1 } = options;
     const skip = (page - 1) * limit;
 
-    const properties = await Property.find(filter)
+    // Add isDeleted: false to filter to exclude deleted properties
+    const finalFilter = { ...filter, isDeleted: false };
+
+    const properties = await Property.find(finalFilter)
       .populate('owner', 'fullName email avatar phone')
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
       .limit(limit);
 
-    const totalProperties = await Property.countDocuments(filter);
+    const totalProperties = await Property.countDocuments(finalFilter);
     const totalPages = Math.ceil(totalProperties / limit);
 
     return {
@@ -71,6 +74,9 @@ class AdminPropertyRepository {
   async getPropertyStats() {
     const stats = await Property.aggregate([
       {
+        $match: { isDeleted: { $ne: true } }
+      },
+      {
         $group: {
           _id: '$approvalStatus',
           count: { $sum: 1 }
@@ -98,7 +104,7 @@ class AdminPropertyRepository {
 
   // Lấy properties theo status
   async getPropertiesByStatus(status) {
-    return await Property.find({ approvalStatus: status })
+    return await Property.find({ approvalStatus: status, isDeleted: { $ne: true } })
       .populate('owner', 'fullName email avatar phone')
       .sort({ createdAt: -1 });
   }

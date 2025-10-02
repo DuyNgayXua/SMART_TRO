@@ -1,16 +1,10 @@
 import express from 'express';
 import authMiddleware from '../../shared/middleware/authMiddleware.js';
 import myPropertiesController from '../controllers/myPropertiesController.js';
-import upload from '../../shared/utils/upload.js'; // import upload
-import { uploadMixedWithModeration } from '../../shared/middleware/moderationMiddleware.js';
-
+import moderationMiddleware from '../../shared/middleware/moderationMiddleware.js';
+import uploadMixedWithModerationOptional from '../../shared/middleware/moderationMiddleware.js';
 const router = express.Router();
 
-// Middleware upload cho updateProperty
-const uploadFields = upload.fields([
-  { name: 'images', maxCount: 5 },
-  { name: 'video', maxCount: 1 }
-]);
 
 // Routes
 router.get('/', authMiddleware, myPropertiesController.getMyProperties);
@@ -23,7 +17,7 @@ router.get('/:propertyId/edit', authMiddleware, myPropertiesController.getProper
 router.put(
   '/:propertyId',
   authMiddleware,
-  uploadMixedWithModeration,
+  moderationMiddleware.uploadMixedWithModerationOptional(),
   myPropertiesController.updateProperty
 );
 

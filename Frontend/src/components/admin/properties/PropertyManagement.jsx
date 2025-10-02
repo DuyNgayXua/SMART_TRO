@@ -230,7 +230,7 @@ const PropertyManagement = () => {
 
     // Format price
     const formatPrice = (price) => {
-        if (!price) return 'N/A';
+        if (price === null || price === undefined) return 'N/A';
         return new Intl.NumberFormat('vi-VN').format(price) + ' VNĐ';
     };
 
@@ -486,11 +486,19 @@ const PropertyManagement = () => {
                                                             </div>
                                                         </div>
                                                         <div className="price-section">
-                                                            <div className="main-price">{formatPrice(property.rentPrice)}/tháng</div>
-                                                            {property.promotionPrice && (
-                                                                <div className="promo-price">KM: {formatPrice(property.promotionPrice)}</div>
-                                                            )}
+                                                            <div className="main-price">
+                                                                {formatPrice(property.rentPrice)}/tháng
+                                                            </div>
+
+                                                            {property.promotionPrice !== null &&
+                                                                property.promotionPrice !== undefined &&
+                                                                property.promotionPrice > 0 && (
+                                                                    <div className="promo-price">
+                                                                        KM: {formatPrice(property.promotionPrice)}
+                                                                    </div>
+                                                                )}
                                                         </div>
+
                                                     </td>
                                                     <td className="status-date-cell">
                                                         <div className="status-section">
@@ -512,7 +520,7 @@ const PropertyManagement = () => {
                                                                 </span>
                                                             </div>
                                                         ) : (
-                                                            <span className="reason-text"></span> 
+                                                            <span className="reason-text"></span>
                                                         )}
                                                     </td>
 
@@ -700,12 +708,10 @@ const PropertyManagement = () => {
                                                     <strong>Giá thuê:</strong>
                                                     <span>{formatPrice(selectedProperty.rentPrice)}/tháng</span>
                                                 </div>
-                                                {selectedProperty.promotionPrice && (
-                                                    <div className="detail-item-management">
-                                                        <strong>Giá khuyến mãi:</strong>
-                                                        <span>{formatPrice(selectedProperty.promotionPrice)}/tháng</span>
-                                                    </div>
-                                                )}
+                                                <div className="detail-item-management">
+                                                    <strong>Giá khuyến mãi:</strong>
+                                                    <span>{selectedProperty.promotionPrice ? formatPrice(selectedProperty.promotionPrice) : '0 VNĐ'}/tháng</span>
+                                                </div>
                                                 <div className="detail-item-management">
                                                     <strong>Diện tích:</strong>
                                                     <span>{selectedProperty.area}m²</span>

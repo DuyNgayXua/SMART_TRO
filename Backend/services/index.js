@@ -1,5 +1,5 @@
 /**
- * Main Router - Tích hợp tất cả service routes
+ * Main Router - Tích hợp tất cả service routes.
  */
 import express from 'express';
 import userRoutes from './user-service/routes/userRoutes.js';
@@ -109,21 +109,6 @@ router.get('/api', (req, res) => {
                 'PUT /api/my-properties/:propertyId': 'Cập nhật thông tin bài đăng',
                 'DELETE /api/my-properties/:propertyId': 'Xóa bài đăng',
                 'PATCH /api/my-properties/:propertyId/toggle-status': 'Chuyển trạng thái bài đăng (available/draft/inactive)'
-            },
-            upload: {
-                'POST /api/upload/single': 'Upload 1 ảnh với AI moderation (require auth)',
-                'POST /api/upload/multiple': 'Upload nhiều ảnh (max 10) với AI moderation (require auth)',
-                'POST /api/upload/analyze-url': 'Phân tích ảnh từ URL (require auth)',
-                'POST /api/upload/batch-analyze': 'Phân tích batch nhiều URLs (require auth)',
-                'GET /api/upload/my-uploads': 'Lấy danh sách uploads của user (require auth)',
-                'DELETE /api/upload/:uploadId': 'Xóa ảnh đã upload (require auth)',
-                'GET /api/upload/stats': 'Thống kê moderation (admin only)',
-                'PUT /api/upload/threshold': 'Cập nhật threshold AI moderation (admin only)',
-                'POST /api/upload/test-webhook': 'Test webhook configuration (admin only)',
-                'GET /api/upload/health': 'Health check upload service',
-                'GET /api/upload/config': 'Lấy cấu hình upload',
-                'POST /api/upload/webhook/moderation': 'Webhook nhận kết quả AI moderation từ Cloudinary',
-                'GET /api/upload/webhook/health': 'Health check webhook service'
             },
             moderation: {
                 'POST /api/moderation/analyze': 'Phân tích 1 ảnh từ URL với AI',
