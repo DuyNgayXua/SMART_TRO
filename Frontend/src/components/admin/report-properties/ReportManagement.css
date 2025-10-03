@@ -25,6 +25,7 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    white-space: nowrap;
 }
 
 .status-pending-report {
@@ -170,6 +171,14 @@
     letter-spacing: 0.5px;
 }
 
+/* Specific column widths for better layout */
+.reports-table th:nth-child(1) { width: 20%; } /* Bài đăng */
+.reports-table th:nth-child(2) { width: 15%; } /* Chủ bài đăng */
+.reports-table th:nth-child(3) { width: 20%; } /* Người báo cáo */
+.reports-table th:nth-child(4) { width: 20%; } /* Lý do / Mức độ */
+.reports-table th:nth-child(5) { width: 10%; } /* Trạng thái */
+.reports-table th:nth-child(6) { width: 15%; } /* Thao tác */
+
 .reports-table td {
     padding: 16px 20px;
     border-bottom: 1px solid #e5e7eb;
@@ -185,7 +194,7 @@
     max-width: 250px;
 }
 
-.property-info .property-title {
+.property-info .property-title-report {
     font-size: 14px;
     min-height: 50px;
     margin: 0 0 15px 0;
@@ -233,9 +242,15 @@
 }
 
 .reporter-info .reporter-email {
-    font-size: 14px;
-    color: #27ae60;
+    font-size: 12px;
+    color: #6b7280;
     margin-bottom: 4px;
+    display: block;
+    max-width: 150px;            /* giới hạn chiều rộng */
+    white-space: nowrap;         /* không xuống dòng */
+    overflow: hidden;            /* ẩn phần bị tràn */
+    text-overflow: ellipsis;     /* thêm dấu ... */
+    cursor: help;                /* con trỏ giúp đỡ khi hover */
 }
 
 .reporter-info .report-date {
@@ -882,4 +897,67 @@
         padding: 12px 16px;
         font-size: 14px;
     }
+}
+
+/* Owner Property Cell Styles */
+.owner-property-cell {
+    max-width: 200px;
+}
+
+.owner-property-info .owner-property-name {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 14px;
+    margin-bottom: 2px;
+}
+
+.owner-property-info .owner-property-email {
+    font-size: 12px;
+    color: #6b7280;
+    margin-bottom: 4px;
+    display: block;
+    max-width: 120px;            /* giảm chiều rộng tối đa */
+    white-space: nowrap;         /* không xuống dòng */
+    overflow: hidden;            /* ẩn phần bị tràn */
+    text-overflow: ellipsis;     /* thêm dấu ... */
+    cursor: help;                /* con trỏ giúp đỡ khi hover */
+}
+
+.owner-property-info .owner-property-date {
+    font-size: 12px;
+    color: #9ca3af;
+}
+
+/* Owner Stats */
+.owner-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 4px 0;
+}
+
+.stats-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+    background: #f3f4f6;
+    color: #374151;
+    padding: 2px 6px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.stats-item.pending {
+    background: #fef3c7;
+    color: #92400e;
+}
+
+.stats-item.resolved {
+    background: #d1fae5;
+    color: #065f46;
+}
+
+.stats-item i {
+    font-size: 10px;
 }

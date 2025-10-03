@@ -38,6 +38,29 @@ const adminReportController = {
 
       const result = await adminReportRepository.getReportsWithFilter(filter, options);
 
+      // Lấy thống kê báo cáo theo chủ sở hữu
+      if (result.reports && result.reports.length > 0) {
+        const ownerIds = result.reports
+          .map(report => report.propertyOwner?._id || report.propertyOwner)
+          .filter(Boolean);
+        
+        if (ownerIds.length > 0) {
+          const reportCounts = await adminReportRepository.getReportCountsByOwner(ownerIds);
+          
+          // Gắn thống kê vào mỗi report
+          result.reports = result.reports.map(report => {
+            const ownerId = report.propertyOwner?._id?.toString() || report.propertyOwner?.toString();
+            if (ownerId && reportCounts[ownerId]) {
+              return {
+                ...report,
+                propertyOwnerStats: reportCounts[ownerId]
+              };
+            }
+            return report;
+          });
+        }
+      }
+
       res.json({
         success: true,
         message: 'Lấy danh sách báo cáo thành công',
@@ -273,13 +296,17 @@ const adminReportController = {
       const { id: reportId } = req.params;
       const { reason } = req.body;
       const adminId = req.user.userId || req.user.id;
+      console.log('Admin ID:', adminId);
+      console.log('Report ID:', reportId);
+      console.log('Reason:', reason);
 
       // Validation
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        const errorMessages = errors.array().map(error => error.msg).join(', ');
         return res.status(400).json({
           success: false,
-          message: 'Dữ liệu không hợp lệ',
+          message: `Dữ liệu không hợp lệ: ${errorMessages}`,
           errors: errors.array()
         });
       }
@@ -291,10 +318,10 @@ const adminReportController = {
         });
       }
 
-      if (!reason || reason.trim().length < 10) {
+      if (!reason || reason.trim().length < 3) {
         return res.status(400).json({
           success: false,
-          message: 'Lý do ẩn bài đăng phải có ít nhất 10 ký tự'
+          message: 'Lý do ẩn bài đăng phải có ít nhất 3 ký tự'
         });
       }
 
@@ -324,23 +351,27 @@ const adminReportController = {
 
       // Ẩn bài đăng và cập nhật báo cáo
       const updatedReport = await adminReportRepository.hidePropertyForReport(reportId, adminId, reason);
+      console.log('Updated Report after hiding property:', updatedReport);
 
       // Gửi email thông báo tới chủ sở hữu
       try {
-        // Sử dụng updatedReport vì nó đã được populate đầy đủ
-        if (!updatedReport.property?.owner?.email) {
+        // Lấy thông tin chủ sở hữu từ propertyOwner (vì property có thể đã bị xóa)
+        const User = req.app.locals.schemas.User;
+        const propertyOwner = await User.findById(updatedReport.propertyOwner || existingReport.propertyOwner);
+        
+        if (!propertyOwner?.email) {
           throw new Error('Không tìm thấy email chủ bài đăng');
         }
 
         await emailService.sendPropertyHiddenEmail({
-          to: updatedReport.property.owner.email,
-          ownerName: updatedReport.property.owner.fullName || 'Chủ bài đăng',
-          propertyTitle: updatedReport.property.title || 'Bài đăng',
+          to: propertyOwner.email,
+          ownerName: propertyOwner.fullName || 'Chủ bài đăng',
+          propertyTitle: updatedReport.propertyTitle || existingReport.propertyTitle || 'Bài đăng',
           reason: reason,
           reportReason: existingReport.reason
         });
 
-        console.log(`Property hidden notification sent to ${updatedReport.property.owner.email}`);
+        console.log(`Property hidden notification sent to ${propertyOwner.email}`);
       } catch (emailError) {
         console.error('Error sending property hidden email:', emailError);
         // Trả về thông báo nhưng vẫn thành công vì bài đăng đã được ẩn

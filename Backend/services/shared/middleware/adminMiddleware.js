@@ -24,10 +24,6 @@ export const adminMiddleware = (req, res, next) => {
                 message: 'Chỉ admin mới có quyền truy cập chức năng này'
             });
         }
-
-        // Log admin action để audit
-        console.log(`Admin action: ${req.method} ${req.originalUrl} by ${req.user.userId}`);
-        
         next();
     } catch (error) {
         console.error('Error in adminOnly middleware:', error);

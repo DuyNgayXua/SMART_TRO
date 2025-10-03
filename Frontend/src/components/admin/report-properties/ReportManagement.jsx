@@ -32,6 +32,7 @@ const ReportManagement = () => {
             setLoading(true);
 
             const data = await adminReportsAPI.getReportsForAdmin(page, status, 10, search);
+            console.log("Fetched reports data:", data);
 
             if (data.success) {
                 setReports(data.data.reports);
@@ -106,7 +107,15 @@ const ReportManagement = () => {
             }
         } catch (error) {
             console.error('Error handling report:', error);
-            toast.error(error.message || 'Lỗi khi xử lý báo cáo');
+            
+            // Hiển thị thông báo lỗi chi tiết từ backend
+            let errorMessage = 'Lỗi khi xử lý báo cáo';
+            
+            if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            toast.error(errorMessage);
         } finally {
             setProcessingReportId(null);
         }
@@ -345,10 +354,11 @@ const ReportManagement = () => {
                                         <thead>
                                             <tr>
 
-                                                <th style={{ width: '25%' }}>Bài đăng</th>
+                                                <th style={{ width: '20%' }}>Bài đăng</th>
+                                                <th style={{ width: '15%' }}>Chủ bài đăng</th>
                                                 <th style={{ width: '20%' }}>Người báo cáo</th>
-                                                <th style={{ width: '25%' }}>Lý do / Mức độ</th>
-                                                <th style={{ width: '15%' }}>Trạng thái</th>
+                                                <th style={{ width: '20%' }}>Lý do / Mức độ</th>
+                                                <th style={{ width: '10%' }}>Trạng thái</th>
                                                 <th style={{ width: '15%' }}>Thao tác</th>
                                             </tr>
                                         </thead>
@@ -381,10 +391,46 @@ const ReportManagement = () => {
                                                             </div>
                                                         </div>
                                                     </td>
+                                                    <td className="owner-property-cell">
+                                                        <div className="owner-property-info">
+                                                            <div className="owner-property-name">
+                                                                {report.propertyOwner?.fullName || report.property?.owner?.fullName || 'Ẩn danh'}
+                                                            </div>
+                                                            <div 
+                                                                className="owner-property-email"
+                                                                title={report.propertyOwner?.email || report.property?.owner?.email || ''}
+                                                            >
+                                                                {report.propertyOwner?.email || report.property?.owner?.email || ''}
+                                                            </div>
+                                                            {report.propertyOwnerStats && (
+                                                                <div className="owner-stats">
+                                                                    <span className="stats-item" title="Tổng báo cáo">
+                                                                        <i className="fa fa-flag"></i> {report.propertyOwnerStats.total}
+                                                                    </span>
+                                                                    {report.propertyOwnerStats.pending > 0 && (
+                                                                        <span className="stats-item pending" title="Đang chờ xử lý">
+                                                                            <i className="fa fa-clock-o"></i> {report.propertyOwnerStats.pending}
+                                                                        </span>
+                                                                    )}
+                                                                    {report.propertyOwnerStats.resolved > 0 && (
+                                                                        <span className="stats-item resolved" title="Đã xử lý">
+                                                                            <i className="fa fa-check"></i> {report.propertyOwnerStats.resolved}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                          
+                                                        </div>
+                                                    </td>
                                                     <td className="reporter-cell">
                                                         <div className="reporter-info">
                                                             <div className="reporter-name">{report.reporter?.fullName || 'Ẩn danh'}</div>
-                                                            <div className="reporter-email">{report.reporter?.email || ''}</div>
+                                                            <div 
+                                                                className="reporter-email"
+                                                                title={report.reporter?.email || ''}
+                                                            >
+                                                                {report.reporter?.email || ''}
+                                                            </div>
                                                             <div className="report-date">{formatDate(report.createdAt)}</div>
                                                         </div>
                                                     </td>

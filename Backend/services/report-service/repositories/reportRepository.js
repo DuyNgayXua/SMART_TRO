@@ -13,19 +13,21 @@ class ReportRepository {
   // Tạo báo cáo mới
   async createReport(reportData) {
     try {
+      console.log('Repository creating report with data:', reportData);
       const report = new Report({
-        reporter: reportData.reportedBy,
-        property: reportData.propertyId,
+        reporter: reportData.reporter,
+        property: reportData.property, // Sửa từ reportData.propertyId thành reportData.property
         reason: reportData.reason,
         description: reportData.description,
         contactEmail: reportData.contactEmail,
         propertyTitle: reportData.propertyTitle,
         propertyOwner: reportData.propertyOwner,
-        status: 'pending'
+        status: reportData.status || 'pending'
       });
 
       return await report.save();
     } catch (error) {
+      console.error('Repository error creating report:', error);
       throw error;
     }
   }

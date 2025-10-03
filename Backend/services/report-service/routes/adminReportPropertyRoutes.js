@@ -21,8 +21,8 @@ const validateHide = [
   body('reason')
     .notEmpty()
     .withMessage('Lý do ẩn bài đăng không được để trống')
-    .isLength({ min: 10, max: 500 })
-    .withMessage('Lý do ẩn bài đăng phải có từ 10-500 ký tự')
+    .isLength({ min: 3, max: 500 })
+    .withMessage('Lý do ẩn bài đăng phải có từ 3-500 ký tự')
     .trim()
     .escape()
 ];

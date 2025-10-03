@@ -15,7 +15,7 @@ const reportProperty = async (req, res) => {
     if (!property) {
       return res.status(404).json({
         success: false,
-        message: 'Không tìm thấy tin đăng'
+        message: 'Không tìm thấy tin đăng.'
       });
     }
 
@@ -32,7 +32,7 @@ const reportProperty = async (req, res) => {
 
     // Tạo báo cáo mới
     const reportData = {
-      property: propertyId,
+      property: propertyId, // Đảm bảo propertyId được gán đúng
       propertyTitle: propertyTitle || property.title,
       reason,
       description,
@@ -41,6 +41,8 @@ const reportProperty = async (req, res) => {
       propertyOwner: propertyOwner || property.owner,
       status: 'pending'
     };
+
+    console.log('Report Data before creating :', reportData);
 
     const newReport = await reportRepository.createReport(reportData);
 
