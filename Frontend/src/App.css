@@ -23,7 +23,9 @@ body {
 .container {
   max-width: 80%;
   margin: auto;
+  
 }
+
 .flex {
   display: flex;
   justify-content: space-between;

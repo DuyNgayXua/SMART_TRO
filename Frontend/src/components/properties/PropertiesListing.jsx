@@ -1274,10 +1274,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         </section>
       )}
 
-      <div className="container">
+      <div className="container properties-listing-container">
         <div className="properties-wrapper">
-          <div className="quick-search">
-            <div className="search-input-group">
+          <div className="quick-search-listing">
+            <div className="search-input-group-listing">
               <i className="fa fa-search"></i>
               <input
                 type="text"

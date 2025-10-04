@@ -13,7 +13,6 @@ class adminReportPropertyRepository {
     const reports = await Report.find(finalFilter)
       .populate('property', 'title _id owner images')
       .populate('reporter', 'fullName email avatar')
-      .populate('propertyOwner', 'fullName email avatar _id')
       .populate('property.owner', 'fullName email')
       .sort({ [sortBy]: sortOrder })
       .skip(skip)
@@ -40,7 +39,6 @@ class adminReportPropertyRepository {
     return await Report.findById(reportId)
       .populate('property', 'title _id owner images category')
       .populate('reporter', 'fullName email avatar phone')
-      .populate('propertyOwner', 'fullName email avatar phone _id')
       .populate('property.owner', 'fullName email phone')
       .lean();
   }
@@ -223,42 +221,6 @@ class adminReportPropertyRepository {
       .populate('reporter', 'fullName email avatar')
       .sort({ createdAt: -1 })
       .lean();
-  }
-
-  // Đếm số báo cáo theo propertyOwner
-  async getReportCountsByOwner(ownerIds) {
-    const counts = await Report.aggregate([
-      {
-        $match: {
-          propertyOwner: { $in: ownerIds },
-          isDeleted: { $ne: true }
-        }
-      },
-      {
-        $group: {
-          _id: '$propertyOwner',
-          totalReports: { $sum: 1 },
-          pendingReports: {
-            $sum: { $cond: [{ $eq: ['$status', 'pending'] }, 1, 0] }
-          },
-          resolvedReports: {
-            $sum: { $cond: [{ $eq: ['$status', 'resolved'] }, 1, 0] }
-          }
-        }
-      }
-    ]);
-
-    // Convert array to object for easy lookup
-    const countMap = {};
-    counts.forEach(count => {
-      countMap[count._id.toString()] = {
-        total: count.totalReports,
-        pending: count.pendingReports,
-        resolved: count.resolvedReports
-      };
-    });
-
-    return countMap;
   }
 }
 

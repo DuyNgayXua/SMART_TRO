@@ -6,7 +6,6 @@
 .properties-wrapper {
   padding: 0;
   position: relative;
-  background: #be4600;
   border-radius: 10px;
 }
 
@@ -24,17 +23,23 @@
 }
 
 .properties-wrapper .quick-search {
-  margin-top: 10px;
-  background: #be4600;
-  padding: 45px 45px;
+  position: relative;
+  top: -25px;
+  padding: 10px 45px;
   border-radius: 10px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
   margin-bottom: 40px;
   flex: 1;
+  background: linear-gradient(to bottom, #45b6b0, #b2f3e8);
 
 }
 
 /* Responsive */
+@media (max-width: 768px) {
+  .home-properties-section {
+    padding: 20px 0;
+  }
+}
+
 @media (max-width: 768px) {
   .home-properties-section {
     padding: 20px 0;

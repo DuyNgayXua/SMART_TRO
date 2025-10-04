@@ -1,16 +1,30 @@
 /* Properties Listing Styles */
 .properties-listing {
   min-height: 100vh;
-  background-color: #f8f9fa;
+  background: 
+    linear-gradient(rgba(248, 249, 250, 0.1), rgba(248, 249, 250, 0.3)),
+    url("../../../public/images/background-boy.png") center/cover no-repeat;
+  background-attachment: fixed;
+  background-size: cover;
+  width: 100%;
+  position: relative;
+}
+
+/* Properties Listing Container with Background */
+.properties-listing-container {
+  width: 100%;
+  min-height: 100vh;
+  position: relative;
+  
 }
 
 .properties-listing.home-mode .listing-content.home-layout {
-  grid-template-columns: 1fr 300px;
-  gap: 30px;
+  grid-template-columns: 1fr 280px; /* Giảm sidebar để main content rộng hơn */
+  gap: 20px;
   align-items: flex-start;
   display: grid;
   min-height: calc(100vh - 160px);
-  /* Ensure consistent grid behavior */
+  width: 100%; /* Đảm bảo sử dụng toàn bộ chiều rộng */
   grid-template-rows: 1fr;
 }
 
@@ -91,18 +105,23 @@
 /* Properties Wrapper */
 .properties-wrapper {
   width: 100%;
-  margin-bottom: 30px;
 }
 
-.properties-wrapper .quick-search {
-  max-width: 600px;
+.properties-wrapper .quick-search-listing {
+  max-width: 100%;
   margin: 0 auto;
   display: block !important;
   visibility: visible !important;
   opacity: 1 !important;
+  background-color: rgba(0, 0, 0, 0.7); /* đen nhẹ trong suốt */
+  padding: 25px 20px;
+  border-radius: 10px;
+  position: relative;
+  top: -25px;
+  z-index: 9999;
 }
 
-.quick-search {
+.quick-search-listing {
   max-width: 600px;
   margin: 0 auto;
   display: block !important;
@@ -148,12 +167,11 @@
 /* Main Layout - Two Column (Default) */
 .listing-content:not(.three-column-layout) {
   display: grid;
-  grid-template-columns: 1fr 300px;
-  /* Main content takes remaining space, sidebar fixed 300px */
-  gap: 30px;
+  grid-template-columns: 1fr 280px; /* Giảm sidebar để main content có nhiều không gian hơn */
+  gap: 20px;
   align-items: flex-start;
   min-height: calc(100vh - 160px);
-  /* Ensure grid doesn't collapse when content is small */
+  width: 100%; /* Đảm bảo sử dụng toàn bộ chiều rộng */
   grid-template-rows: 1fr;
 }
 
@@ -1227,7 +1245,7 @@
 
 /* Hero Section */
 .hero {
-  background: #1B8156;
+  background: #006b3e;
   color: white;
   padding: 35px 0 10px;
   position: relative;
@@ -1241,10 +1259,12 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: url("../../../public/images/banner.png") center/cover;
-  opacity: 0.1;
+  background: url("../../../public/images/banner.png") center/contain no-repeat;
+  background-size: 100% 100%;
+  opacity: 0.8;
   z-index: 0;
 }
+
 
 .hero .container {
   position: relative;
@@ -1267,55 +1287,7 @@
   padding: 15px 30px;
 }
 
-.hero h2::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  border: 3px solid rgba(255, 255, 255, 0.7);
-  border-radius: 12px;
-  animation: borderRotateSmooth 3.5s ease-in-out infinite;
-}
 
-@keyframes borderRotateSmooth {
-  0% {
-    border-color: rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1);
-  }
-
-  12.5% {
-    border-color: rgba(255, 255, 255, 0.6) rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1);
-  }
-
-  25% {
-    border-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1);
-  }
-
-  37.5% {
-    border-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.6) rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1);
-  }
-
-  50% {
-    border-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.1);
-  }
-
-  62.5% {
-    border-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.6) rgba(255, 255, 255, 0.3);
-  }
-
-  75% {
-    border-color: rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.8);
-  }
-
-  87.5% {
-    border-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.6);
-  }
-
-  100% {
-    border-color: rgba(255, 255, 255, 0.8) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1) rgba(255, 255, 255, 0.1);
-  }
-}
 
 .hero p {
   color: #fff;
@@ -1364,7 +1336,8 @@
   grid-template-columns: repeat(5, 1fr);
   gap: 20px;
   align-items: end;
-  background-color: #e7b500;
+  background-color: rgba(0, 0, 0, 0.3);
+
   border-radius: 10px;
   padding: 10px 10px;
   margin-bottom: 20px;
@@ -1378,7 +1351,7 @@
 .search-box-hero label {
   font-size: 0.9rem;
   font-weight: 600;
-  color: #333;
+  color: #ffffff;
   margin-bottom: 8px;
 }
 
@@ -2044,14 +2017,13 @@
 }
 
 /* Search Input Group Styles */
-.search-input-group {
+.search-input-group-listing {
   position: relative;
   display: flex;
   align-items: center;
-  margin-bottom: 20px;
 }
 
-.search-input-group input {
+.search-input-group-listing input {
   flex: 1;
   padding: 12px 80px 12px 40px;
   /* Tăng padding-right để có chỗ cho cả 2 nút */
@@ -2062,13 +2034,13 @@
   background: white;
 }
 
-.search-input-group input:focus {
+.search-input-group-listing input:focus {
   outline: none;
   border-color: #00b095ff;
   box-shadow: 0 0 0 3px rgba(0, 176, 149, 0.1);
 }
 
-.search-input-group .fa-search:first-child {
+.search-input-group-listing .fa-search:first-child {
   position: absolute;
   left: 15px;
   color: #6c757d;
@@ -2103,7 +2075,7 @@
 
 /* Responsive Search Input */
 @media (max-width: 768px) {
-  .search-input-group input {
+  .search-input-group-listing input {
     padding: 10px 75px 10px 35px;
     font-size: 13px;
   }
@@ -2124,7 +2096,7 @@
 }
 
 @media (max-width: 480px) {
-  .search-input-group input {
+  .search-input-group-listing input {
     padding: 8px 70px 8px 30px;
     font-size: 12px;
   }
@@ -2270,6 +2242,7 @@
     opacity: 0;
     transform: translateY(20px) scale(0.9);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -2298,8 +2271,15 @@
 }
 
 @keyframes pulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.1); }
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.1);
+  }
 }
 
 .header-info span {
@@ -2349,15 +2329,16 @@
   transform: scale(1.05);
   color: #17a2b8;
 }
-.close-btn-chat{
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    cursor: pointer;
-    color: white;
-    padding: 4px;
-    border-radius: 4px;
-    transition: all 0.2s;
+
+.close-btn-chat {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: white;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
 }
 
 .sound-toggle:hover,
@@ -2611,14 +2592,23 @@
   animation: typing 1.4s infinite ease-in-out;
 }
 
-.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
-.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+.typing-indicator span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.typing-indicator span:nth-child(2) {
+  animation-delay: -0.16s;
+}
 
 @keyframes typing {
-  0%, 80%, 100% {
+
+  0%,
+  80%,
+  100% {
     transform: scale(0.8);
     opacity: 0.5;
   }
+
   40% {
     transform: scale(1);
     opacity: 1;
@@ -2679,6 +2669,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2733,7 +2724,8 @@
   font-size: 10px;
   animation: bounce 2s infinite;
 }
-.hint-close{
+
+.hint-close {
   position: absolute;
   top: 5px;
   right: 5px;
@@ -2742,21 +2734,24 @@
   cursor: pointer;
   font-size: 12px;
   color: rgb(255, 255, 255);
-  padding : 5px 10px;
+  padding: 5px 10px;
   background-color: rgb(253, 0, 0);
 }
 
-.hint-icon{
+.hint-icon {
   margin-right: 10px;
   font-size: 14px;
 }
 
 
 @keyframes hintPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 0.95;
     transform: scale(1);
   }
+
   50% {
     opacity: 1;
     transform: scale(1.02);
@@ -2764,12 +2759,19 @@
 }
 
 @keyframes bounce {
-  0%, 20%, 50%, 80%, 100% {
+
+  0%,
+  20%,
+  50%,
+  80%,
+  100% {
     transform: translateY(0);
   }
+
   40% {
     transform: translateY(-4px);
   }
+
   60% {
     transform: translateY(-2px);
   }
@@ -2781,19 +2783,19 @@
     bottom: 16px;
     right: 16px;
   }
-  
+
   .chatbot-container.open {
     width: calc(100vw - 32px);
     height: calc(100vh - 100px);
     max-width: 380px;
     max-height: 600px;
   }
-  
+
   .chatbot-window {
     width: 100%;
     height: 100%;
   }
-  
+
   .chatbot-hint {
     font-size: 11px;
     padding: 8px 12px;
@@ -2812,16 +2814,16 @@
     bottom: 8px;
     right: 8px;
   }
-  
+
   .message-content {
     max-width: 240px;
     font-size: 13px;
   }
-  
+
   .mini-property-card {
     padding: 8px;
   }
-  
+
   .mini-property-card img {
     width: 45px;
     height: 45px;
@@ -2915,6 +2917,7 @@
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -2925,9 +2928,17 @@
   animation: optionAppear 0.3s ease;
 }
 
-.chat-option-btn:nth-child(1) { animation-delay: 0.1s; }
-.chat-option-btn:nth-child(2) { animation-delay: 0.2s; }
-.chat-option-btn:nth-child(3) { animation-delay: 0.3s; }
+.chat-option-btn:nth-child(1) {
+  animation-delay: 0.1s;
+}
+
+.chat-option-btn:nth-child(2) {
+  animation-delay: 0.2s;
+}
+
+.chat-option-btn:nth-child(3) {
+  animation-delay: 0.3s;
+}
 
 /* Property Slider Styles */
 .property-slider {
@@ -3146,6 +3157,7 @@
     opacity: 0;
     transform: translateX(20px);
   }
+
   to {
     opacity: 1;
     transform: translateX(0);
@@ -3157,27 +3169,27 @@
   .slider-header {
     padding: 12px 15px;
   }
-  
+
   .slider-header h4 {
     font-size: 13px;
   }
-  
+
   .card-image {
     height: 150px;
   }
-  
+
   .card-content {
     padding: 15px;
   }
-  
+
   .card-title {
     font-size: 15px;
   }
-  
+
   .card-price {
     font-size: 16px;
   }
-  
+
   .slider-btn {
     width: 30px;
     height: 30px;
