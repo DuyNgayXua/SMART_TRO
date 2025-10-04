@@ -2,7 +2,7 @@ import adminReportRepository from '../repositories/adminReportPropertyRepository
 import emailService from '../../emailService.js';
 import { validationResult } from 'express-validator';
 
-const adminReportController = {
+const adminReportPropertyController = {
   // GET /api/admin/reports - Lấy danh sách báo cáo
   getReportsForAdmin: async (req, res) => {
     try {
@@ -37,6 +37,29 @@ const adminReportController = {
       };
 
       const result = await adminReportRepository.getReportsWithFilter(filter, options);
+
+      // Lấy thống kê báo cáo theo chủ sở hữu
+      if (result.reports && result.reports.length > 0) {
+        const ownerIds = result.reports
+          .map(report => report.propertyOwner?._id || report.propertyOwner)
+          .filter(Boolean);
+        
+        if (ownerIds.length > 0) {
+          const reportCounts = await adminReportRepository.getReportCountsByOwner(ownerIds);
+          
+          // Gắn thống kê vào mỗi report
+          result.reports = result.reports.map(report => {
+            const ownerId = report.propertyOwner?._id?.toString() || report.propertyOwner?.toString();
+            if (ownerId && reportCounts[ownerId]) {
+              return {
+                ...report,
+                propertyOwnerStats: reportCounts[ownerId]
+              };
+            }
+            return report;
+          });
+        }
+      }
 
       res.json({
         success: true,
@@ -375,4 +398,4 @@ const adminReportController = {
   }
 };
 
-export default adminReportController;
+export default adminReportPropertyController;

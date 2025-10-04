@@ -1246,7 +1246,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 </div>
               </div>
 
-              {/* Các nút thao tác tìm kiếm và đặt lại */}
+              {/* Các nút thao tác tìm kiếm và đặt lại, container */}
               <div className='search-buttons-row'>
                 <button type='submit' className='btn-search' disabled={searching}>
                   {searching ? (

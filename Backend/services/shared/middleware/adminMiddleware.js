@@ -9,7 +9,7 @@ export const adminMiddleware = (req, res, next) => {
             return next();
         }
 
-        // Kiểm tra user đã được authenticate chưa
+        // Kiểm tra user đã được authenticate
         if (!req.user) {
             return res.status(401).json({
                 success: false,

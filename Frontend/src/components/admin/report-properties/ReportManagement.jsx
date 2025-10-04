@@ -393,15 +393,44 @@ const ReportManagement = () => {
                                                     </td>
                                                     <td className="owner-property-cell">
                                                         <div className="owner-property-info">
-                                                            <div className="owner-property-name">{report.property?.owner?.fullName || 'Ẩn danh'}</div>
-                                                            <div className="owner-property-email">{report.property?.owner?.email || ''}</div>
-                                                            <div className="owner-property-date">{formatDate(report.createdAt)}</div>
+                                                            <div className="owner-property-name">
+                                                                {report.propertyOwner?.fullName || report.property?.owner?.fullName || 'Ẩn danh'}
+                                                            </div>
+                                                            <div 
+                                                                className="owner-property-email"
+                                                                title={report.propertyOwner?.email || report.property?.owner?.email || ''}
+                                                            >
+                                                                {report.propertyOwner?.email || report.property?.owner?.email || ''}
+                                                            </div>
+                                                            {report.propertyOwnerStats && (
+                                                                <div className="owner-stats">
+                                                                    <span className="stats-item" title="Tổng báo cáo">
+                                                                        <i className="fa fa-flag"></i> {report.propertyOwnerStats.total}
+                                                                    </span>
+                                                                    {report.propertyOwnerStats.pending > 0 && (
+                                                                        <span className="stats-item pending" title="Đang chờ xử lý">
+                                                                            <i className="fa fa-clock-o"></i> {report.propertyOwnerStats.pending}
+                                                                        </span>
+                                                                    )}
+                                                                    {report.propertyOwnerStats.resolved > 0 && (
+                                                                        <span className="stats-item resolved" title="Đã xử lý">
+                                                                            <i className="fa fa-check"></i> {report.propertyOwnerStats.resolved}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                          
                                                         </div>
                                                     </td>
                                                     <td className="reporter-cell">
                                                         <div className="reporter-info">
                                                             <div className="reporter-name">{report.reporter?.fullName || 'Ẩn danh'}</div>
-                                                            <div className="reporter-email">{report.reporter?.email || ''}</div>
+                                                            <div 
+                                                                className="reporter-email"
+                                                                title={report.reporter?.email || ''}
+                                                            >
+                                                                {report.reporter?.email || ''}
+                                                            </div>
                                                             <div className="report-date">{formatDate(report.createdAt)}</div>
                                                         </div>
                                                     </td>
