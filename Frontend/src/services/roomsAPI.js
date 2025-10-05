@@ -5,7 +5,7 @@ export const roomsAPI = {
   // Lấy danh sách tất cả phòng
   getAllRooms: async (params = {}) => {
     try {
-      const response = await api.get('/rooms', { params });
+      const response = await api.get('/rooms/search', { params });
       return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy danh sách phòng:', error);

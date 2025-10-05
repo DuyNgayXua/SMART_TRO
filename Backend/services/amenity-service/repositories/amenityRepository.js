@@ -73,16 +73,6 @@ class AmenityRepository {
     return await Amenity.findById(id).lean();
   }
 
-  async findByKey(key, owner = null) {
-    const query = { key };
-    if (owner) {
-      query.owner = owner;
-    } else {
-      query.owner = null;
-    }
-    return await Amenity.findOne(query).lean();
-  }
-
   async create(amenityData) {
     const amenity = new Amenity(amenityData);
     return await amenity.save();

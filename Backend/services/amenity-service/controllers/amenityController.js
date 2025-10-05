@@ -133,30 +133,20 @@ class AmenityController {
   // Create new amenity
   async createAmenity(req, res) {
     try {
-      const { name, key, icon, category, description, isActive, displayOrder } = req.body;
+      const { name, icon, category, description, isActive, displayOrder } = req.body;
       const owner = req.user?.userId || null;
 
       // Validate required fields
-      if (!name || !key) {
+      if (!name) {
         return res.status(400).json({
           success: false,
-          message: 'Tên và key là bắt buộc'
-        });
-      }
-
-      // Check if key already exists for this owner (or global if owner is null)
-      const existingAmenity = await amenityRepository.findByKey(key, owner);
-      if (existingAmenity) {
-        return res.status(400).json({
-          success: false,
-          message: 'Key tiện ích đã tồn tại'
+          message: 'Tên là bắt buộc'
         });
       }
 
       const amenityData = {
         owner,
         name,
-        key,
         icon: icon || 'fas fa-check',
         category: category || 'other',
         description,
@@ -185,7 +175,7 @@ class AmenityController {
   async updateAmenity(req, res) {
     try {
       const { id } = req.params;
-      const { name, key, icon, category, description, isActive, displayOrder } = req.body;
+      const { name, icon, category, description, isActive, displayOrder } = req.body;
 
       // Check if amenity exists
       const existingAmenity = await amenityRepository.findById(id);
@@ -217,21 +207,8 @@ class AmenityController {
         }
       }
 
-      // Check if key already exists (excluding current amenity)
-      if (key && key !== existingAmenity.key) {
-        const owner = existingAmenity.owner;
-        const keyExists = await amenityRepository.findByKey(key, owner);
-        if (keyExists && keyExists._id.toString() !== id) {
-          return res.status(400).json({
-            success: false,
-            message: 'Key tiện ích đã tồn tại'
-          });
-        }
-      }
-
       const updateData = {};
       if (name !== undefined) updateData.name = name;
-      if (key !== undefined) updateData.key = key;
       if (icon !== undefined) updateData.icon = icon;
       if (category !== undefined) updateData.category = category;
       if (description !== undefined) updateData.description = description;
@@ -347,34 +324,6 @@ class AmenityController {
       res.status(500).json({
         success: false,
         message: 'Lỗi khi cập nhật thứ tự hiển thị',
-        error: error.message
-      });
-    }
-  }
-
-  // Check if key exists
-  async checkKey(req, res) {
-    try {
-      const { key, excludeId } = req.query;
-
-      if (!key) {
-        return res.status(400).json({
-          success: false,
-          message: 'Key là bắt buộc'
-        });
-      }
-
-      const exists = await amenityRepository.checkKeyExists(key, excludeId);
-      
-      res.json({
-        success: true,
-        data: { available: !exists, exists }
-      });
-    } catch (error) {
-      console.error('Check key error:', error);
-      res.status(500).json({
-        success: false,
-        message: 'Lỗi khi kiểm tra key',
         error: error.message
       });
     }

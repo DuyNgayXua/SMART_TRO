@@ -16,9 +16,6 @@ router.get('/active', authMiddleware, amenityController.getActiveAmenities);
 // Get amenity categories
 router.get('/categories', amenityController.getCategories);
 
-// Check if key exists
-router.get('/check-key', amenityController.checkKey);
-
 // Get amenity by ID
 router.get('/:id', amenityController.getAmenityById);
 

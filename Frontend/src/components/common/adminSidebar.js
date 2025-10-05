@@ -22,7 +22,8 @@ import {
   People,
   EditDocument,
   Category,
-  Report
+  Report,
+  Payment
 } from "@mui/icons-material";
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
@@ -52,6 +53,7 @@ const SideBar = () => {
     { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities", roles: ['landlord'] },
     { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants", roles: ['landlord'] },
     { text: t('sidebar.contracts'), icon: <EditDocument />, path: "/admin/contracts", roles: ['landlord'] },
+    { text: t('sidebar.payments'), icon: <Payment />, path: "/admin/payments", roles: ['landlord'] },
     { text: t('sidebar.properties'), icon: <EditDocument />, path: "/admin/properties", roles: ['admin'] },
     { text: t('sidebar.report-properties'), icon: <Report />, path: "/admin/report-properties", roles: ['admin'] },
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings", roles: ['admin', 'landlord'] }

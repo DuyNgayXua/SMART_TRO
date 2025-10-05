@@ -177,11 +177,19 @@ class InvoiceController {
                 tenant,
                 contract,
                 status,
+                month,
+                year,
                 sortBy = 'issueDate',
                 sortOrder = 'desc'
             } = req.query;
 
             const landlord = req.user.userId;
+
+            // Map 'unpaid' frontend status to backend statuses
+            let statusFilter = status;
+            if (status === 'unpaid') {
+                statusFilter = ['draft', 'sent'];
+            }
 
             const data = await invoiceRepository.list({
                 page: Number(page),
@@ -190,7 +198,9 @@ class InvoiceController {
                 room,
                 tenant,
                 contract,
-                status,
+                status: statusFilter,
+                month: month ? Number(month) : undefined,
+                year: year ? Number(year) : undefined,
                 sortBy,
                 sortOrder
             });

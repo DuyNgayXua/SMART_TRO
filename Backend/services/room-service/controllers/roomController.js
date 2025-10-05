@@ -45,8 +45,13 @@ class RoomController {
         try {
             const { roomNumber, excludeId } = req.query;
             if (!roomNumber) return res.status(400).json({ success: false, message: 'roomNumber là bắt buộc' });
-            const query = { roomNumber };
+            
+            const query = { 
+                roomNumber,
+                owner: req.user.userId // Chỉ kiểm tra trong phạm vi phòng của landlord này
+            };
             if (excludeId) query._id = { $ne: excludeId };
+            
             const exists = await roomRepository.exists(query);
             return res.json({ success: true, data: { available: !exists } });
         } catch (error) {

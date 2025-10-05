@@ -30,6 +30,8 @@ const AmenitiesManagement = () => {
   const [editingAmenityId, setEditingAmenityId] = useState(null);
   const [showIconPicker, setShowIconPicker] = useState(false);
   const [showEditIconPicker, setShowEditIconPicker] = useState(false);
+  const [openActionMenu, setOpenActionMenu] = useState(null); // Track which amenity's menu is open
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 }); // Track dropdown position
 
   // Danh sách icon phổ biến cho amenities
   const popularIcons = [
@@ -86,7 +88,6 @@ const AmenitiesManagement = () => {
   ];
   const [formData, setFormData] = useState({
     name: '',
-    key: '',
     icon: 'fas fa-check',
     category: 'other',
     description: '',
@@ -95,7 +96,6 @@ const AmenitiesManagement = () => {
   });
   const [editFormData, setEditFormData] = useState({
     name: '',
-    key: '',
     icon: 'fas fa-check',
     category: 'other',
     description: '',
@@ -104,14 +104,6 @@ const AmenitiesManagement = () => {
   });
   const [formErrors, setFormErrors] = useState({});
   const [editFormErrors, setEditFormErrors] = useState({});
-  const [keyChecking, setKeyChecking] = useState(false);
-  const [keyAvailable, setKeyAvailable] = useState(true);
-  const [editKeyChecking, setEditKeyChecking] = useState(false);
-  const [editKeyAvailable, setEditKeyAvailable] = useState(true);
-
-  // Debounce refs
-  const keyTimerRef = React.useRef(null);
-  const editKeyTimerRef = React.useRef(null);
 
   const categoryLabels = {
     all: t('amenities.categories.all'),
@@ -173,47 +165,6 @@ const AmenitiesManagement = () => {
     loadCategories();
   }, [loadCategories]);
 
-  // Watch create form key
-  useEffect(() => {
-    const val = formData.key?.trim();
-    if (keyTimerRef.current) clearTimeout(keyTimerRef.current);
-    if (!val) {
-      setKeyChecking(false);
-      setKeyAvailable(true);
-      return;
-    }
-    setKeyChecking(true);
-    keyTimerRef.current = setTimeout(async () => {
-      try {
-        const response = await amenitiesAPI.checkKey(val);
-        if (response.success) setKeyAvailable(response.data.available);
-      } catch (_) { /* ignore */ }
-      finally { setKeyChecking(false); }
-    }, 350);
-    return () => keyTimerRef.current && clearTimeout(keyTimerRef.current);
-  }, [formData.key]);
-
-  // Watch edit form key
-  useEffect(() => {
-    if (!showEditModal) return;
-    const val = editFormData.key?.trim();
-    if (editKeyTimerRef.current) clearTimeout(editKeyTimerRef.current);
-    if (!val) {
-      setEditKeyChecking(false);
-      setEditKeyAvailable(true);
-      return;
-    }
-    setEditKeyChecking(true);
-    editKeyTimerRef.current = setTimeout(async () => {
-      try {
-        const response = await amenitiesAPI.checkKey(val, editingAmenityId);
-        if (response.success) setEditKeyAvailable(response.data.available);
-      } catch (_) { /* ignore */ }
-      finally { setEditKeyChecking(false); }
-    }, 350);
-    return () => editKeyTimerRef.current && clearTimeout(editKeyTimerRef.current);
-  }, [editFormData.key, editingAmenityId, showEditModal]);
-
   // Handle click outside to close icon pickers
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -242,6 +193,21 @@ const AmenitiesManagement = () => {
       document.body.classList.remove('modal-open');
     };
   }, [showCreateModal, showEditModal]);
+
+  // Close action menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!event.target.closest('.action-menu-container') && 
+          !event.target.closest('.action-menu-dropdown')) {
+        setOpenActionMenu(null);
+      }
+    };
+
+    if (openActionMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openActionMenu]);
 
   const handleFilterChange = (key, value) => {
     setSearchFilters(prev => ({
@@ -319,16 +285,12 @@ const AmenitiesManagement = () => {
   const validateForm = () => {
     const errors = {};
     if (!formData.name) errors.name = t('amenities.validation.nameRequired');
-    if (!formData.key) errors.key = t('amenities.validation.keyRequired');
-    if (formData.key && !keyAvailable) errors.key = t('amenities.validation.keyDuplicate');
     return errors;
   };
 
   const validateEditForm = () => {
     const errors = {};
     if (!editFormData.name) errors.name = t('amenities.validation.nameRequired');
-    if (!editFormData.key) errors.key = t('amenities.validation.keyRequired');
-    if (editFormData.key && !editKeyAvailable) errors.key = t('amenities.validation.keyDuplicate');
     return errors;
   };
 
@@ -508,7 +470,6 @@ const AmenitiesManagement = () => {
                           </div>
                           <div>
                             <div className="amenity-name">{amenity.name}</div>
-                            <div className="amenity-key">{amenity.key}</div>
                           </div>
                         </div>
                       </td>
@@ -527,21 +488,73 @@ const AmenitiesManagement = () => {
                         <div className="display-order">{amenity.displayOrder}</div>
                       </td>
                       <td>
-                        <div className="amenity-actions">
-                          <button 
-                            className="action-btn btn-edit"
-                            onClick={() => openEditModal(amenity._id)}
+                        <div className={`action-menu-container ${openActionMenu === amenity._id ? 'active' : ''}`}>
+                          <button
+                            className="action-menu-trigger"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              
+                              if (openActionMenu === amenity._id) {
+                                setOpenActionMenu(null);
+                                return;
+                              }
+                              
+                              // Calculate position for fixed positioning
+                              const buttonRect = e.target.getBoundingClientRect();
+                              const viewportHeight = window.innerHeight;
+                              const dropdownHeight = 120; // Estimated dropdown height
+                              
+                              let top = buttonRect.bottom + 4;
+                              let left = buttonRect.right - 180; // Dropdown width = 180px
+                              
+                              // If dropdown would go below viewport, show above button
+                              if (top + dropdownHeight > viewportHeight) {
+                                top = buttonRect.top - dropdownHeight - 4;
+                              }
+                              
+                              // Ensure dropdown doesn't go off left edge
+                              if (left < 4) {
+                                left = 4;
+                              }
+                              
+                              setDropdownPosition({ top, left });
+                              setOpenActionMenu(amenity._id);
+                            }}
                           >
-                            <i className="fas fa-edit"></i>
-                            {t('amenities.actions.edit')}
+                            <i className="fas fa-ellipsis-v"></i>
                           </button>
-                          <button 
-                            className="action-btn btn-delete"
-                            onClick={() => handleDelete(amenity._id)}
-                          >
-                            <i className="fas fa-trash"></i>
-                            {t('amenities.actions.delete')}
-                          </button>
+                          {openActionMenu === amenity._id && (
+                            <div 
+                              className="action-menu-dropdown fixed-position"
+                              style={{
+                                position: 'fixed',
+                                top: `${dropdownPosition.top}px`,
+                                left: `${dropdownPosition.left}px`,
+                                zIndex: 2147483647
+                              }}
+                            >
+                              <button
+                                className="action-menu-item"
+                                onClick={() => {
+                                  openEditModal(amenity._id);
+                                  setOpenActionMenu(null);
+                                }}
+                              >
+                                <i className="fas fa-edit"></i>
+                                {t('amenities.actions.edit')}
+                              </button>
+                              <button
+                                className="action-menu-item danger"
+                                onClick={() => {
+                                  handleDelete(amenity._id);
+                                  setOpenActionMenu(null);
+                                }}
+                              >
+                                <i className="fas fa-trash"></i>
+                                {t('amenities.actions.delete')}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -596,18 +609,6 @@ const AmenitiesManagement = () => {
                   onChange={e => handleFormChange('name', e.target.value)} 
                 />
                 {formErrors.name && <div className="error-text">{formErrors.name}</div>}
-              </div>
-              <div className="amenity-form-group">
-                <label className="amenity-form-label">{t('amenities.form.key')} *</label>
-                <input 
-                  className="amenity-form-input" 
-                  value={formData.key} 
-                  onChange={e => handleFormChange('key', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} 
-                  style={{borderColor: formData.key && !keyChecking && !keyAvailable ? '#dc2626' : undefined}}
-                />
-                {keyChecking && <div style={{fontSize:'12px',color:'#64748b'}}>{t('amenities.validation.checking')}</div>}
-                {!keyChecking && formData.key && !keyAvailable && <div className="error-text">{t('amenities.validation.keyDuplicate')}</div>}
-                {formErrors.key && <div className="error-text">{formErrors.key}</div>}
               </div>
               <div className="amenity-form-group">
                 <label className="amenity-form-label">{t('amenities.form.icon')}</label>
@@ -699,7 +700,7 @@ const AmenitiesManagement = () => {
               <button className="btn-secondary" onClick={closeCreateModal}>{t('amenities.form.cancel')}</button>
               <button 
                 className="btn-primary" 
-                disabled={creating || keyChecking || !keyAvailable} 
+                disabled={creating} 
                 onClick={submitCreate}
               >
                 {creating ? t('amenities.form.creating') : t('amenities.form.create')}
@@ -726,18 +727,6 @@ const AmenitiesManagement = () => {
                   onChange={e => handleEditFormChange('name', e.target.value)} 
                 />
                 {editFormErrors.name && <div className="error-text">{editFormErrors.name}</div>}
-              </div>
-              <div className="amenity-form-group">
-                <label className="amenity-form-label">{t('amenities.form.key')} *</label>
-                <input 
-                  className="amenity-form-input" 
-                  value={editFormData.key} 
-                  onChange={e => handleEditFormChange('key', e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))} 
-                  style={{borderColor: editFormData.key && !editKeyChecking && !editKeyAvailable ? '#dc2626' : undefined}}
-                />
-                {editKeyChecking && <div style={{fontSize:'12px',color:'#64748b'}}>{t('amenities.validation.checking')}</div>}
-                {!editKeyChecking && editFormData.key && !editKeyAvailable && <div className="error-text">{t('amenities.validation.keyDuplicate')}</div>}
-                {editFormErrors.key && <div className="error-text">{editFormErrors.key}</div>}
               </div>
               <div className="amenity-form-group">
                 <label className="amenity-form-label">{t('amenities.form.icon')}</label>
@@ -829,7 +818,7 @@ const AmenitiesManagement = () => {
               <button className="btn-secondary" onClick={closeEditModal}>{t('amenities.form.cancel')}</button>
               <button 
                 className="btn-primary" 
-                disabled={editing || editKeyChecking || !editKeyAvailable} 
+                disabled={editing} 
                 onClick={submitEdit}
               >
                 {editing ? t('amenities.form.updating') : t('amenities.form.update')}

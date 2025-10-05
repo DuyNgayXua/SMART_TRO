@@ -34,11 +34,6 @@ api.interceptors.request.use(
       delete config.headers['Content-Type'];
     }
     
-    // Debug: log minimal info (can comment out later)
-    if (process.env.NODE_ENV !== 'production' && config.url?.includes('/rooms')) {
-      // eslint-disable-next-line no-console
-      console.log('[API][REQUEST]', config.method?.toUpperCase(), config.url, 'Auth:', !!token);
-    }
     return config;
   },
   (error) => Promise.reject(error)

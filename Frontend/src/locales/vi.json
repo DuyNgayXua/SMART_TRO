@@ -7,7 +7,8 @@
     "amenities": "Quản lý tiện ích",
     "users": "Quản lý người dùng",
     "tenants": "Quản lý khách thuê",
-  "contracts": "Quản lý hợp đồng",
+    "contracts": "Quản lý hợp đồng",
+    "payments": "Quản lý thanh toán",
     "posts": "Quản lý bài đăng",
     "reports": "Báo cáo doanh thu",
     "vouchers": "Quản lý khuyến mãi",
@@ -955,6 +956,23 @@
       "removeFromFavorites": "Đã xóa khỏi danh sách yêu thích",
       "loginRequired": "Vui lòng đăng nhập để sử dụng tính năng này",
       "toggleError": "Lỗi khi thao tác yêu thích"
+    }
+  },
+  "payments": {
+    "title": "Quản lý thanh toán",
+    "searchPlaceholder": "Tìm theo phòng, khách thuê...",
+    "month": "Tháng",
+    "year": "Năm",
+    "noInvoices": "Không có hóa đơn nào",
+    "noInvoicesDescription": "Chưa có hóa đơn nào được tạo",
+    "markPaidSuccess": "Đánh dấu thanh toán thành công",
+    "markPaidError": "Lỗi khi đánh dấu thanh toán",
+    "status": {
+      "all": "Tất cả",
+      "paid": "Đã thanh toán",
+      "unpaid": "Chưa thanh toán",
+      "overdue": "Quá hạn",
+      "pending": "Chờ xử lý"
     }
   }
 }

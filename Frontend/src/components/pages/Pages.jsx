@@ -20,6 +20,7 @@ import RoomsManagement from "../admin/rooms/RoomsManagement"
 import AmenitiesManagement from "../admin/amenities/AmenitiesManagement"
 import Tenants from "../admin/tenants/TenantsManagement"
 import Contracts from "../admin/contracts/ContractsManagement"
+import PaymentsManagement from "../admin/payments/PaymentsManagement"
 import Settings from "../admin/settings/Settings"
 import ProfileLayout from "../profile/ProfileLayout"
 import AccountManagement from "../profile/account-management/AccountManagement"
@@ -172,6 +173,7 @@ const Pages = () => {
           <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           <Route path='/admin/tenants' element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
           <Route path='/admin/contracts' element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
+          <Route path='/admin/payments' element={<ProtectedRoute><PaymentsManagement /></ProtectedRoute>} />
         </Routes>
         </PageTitleWrapper>
       </Router>

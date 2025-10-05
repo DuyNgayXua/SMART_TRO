@@ -4,14 +4,16 @@ import SideBar from '../../common/adminSidebar';
 import '../admin-global.css';
 import './tenants.css';
 import tenantsAPI from '../../../services/tenantsAPI';
+import { roomsAPI } from '../../../services/roomsAPI';
 
 const TenantsManagement = () => {
   const { t } = useTranslation();
-  const [tenants, setTenants] = useState([]);
+  const [roomsWithTenants, setRoomsWithTenants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingId, setEditingId] = useState(null);
+  const [selectedRoom, setSelectedRoom] = useState(null);
   const [form, setForm] = useState({ fullName:'', email:'', phone:'', password:'', address:'', role:'tenant' });
   const [editForm, setEditForm] = useState({ fullName:'', email:'', phone:'', address:'', isActive:true, role:'tenant' });
   const [errors, setErrors] = useState({});
@@ -20,37 +22,74 @@ const TenantsManagement = () => {
   const [saving, setSaving] = useState(false);
   const [updating, setUpdating] = useState(false);
 
-  const fetchTenants = useCallback(async () => {
+  const fetchRoomsWithTenants = useCallback(async () => {
     setLoading(true);
     try {
-      const params = {
+      // Fetch all rooms first
+      const roomsRes = await roomsAPI.getAllRooms({
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        search: filters.search || undefined,
-        role: 'tenant',
-        status: filters.status || undefined
-      };
-      const res = await tenantsAPI.searchTenants(params);
-      if (res.success) {
-        const list = (res.data?.users || res.data?.items || []).map(u => ({
-          id: u._id,
-          fullName: u.fullName,
-          email: u.email,
-          phone: u.phone,
-          role: u.role,
-          isActive: u.isActive !== false,
-          avatar: u.avatar,
-          address: u.address
-        }));
-        setTenants(list);
-        const pag = res.data?.pagination || { total: list.length, pages:1 };
+        search: filters.search || undefined
+      });
+      
+      if (roomsRes.success) {
+        const rooms = roomsRes.data.rooms || [];
+        
+        // For each room, get current tenants
+        const roomsWithTenantsData = await Promise.all(
+          rooms.map(async (room) => {
+            try {
+              const tenantsRes = await tenantsAPI.getCurrentTenantByRoom(room._id);
+              const tenants = tenantsRes.success ? (tenantsRes.data || []) : [];
+              
+              return {
+                id: room._id,
+                name: room.roomNumber,
+                status: room.status,
+                price: room.price,
+                area: room.area,
+                capacity: room.capacity,
+                description: room.description,
+                tenants: Array.isArray(tenants) ? tenants : (tenants ? [tenants] : []),
+                isOccupied: tenants && (Array.isArray(tenants) ? tenants.length > 0 : true)
+              };
+            } catch (error) {
+              console.error(`Error fetching tenants for room ${room.roomNumber}:`, error);
+              return {
+                id: room._id,
+                name: room.roomNumber,
+                status: room.status,
+                price: room.price,
+                area: room.area,
+                capacity: room.capacity,
+                description: room.description,
+                tenants: [],
+                isOccupied: false
+              };
+            }
+          })
+        );
+
+        // Apply filters
+        let filteredRooms = roomsWithTenantsData;
+        if (filters.status === 'occupied') {
+          filteredRooms = roomsWithTenantsData.filter(room => room.isOccupied);
+        } else if (filters.status === 'vacant') {
+          filteredRooms = roomsWithTenantsData.filter(room => !room.isOccupied);
+        }
+
+        setRoomsWithTenants(filteredRooms);
+        
+        const pag = roomsRes.data?.pagination || { total: filteredRooms.length, pages:1 };
         setPagination(p => ({ ...p, totalItems: pag.total, totalPages: pag.pages || 1 }));
       }
-    } catch(e){ console.error(e); }
+    } catch(e){ 
+      console.error('Error fetching rooms with tenants:', e); 
+    }
     finally { setLoading(false); }
   }, [filters, pagination.currentPage, pagination.itemsPerPage]);
 
-  useEffect(()=>{ fetchTenants(); }, [fetchTenants]);
+  useEffect(()=>{ fetchRoomsWithTenants(); }, [fetchRoomsWithTenants]);
 
   const openCreate = () => { setForm({ fullName:'', email:'', phone:'', password:'', address:'', role:'tenant' }); setErrors({}); setShowCreateModal(true); };
   const closeCreate = () => { setShowCreateModal(false); };
@@ -94,7 +133,7 @@ const TenantsManagement = () => {
       const res = await tenantsAPI.createTenant(payload);
       if (res.success) {
         closeCreate();
-        fetchTenants();
+        fetchRoomsWithTenants();
       }
     } catch(e){ console.error(e); }
     finally { setSaving(false); }
@@ -107,10 +146,30 @@ const TenantsManagement = () => {
       const res = await tenantsAPI.updateTenant(editingId, payload);
       if (res.success) {
         closeEdit();
-        fetchTenants();
+        fetchRoomsWithTenants();
       }
     } catch(e){ console.error(e); }
     finally { setUpdating(false); }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch (status) {
+      case 'available': return 'status-badge status-available';
+      case 'rented': return 'status-badge status-rented';
+      case 'reserved': return 'status-badge status-reserved';
+      case 'maintenance': return 'status-badge status-maintenance';
+      default: return 'status-badge';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch (status) {
+      case 'available': return t('rooms.status.available', 'Trống');
+      case 'rented': return t('rooms.status.rented', 'Đã thuê');
+      case 'reserved': return t('rooms.status.reserved', 'Đã đặt');
+      case 'maintenance': return t('rooms.status.maintenance', 'Bảo trì');
+      default: return status;
+    }
   };
 
   return (
@@ -137,7 +196,7 @@ const TenantsManagement = () => {
               </select>
             </div>
             <div className="filter-group">
-              <button className="search-btn" onClick={fetchTenants}><i className="fas fa-search" /> {t('common.search')}</button>
+              <button className="search-btn" onClick={fetchRoomsWithTenants}><i className="fas fa-search" /> {t('common.search')}</button>
             </div>
             <div className="filter-group">
               <button className="reset-btn" onClick={()=>{ setFilters({ search:'', status:'', role:'tenant' }); setPagination(p=>({...p,currentPage:1})); }}><i className="fas fa-redo" /> {t('common.reset')}</button>
@@ -147,37 +206,75 @@ const TenantsManagement = () => {
 
         {loading ? (
           <div className="loading-container"><div className="loading-spinner" /> <p>{t('common.loading')}</p></div>
-        ) : tenants.length === 0 ? (
+        ) : roomsWithTenants.length === 0 ? (
           <div className="empty-container">
-            <div className="empty-icon">👥</div>
-            <h3 className="empty-text">{t('tenants.noTenants')}</h3>
-            <p className="empty-description">{t('tenants.noTenantsDescription')}</p>
+            <div className="empty-icon">🏠</div>
+            <h3 className="empty-text">{t('tenants.noRooms', 'Không có phòng nào')}</h3>
+            <p className="empty-description">{t('tenants.noRoomsDescription', 'Hãy tạo phòng trước khi quản lý khách thuê')}</p>
           </div>
         ) : (
           <div className="tenants-grid">
-            {tenants.map(tn => (
-              <div key={tn.id} className="tenant-card">
-                <div className="tenant-status {tn.isActive ? '' : 'inactive'}">{tn.isActive ? t('status.active') : t('status.inactive')}</div>
-                <div className="tenant-header">
-                  {tn.avatar ? (
-                    <img src={tn.avatar} alt={tn.fullName} className="tenant-avatar" />
-                  ) : (
-                    <div className="tenant-avatar">{tn.fullName.split(' ').map(p=>p[0]).join('').slice(0,2).toUpperCase()}</div>
-                  )}
-                  <div>
-                    <h3 className="tenant-name">{tn.fullName}</h3>
-                    <div className="tenant-contact">{tn.email}<br />{tn.phone}</div>
+            {roomsWithTenants.map(room => (
+              <div key={room.id} className={`tenant-room-card ${room.isOccupied ? 'occupied' : 'vacant'}`}>
+                {/* Room Header */}
+                <div className="tenant-room-header">
+                  <div className="tenant-room-icon">
+                    <i className="fas fa-door-open"></i>
                   </div>
+                  <div className="tenant-room-info">
+                    <h3 className="tenant-room-name">Phòng {room.name}</h3>
+                    <span className={getStatusBadgeClass(room.status)}>
+                      {getStatusText(room.status)}
+                    </span>
+                  </div>
+                  <span className="tenant-count-badge">
+                    {room.tenants.length}/{room.capacity}
+                  </span>
                 </div>
-                <div className="tenant-actions">
-                  <button className="action-btn" onClick={()=>openEdit(tn.id)}><i className="fas fa-edit" /> {t('common.edit')}</button>
+
+                {/* Tenants List */}
+                <div className="tenant-room-content">
+                  {room.tenants.length === 0 ? (
+                    <div className="tenant-empty-state">
+                      <span>Chưa có khách thuê</span>
+                    </div>
+                  ) : (
+                    <div className="tenant-list">
+                      {room.tenants.map(tenant => (
+                        <div key={tenant._id || tenant.id} className="tenant-item">
+                          <div className="tenant-avatar">
+                            {tenant.avatar ? (
+                              <img src={tenant.avatar} alt={tenant.fullName} />
+                            ) : (
+                              <div className="tenant-avatar-placeholder">
+                                {tenant.fullName?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                              </div>
+                            )}
+                          </div>
+                          <div className="tenant-info">
+                            <div className="tenant-name">{tenant.fullName}</div>
+                            <div className="tenant-contact">
+                              {tenant.phone}
+                            </div>
+                          </div>
+                          <button 
+                            className="tenant-edit-btn"
+                            onClick={() => openEdit(tenant._id || tenant.id)}
+                            title="Chỉnh sửa"
+                          >
+                            <i className="fas fa-edit"></i>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
 
-        {tenants.length>0 && (
+        {roomsWithTenants.length > 0 && (
           <div className="pagination">
             <button className="pagination-btn" disabled={pagination.currentPage===1} onClick={()=>setPagination(p=>({...p,currentPage:p.currentPage-1}))}><i className="fas fa-chevron-left" /></button>
             <span className="pagination-info">{t('rooms.pagination.page')} {pagination.currentPage} / {pagination.totalPages} ({pagination.totalItems})</span>
@@ -187,81 +284,193 @@ const TenantsManagement = () => {
       </div>
 
       {showCreateModal && (
-        <div className="room-modal-backdrop">
-          <div className="room-modal">
-            <div className="room-modal-header">
-              <h2 className="room-modal-title">{t('tenants.createTitle')}</h2>
-              <button className="room-modal-close" onClick={closeCreate}>×</button>
+        <div className="tenant-modal-backdrop" onClick={closeCreate}>
+          <div className="tenant-modal" onClick={e => e.stopPropagation()}>
+            <div className="tenant-modal-header">
+              <div className="tenant-modal-title-wrapper">
+                <div className="tenant-modal-icon">
+                  <i className="fas fa-user-plus"></i>
+                </div>
+                <h2 className="tenant-modal-title">{t('tenants.createTitle')}</h2>
+              </div>
+              <button className="tenant-modal-close" onClick={closeCreate}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
-            <div className="room-form-grid">
-              <div className="room-form-group">
-                <label className="room-form-label">{t('form.fullName')}</label>
-                <input className="room-form-input" value={form.fullName} onChange={e=>setForm(f=>({...f,fullName:e.target.value}))} />
-                {errors.fullName && <div className="error-text">{errors.fullName}</div>}
-              </div>
-              <div className="room-form-group">
-                <label className="room-form-label">Email</label>
-                <input className="room-form-input" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} />
-                {errors.email && <div className="error-text">{errors.email}</div>}
-              </div>
-              <div className="room-form-group">
-                <label className="room-form-label">{t('form.phone')}</label>
-                <input className="room-form-input" value={form.phone} onChange={e=>setForm(f=>({...f,phone:e.target.value}))} />
-                {errors.phone && <div className="error-text">{errors.phone}</div>}
-              </div>
-              <div className="room-form-group">
-                <label className="room-form-label">{t('auth.password')}</label>
-                <input type="password" className="room-form-input" value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))} />
-                {errors.password && <div className="error-text">{errors.password}</div>}
-              </div>
-              <div className="room-form-group full">
-                <label className="room-form-label">{t('form.address')}</label>
-                <textarea className="room-form-textarea" value={form.address} onChange={e=>setForm(f=>({...f,address:e.target.value}))} />
+            <div className="tenant-modal-body">
+              <div className="tenant-form-grid">
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-user"></i>
+                    {t('form.fullName')}
+                  </label>
+                  <input 
+                    className={`tenant-form-input ${errors.fullName ? 'error' : ''}`}
+                    value={form.fullName} 
+                    onChange={e=>setForm(f=>({...f,fullName:e.target.value}))} 
+                    placeholder="Nhập họ và tên"
+                  />
+                  {errors.fullName && <span className="tenant-error-text">{errors.fullName}</span>}
+                </div>
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-envelope"></i>
+                    Email
+                  </label>
+                  <input 
+                    className={`tenant-form-input ${errors.email ? 'error' : ''}`}
+                    value={form.email} 
+                    onChange={e=>setForm(f=>({...f,email:e.target.value}))} 
+                    placeholder="example@email.com"
+                  />
+                  {errors.email && <span className="tenant-error-text">{errors.email}</span>}
+                </div>
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-phone"></i>
+                    {t('form.phone')}
+                  </label>
+                  <input 
+                    className={`tenant-form-input ${errors.phone ? 'error' : ''}`}
+                    value={form.phone} 
+                    onChange={e=>setForm(f=>({...f,phone:e.target.value}))} 
+                    placeholder="0123456789"
+                  />
+                  {errors.phone && <span className="tenant-error-text">{errors.phone}</span>}
+                </div>
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-lock"></i>
+                    {t('auth.password')}
+                  </label>
+                  <input 
+                    type="password" 
+                    className={`tenant-form-input ${errors.password ? 'error' : ''}`}
+                    value={form.password} 
+                    onChange={e=>setForm(f=>({...f,password:e.target.value}))} 
+                    placeholder="••••••••"
+                  />
+                  {errors.password && <span className="tenant-error-text">{errors.password}</span>}
+                </div>
+                <div className="tenant-form-group full">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-map-marker-alt"></i>
+                    {t('form.address')}
+                  </label>
+                  <textarea 
+                    className="tenant-form-textarea" 
+                    value={form.address} 
+                    onChange={e=>setForm(f=>({...f,address:e.target.value}))} 
+                    placeholder="Nhập địa chỉ"
+                    rows="3"
+                  />
+                </div>
               </div>
             </div>
-            <div className="room-modal-footer">
-              <button className="btn-secondary" onClick={closeCreate}>{t('common.cancel')}</button>
-              <button className="btn-primary" disabled={saving} onClick={submitCreate}>{saving ? t('rooms.form.creating') : t('common.create')}</button>
+            <div className="tenant-modal-footer">
+              <button className="tenant-btn-cancel" onClick={closeCreate}>
+                <i className="fas fa-times"></i>
+                {t('common.cancel')}
+              </button>
+              <button className="tenant-btn-submit" disabled={saving} onClick={submitCreate}>
+                <i className="fas fa-check"></i>
+                {saving ? t('rooms.form.creating') : t('common.create')}
+              </button>
             </div>
           </div>
         </div>
       )}
 
       {showEditModal && (
-        <div className="room-modal-backdrop">
-          <div className="room-modal">
-            <div className="room-modal-header">
-              <h2 className="room-modal-title">{t('tenants.editTitle')}</h2>
-              <button className="room-modal-close" onClick={closeEdit}>×</button>
+        <div className="tenant-modal-backdrop" onClick={closeEdit}>
+          <div className="tenant-modal" onClick={e => e.stopPropagation()}>
+            <div className="tenant-modal-header">
+              <div className="tenant-modal-title-wrapper">
+                <div className="tenant-modal-icon">
+                  <i className="fas fa-user-edit"></i>
+                </div>
+                <h2 className="tenant-modal-title">{t('tenants.editTitle')}</h2>
+              </div>
+              <button className="tenant-modal-close" onClick={closeEdit}>
+                <i className="fas fa-times"></i>
+              </button>
             </div>
-            <div className="room-form-grid">
-              <div className="room-form-group">
-                <label className="room-form-label">{t('form.fullName')}</label>
-                <input className="room-form-input" value={editForm.fullName} onChange={e=>setEditForm(f=>({...f,fullName:e.target.value}))} />
-              </div>
-              <div className="room-form-group">
-                <label className="room-form-label">Email</label>
-                <input className="room-form-input" value={editForm.email} disabled />
-              </div>
-              <div className="room-form-group">
-                <label className="room-form-label">{t('form.phone')}</label>
-                <input className="room-form-input" value={editForm.phone} onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))} />
-              </div>
-              <div className="room-form-group full">
-                <label className="room-form-label">{t('form.address')}</label>
-                <textarea className="room-form-textarea" value={editForm.address} onChange={e=>setEditForm(f=>({...f,address:e.target.value}))} />
-              </div>
-              <div className="room-form-group">
-                <label className="room-form-label">{t('common.status', { defaultValue:'Status' })}</label>
-                <select className="room-form-select" value={editForm.isActive ? 'active':'inactive'} onChange={e=>setEditForm(f=>({...f,isActive:e.target.value==='active'}))}>
-                  <option value="active">{t('status.active', { defaultValue:'Active' })}</option>
-                  <option value="inactive">{t('status.inactive', { defaultValue:'Inactive' })}</option>
-                </select>
+            <div className="tenant-modal-body">
+              <div className="tenant-form-grid">
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-user"></i>
+                    {t('form.fullName')}
+                  </label>
+                  <input 
+                    className="tenant-form-input" 
+                    value={editForm.fullName} 
+                    onChange={e=>setEditForm(f=>({...f,fullName:e.target.value}))} 
+                    placeholder="Nhập họ và tên"
+                  />
+                </div>
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-envelope"></i>
+                    Email
+                  </label>
+                  <input 
+                    className="tenant-form-input disabled" 
+                    value={editForm.email} 
+                    disabled 
+                  />
+                  <span className="tenant-form-hint">Email không thể thay đổi</span>
+                </div>
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-phone"></i>
+                    {t('form.phone')}
+                  </label>
+                  <input 
+                    className="tenant-form-input" 
+                    value={editForm.phone} 
+                    onChange={e=>setEditForm(f=>({...f,phone:e.target.value}))} 
+                    placeholder="0123456789"
+                  />
+                </div>
+                <div className="tenant-form-group">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-toggle-on"></i>
+                    {t('common.status', { defaultValue:'Trạng thái' })}
+                  </label>
+                  <select 
+                    className="tenant-form-select" 
+                    value={editForm.isActive ? 'active':'inactive'} 
+                    onChange={e=>setEditForm(f=>({...f,isActive:e.target.value==='active'}))}
+                  >
+                    <option value="active">{t('status.active', { defaultValue:'Hoạt động' })}</option>
+                    <option value="inactive">{t('status.inactive', { defaultValue:'Ngừng hoạt động' })}</option>
+                  </select>
+                </div>
+                <div className="tenant-form-group full">
+                  <label className="tenant-form-label">
+                    <i className="fas fa-map-marker-alt"></i>
+                    {t('form.address')}
+                  </label>
+                  <textarea 
+                    className="tenant-form-textarea" 
+                    value={editForm.address} 
+                    onChange={e=>setEditForm(f=>({...f,address:e.target.value}))} 
+                    placeholder="Nhập địa chỉ"
+                    rows="3"
+                  />
+                </div>
               </div>
             </div>
-            <div className="room-modal-footer">
-              <button className="btn-secondary" onClick={closeEdit}>{t('common.cancel')}</button>
-              <button className="btn-primary" disabled={updating} onClick={submitEdit}>{updating ? (t('rooms.form.updating')||'Updating...') : t('common.update')}</button>
+            <div className="tenant-modal-footer">
+              <button className="tenant-btn-cancel" onClick={closeEdit}>
+                <i className="fas fa-times"></i>
+                {t('common.cancel')}
+              </button>
+              <button className="tenant-btn-submit" disabled={updating} onClick={submitEdit}>
+                <i className="fas fa-save"></i>
+                {updating ? (t('rooms.form.updating')||'Đang cập nhật...') : t('common.update')}
+              </button>
             </div>
           </div>
         </div>

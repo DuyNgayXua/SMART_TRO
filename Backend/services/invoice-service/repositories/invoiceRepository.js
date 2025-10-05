@@ -28,7 +28,7 @@ class InvoiceRepository {
         }
     }
 
-    async list({ page = 1, limit = 10, landlord, room, tenant, contract, status, sortBy = 'issueDate', sortOrder = 'desc' }) {
+    async list({ page = 1, limit = 10, landlord, room, tenant, contract, status, month, year, sortBy = 'issueDate', sortOrder = 'desc' }) {
         try {
             const query = {};
             
@@ -36,7 +36,32 @@ class InvoiceRepository {
             if (room) query.room = room;
             if (tenant) query.tenant = tenant;
             if (contract) query.contract = contract;
-            if (status) query.status = status;
+            if (status) {
+                // Handle status as either string or array
+                if (Array.isArray(status)) {
+                    query.status = { $in: status };
+                } else {
+                    query.status = status;
+                }
+            }
+
+            // Filter by month and year
+            if (month || year) {
+                const dateQuery = {};
+                if (year) {
+                    const startOfYear = new Date(year, 0, 1);
+                    const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+                    dateQuery.$gte = startOfYear;
+                    dateQuery.$lte = endOfYear;
+                }
+                if (month && year) {
+                    const startOfMonth = new Date(year, month - 1, 1);
+                    const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+                    dateQuery.$gte = startOfMonth;
+                    dateQuery.$lte = endOfMonth;
+                }
+                query.issueDate = dateQuery;
+            }
 
             const skip = (page - 1) * limit;
             const sortOptions = {};

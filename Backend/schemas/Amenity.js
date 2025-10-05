@@ -11,13 +11,6 @@ const amenitySchema = new mongoose.Schema({
     required: true,
     trim: true
   },
-  key: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-    lowercase: true
-  },
   icon: {
     type: String,
     default: 'fas fa-check'
@@ -44,9 +37,7 @@ const amenitySchema = new mongoose.Schema({
 });
 
 // Index for better performance
-amenitySchema.index({ owner: 1, key: 1 });
 amenitySchema.index({ owner: 1, category: 1, displayOrder: 1 });
 amenitySchema.index({ owner: 1, isActive: 1 });
-amenitySchema.index({ key: 1 });
 
 export default mongoose.model('Amenity', amenitySchema);
