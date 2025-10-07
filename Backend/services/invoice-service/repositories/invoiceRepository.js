@@ -118,7 +118,7 @@ class InvoiceRepository {
         try {
             return await Invoice.findOne({ contract: contractId })
                 .sort({ periodEnd: -1 })
-                .select('periodStart periodEnd');
+                .select('periodStart periodEnd electricNewReading waterNewReading');
         } catch (error) {
             throw new Error('Error getting last invoice: ' + error.message);
         }

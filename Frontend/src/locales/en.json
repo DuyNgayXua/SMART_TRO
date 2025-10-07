@@ -469,6 +469,8 @@
       "tenantNamePlaceholder": "Enter tenant name",
       "tenantPhone": "Phone Number",
       "tenantPhonePlaceholder": "Enter phone number",
+      "tenantEmail": "Email",
+      "tenantEmailPlaceholder": "email@example.com",
       "depositAmount": "Deposit Amount",
       "depositAmountHelper": "Amount paid by tenant to reserve the room",
       "notes": "Notes",

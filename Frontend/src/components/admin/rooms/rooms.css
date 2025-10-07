@@ -2706,6 +2706,23 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   box-shadow: 0 4px 15px rgba(102, 126, 234, 0.2);
 }
 
+/* Form Groups */
+.room-form-group {
+  margin-bottom: 20px;
+}
+
+.room-form-group.full {
+  grid-column: 1 / -1;
+}
+
+.room-form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  font-size: 14px;
+  color: #374151;
+}
+
 /* Input with icon */
 .form-input-group {
   position: relative;
@@ -2715,6 +2732,34 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   padding-left: 50px;
 }
 
+.form-input-group .room-form-input {
+  padding-left: 50px;
+}
+
+.room-form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.room-form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.room-form-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
 .form-input-group .input-icon {
   position: absolute;
   left: 16px;
@@ -2722,6 +2767,43 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   transform: translateY(-50%);
   color: #9ca3af;
   font-size: 16px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+/* Tenant Form Modal - Ensure consistent styling */
+.tenant-form-modal .form-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  background: white;
+  box-sizing: border-box;
+}
+
+.tenant-form-modal .form-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.tenant-form-modal .form-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 13px;
+  opacity: 0.8;
+}
+
+.tenant-form-modal .form-input-group .form-input {
+  padding-left: 42px;
+}
+
+.tenant-form-modal .form-input-group .input-icon {
+  left: 14px;
+  font-size: 14px;
+  color: #6b7280;
 }
 
 /* Special styling for different input types */
@@ -2760,6 +2842,10 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   }
   
   .form-input-group .form-input {
+    padding-left: 44px;
+  }
+  
+  .form-input-group .room-form-input {
     padding-left: 44px;
   }
   
@@ -3024,16 +3110,25 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   outline: none;
 }
 
+.rental-contract-modal .form-input::placeholder {
+  color: #9ca3af;
+  font-style: italic;
+  font-size: 11px;
+  opacity: 0.8;
+}
+
 .rental-contract-modal .form-input-group .form-input {
-  padding-left: 24px;
+  padding-left: 32px;
 }
 
 .rental-contract-modal .form-input-group .input-icon {
-  left: 6px;
-  font-size: 11px;
+  left: 10px;
+  font-size: 12px;
   top: 50%;
   transform: translateY(-50%);
   color: #6b7280;
+  z-index: 1;
+  pointer-events: none;
 }
 
 .rental-contract-modal .error-message {
@@ -6553,18 +6648,24 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
 .charge-actions {
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-end;
+  padding-bottom: 8px;
 }
 
 .btn-remove-charge {
   background: #fee2e2;
   color: #dc2626;
   border: 1px solid #fca5a5;
-  padding: 8px;
+  padding: 8px 10px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
-  font-size: 12px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  min-height: 36px;
 }
 
 .btn-remove-charge:hover {
@@ -6849,6 +6950,54 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+/* Room Modal Footer */
+.room-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 20px 24px;
+  border-top: 1px solid #e5e7eb;
+  background: #f9fafb;
+}
+
+.room-modal-footer button {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.room-modal-footer .btn-secondary {
+  background: #fff;
+  color: #6b7280;
+  border: 1px solid #d1d5db;
+}
+
+.room-modal-footer .btn-secondary:hover:not(:disabled) {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+.room-modal-footer .btn-primary {
+  background: #3b82f6;
+  color: white;
+}
+
+.room-modal-footer .btn-primary:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.room-modal-footer button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .invoice-modal .room-form-label {

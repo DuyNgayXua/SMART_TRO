@@ -487,6 +487,8 @@
       "tenantNamePlaceholder": "Nhập tên người thuê",
       "tenantPhone": "Số điện thoại",
       "tenantPhonePlaceholder": "Nhập số điện thoại",
+      "tenantEmail": "Email",
+      "tenantEmailPlaceholder": "email@example.com",
       "depositAmount": "Số tiền cọc",
       "depositAmountHelper": "Số tiền người thuê đặt cọc để giữ chỗ",
       "notes": "Ghi chú",
@@ -937,8 +939,7 @@
     "confirm": {
       "deleteVehicle": "Bạn có chắc muốn xóa xe \"{{licensePlate}}\"?"
     }
-  }
-  ,
+  },
   "favorites": {
     "title": "Tin đã lưu",
     "subtitle": "Bạn đã lưu {{count}} tin đăng",

@@ -2,7 +2,8 @@
  * Invoice Controller - Xử lý logic nghiệp vụ cho hóa đơn
  */
 import invoiceRepository from '../repositories/invoiceRepository.js';
-import { Contract, Room, Tenant } from '../../../schemas/index.js';
+import { Contract, Room, Tenant, User } from '../../../schemas/index.js';
+import { sendInvoiceEmail } from '../../emailService.js';
 
 class InvoiceController {
     // Tạo hóa đơn mới
@@ -20,9 +21,8 @@ class InvoiceController {
             electricOldReading = 0,
             electricNewReading = 0,
             waterOldReading = 0,
-            waterNewReading = 0
-            // Bỏ qua electricRate, waterRate, waterBillingType, waterPricePerPerson từ request
-            // Sẽ lấy từ hợp đồng thay thế
+            waterNewReading = 0,
+            sendZaloInvoice = false
         } = req.body;
 
             const landlordId = req.user.userId;
@@ -45,19 +45,7 @@ class InvoiceController {
             const electricRate = contract.electricPrice || 3500;
             const waterRate = contract.waterPrice || 20000;
             const waterPricePerPerson = contract.waterPricePerPerson || 50000;
-            
-            // Debug contract water charge info
-            console.log('Contract water info:', {
-                waterChargeType: contract.waterChargeType,
-                waterPrice: contract.waterPrice,
-                waterPricePerPerson: contract.waterPricePerPerson
-            });
-            
-            // Map waterChargeType từ contract sang invoice format
-            // 'fixed' = theo khối (m³), 'per_person' = theo người
             const waterBillingType = contract.waterChargeType === 'per_person' ? 'perPerson' : 'perCubicMeter';
-            
-            console.log('Final waterBillingType:', waterBillingType);
 
             // Xác định chu kỳ nếu không được cung cấp
             let finalPeriodStart = periodStart ? new Date(periodStart) : null;
@@ -151,6 +139,37 @@ class InvoiceController {
             };
 
             const invoice = await invoiceRepository.create(invoiceData);
+            
+            // Gửi email thông báo hóa đơn nếu được yêu cầu
+            if (sendZaloInvoice) {
+                console.log('📧 Attempting to send invoice email...');
+                console.log('   sendZaloInvoice:', sendZaloInvoice);
+                
+                try {
+                    const tenantInfo = await Tenant.findById(contract.tenants[0]._id);
+                    const roomInfo = await Room.findById(contract.room._id);
+                    const landlordInfo = await User.findById(landlordId);
+                    
+                    console.log('   Tenant email:', tenantInfo.email);
+                    console.log('   Landlord phone:', landlordInfo.phone);
+                    
+                    if (!tenantInfo.email) {
+                        console.warn('⚠️ Tenant has no email, skipping notification');
+                    } else {
+                        const emailResult = await sendInvoiceEmail(invoice, tenantInfo, roomInfo, landlordInfo);
+                        
+                        if (emailResult.success) {
+                            console.log('✅ Invoice email sent successfully');
+                        } else {
+                            console.error('❌ Failed to send email:', emailResult.error);
+                        }
+                    }
+                } catch (emailError) {
+                    console.error('❌ Error sending email:', emailError.message);
+                }
+            } else {
+                console.log('📧 Email notification skipped (sendZaloInvoice = false)');
+            }
             
             res.status(201).json({
                 success: true,
