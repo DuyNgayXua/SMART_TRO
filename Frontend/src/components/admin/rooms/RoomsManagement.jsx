@@ -45,6 +45,7 @@ const RoomsManagement = () => {
     expectedMoveInDate: '',
     tenantName: '',
     tenantPhone: '',
+    tenantEmail: '',
     depositAmount: '',
     notes: ''
   });
@@ -65,6 +66,7 @@ const RoomsManagement = () => {
   const [tenantFormData, setTenantFormData] = useState({
     fullName: '',
     phone: '',
+    email: '',
     identificationNumber: '',
     address: '',
     vehicleLicensePlate: '',
@@ -138,6 +140,7 @@ const RoomsManagement = () => {
     tenants: [{
       tenantName: '',
       tenantPhone: '',
+      tenantEmail: '',
       tenantId: '',
       tenantImages: [] // Array of max 5 images
     }],
@@ -1416,6 +1419,7 @@ const RoomsManagement = () => {
     setTenantFormData({
       fullName: tenant.fullName || '',
       phone: tenant.phone || '',
+      email: tenant.email || '',
       identificationNumber: tenant.identificationNumber || '',
       address: tenant.address || '',
       // Backend trả về images array, convert thành tenantImages format cho UI
@@ -1530,13 +1534,19 @@ const RoomsManagement = () => {
     setSavingTenant(true);
     
     try {
+      // Xử lý images: chỉ lấy URL của những ảnh đã upload
+      const processedImages = (tenantFormData.tenantImages || [])
+        .filter(img => img.isUploaded && img.url) // Chỉ lấy ảnh đã upload
+        .map(img => img.url); // Chỉ lấy URL string
+      
       const payload = {
         fullName: tenantFormData.fullName,
         phone: tenantFormData.phone,
+        email: tenantFormData.email || '', // Thêm email
         identificationNumber: tenantFormData.identificationNumber,
         address: tenantFormData.address,
         room: selectedRoomForTenants.id,
-        images: tenantFormData.tenantImages,
+        images: processedImages, // Gửi array of strings
         // Thêm các field bắt buộc
         leaseStart: new Date(), // Ngày bắt đầu thuê là hôm nay
         rentPrice: selectedRoomForTenants.price || 0, // Lấy giá phòng
@@ -3826,14 +3836,17 @@ const RoomsManagement = () => {
               <label className="room-form-label">
                 {t('contracts.form.tenantName') || 'Tên người thuê'} *
               </label>
-              <input
-                type="text"
-                className={`room-form-input ${depositContractErrors.tenantName ? 'error' : ''}`}
-                value={depositContractData.tenantName}
-                onChange={(e) => handleDepositContractChange('tenantName', e.target.value)}
-                placeholder={t('contracts.form.tenantNamePlaceholder') || 'Nhập tên người thuê'}
-                disabled={creatingDepositContract}
-              />
+              <div className="form-input-group">
+                <i className="input-icon fas fa-user"></i>
+                <input
+                  type="text"
+                  className={`room-form-input ${depositContractErrors.tenantName ? 'error' : ''}`}
+                  value={depositContractData.tenantName}
+                  onChange={(e) => handleDepositContractChange('tenantName', e.target.value)}
+                  placeholder={t('contracts.form.tenantNamePlaceholder') || 'Nhập tên người thuê'}
+                  disabled={creatingDepositContract}
+                />
+              </div>
               {depositContractErrors.tenantName && (
                 <div className="error-text">{depositContractErrors.tenantName}</div>
               )}
@@ -3844,16 +3857,40 @@ const RoomsManagement = () => {
               <label className="room-form-label">
                 {t('contracts.form.tenantPhone') || 'Số điện thoại'} *
               </label>
-              <input
-                type="tel"
-                className={`room-form-input ${depositContractErrors.tenantPhone ? 'error' : ''}`}
-                value={depositContractData.tenantPhone}
-                onChange={(e) => handleDepositContractChange('tenantPhone', e.target.value)}
-                placeholder={t('contracts.form.tenantPhonePlaceholder') || 'Nhập số điện thoại'}
-                disabled={creatingDepositContract}
-              />
+              <div className="form-input-group">
+                <i className="input-icon fas fa-phone"></i>
+                <input
+                  type="tel"
+                  className={`room-form-input ${depositContractErrors.tenantPhone ? 'error' : ''}`}
+                  value={depositContractData.tenantPhone}
+                  onChange={(e) => handleDepositContractChange('tenantPhone', e.target.value)}
+                  placeholder={t('contracts.form.tenantPhonePlaceholder') || 'Nhập số điện thoại'}
+                  disabled={creatingDepositContract}
+                />
+              </div>
               {depositContractErrors.tenantPhone && (
                 <div className="error-text">{depositContractErrors.tenantPhone}</div>
+              )}
+            </div>
+
+            {/* Tenant Email */}
+            <div className="room-form-group">
+              <label className="room-form-label">
+                {t('contracts.form.tenantEmail') || 'Email'}
+              </label>
+              <div className="form-input-group">
+                <i className="input-icon fas fa-envelope"></i>
+                <input
+                  type="email"
+                  className={`room-form-input ${depositContractErrors.tenantEmail ? 'error' : ''}`}
+                  value={depositContractData.tenantEmail}
+                  onChange={(e) => handleDepositContractChange('tenantEmail', e.target.value)}
+                  placeholder={t('contracts.form.tenantEmailPlaceholder') || 'email@example.com'}
+                  disabled={creatingDepositContract}
+                />
+              </div>
+              {depositContractErrors.tenantEmail && (
+                <div className="error-text">{depositContractErrors.tenantEmail}</div>
               )}
             </div>
 
@@ -3862,15 +3899,18 @@ const RoomsManagement = () => {
               <label className="room-form-label">
                 {t('contracts.form.depositAmount') || 'Số tiền cọc'} *
               </label>
-              <input
-                type="text"
-                className={`room-form-input ${depositContractErrors.depositAmount ? 'error' : ''}`}
-                value={depositContractData.depositAmount === '' ? '' : formatWithCommas(depositContractData.depositAmount)}
-                onChange={(e) => handleMoneyInlineChange('depositAmount', e.target.value, false, setDepositContractData)}
-                onKeyDown={(e) => handleMoneyInlineKey(e, 'depositAmount', false, setDepositContractData)}
-                placeholder="0"
-                disabled={creatingDepositContract}
-              />
+              <div className="form-input-group">
+                <i className="input-icon fas fa-money-bill-wave"></i>
+                <input
+                  type="text"
+                  className={`room-form-input ${depositContractErrors.depositAmount ? 'error' : ''}`}
+                  value={depositContractData.depositAmount === '' ? '' : formatWithCommas(depositContractData.depositAmount)}
+                  onChange={(e) => handleMoneyInlineChange('depositAmount', e.target.value, false, setDepositContractData)}
+                  onKeyDown={(e) => handleMoneyInlineKey(e, 'depositAmount', false, setDepositContractData)}
+                  placeholder="0"
+                  disabled={creatingDepositContract}
+                />
+              </div>
               <span className="form-helper-text">
                 {t('contracts.form.depositAmountHelper') || 'Số tiền người thuê đặt cọc để giữ chỗ'}
               </span>
@@ -4003,6 +4043,25 @@ const RoomsManagement = () => {
                   </div>
 
                   <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">
+                        Email
+                      </label>
+                      <div className="form-input-group">
+                        <i className="input-icon fas fa-envelope"></i>
+                        <input
+                          type=""
+                          className={`form-input ${rentalContractErrors[`tenantEmail_${index}`] ? 'error' : ''}`}
+                          value={tenant.tenantEmail}
+                          onChange={(e) => updateTenant(index, 'tenantEmail', e.target.value)}
+                          placeholder="email@example.com"
+                        />
+                      </div>
+                      {rentalContractErrors[`tenantEmail_${index}`] && (
+                        <div className="error-message">{rentalContractErrors[`tenantEmail_${index}`]}</div>
+                      )}
+                    </div>
+
                     <div className="form-group">
                       <label className="form-label">
                         CCCD/CMND <span className="required">*</span>
@@ -4668,26 +4727,32 @@ const RoomsManagement = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Họ và tên *</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={tenantFormData.fullName}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
-                      placeholder="Nhập họ và tên"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-user"></i>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tenantFormData.fullName}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
+                        placeholder="Nhập họ và tên"
+                      />
+                    </div>
                     {tenantFormErrors.fullName && (
                       <div className="error-message">{tenantFormErrors.fullName}</div>
                     )}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Số điện thoại *</label>
-                    <input
-                      type="tel"
-                      className="form-input"
-                      value={tenantFormData.phone}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
-                      placeholder="Nhập số điện thoại"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-phone"></i>
+                      <input
+                        type="tel"
+                        className="form-input"
+                        value={tenantFormData.phone}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
+                        placeholder="Nhập số điện thoại"
+                      />
+                    </div>
                     {tenantFormErrors.phone && (
                       <div className="error-message">{tenantFormErrors.phone}</div>
                     )}
@@ -4696,27 +4761,52 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-envelope"></i>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={tenantFormData.email}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, email: e.target.value}))}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                    {tenantFormErrors.email && (
+                      <div className="error-message">{tenantFormErrors.email}</div>
+                    )}
+                  </div>
+                  <div className="form-group">
                     <label className="form-label">CMND/CCCD *</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={tenantFormData.identificationNumber}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
-                      placeholder="Nhập số CMND/CCCD"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-id-card"></i>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tenantFormData.identificationNumber}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
+                        placeholder="Nhập số CMND/CCCD"
+                      />
+                    </div>
                     {tenantFormErrors.identificationNumber && (
                       <div className="error-message">{tenantFormErrors.identificationNumber}</div>
                     )}
                   </div>
+                </div>
+                
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Địa chỉ</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={tenantFormData.address}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
-                      placeholder="Nhập địa chỉ (không bắt buộc)"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-map-marker-alt"></i>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tenantFormData.address}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
+                        placeholder="Nhập địa chỉ (không bắt buộc)"
+                      />
+                    </div>
                     {tenantFormErrors.address && (
                       <div className="error-message">{tenantFormErrors.address}</div>
                     )}
@@ -4906,26 +4996,32 @@ const RoomsManagement = () => {
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Họ và tên *</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={tenantFormData.fullName}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
-                      placeholder="Nhập họ và tên"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-user"></i>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tenantFormData.fullName}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
+                        placeholder="Nhập họ và tên"
+                      />
+                    </div>
                     {tenantFormErrors.fullName && (
                       <div className="error-message">{tenantFormErrors.fullName}</div>
                     )}
                   </div>
                   <div className="form-group">
                     <label className="form-label">Số điện thoại *</label>
-                    <input
-                      type="tel"
-                      className="form-input"
-                      value={tenantFormData.phone}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
-                      placeholder="Nhập số điện thoại"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-phone"></i>
+                      <input
+                        type="tel"
+                        className="form-input"
+                        value={tenantFormData.phone}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
+                        placeholder="Nhập số điện thoại"
+                      />
+                    </div>
                     {tenantFormErrors.phone && (
                       <div className="error-message">{tenantFormErrors.phone}</div>
                     )}
@@ -4934,27 +5030,52 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
+                    <label className="form-label">Email</label>
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-envelope"></i>
+                      <input
+                        type="email"
+                        className="form-input"
+                        value={tenantFormData.email}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, email: e.target.value}))}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                    {tenantFormErrors.email && (
+                      <div className="error-message">{tenantFormErrors.email}</div>
+                    )}
+                  </div>
+                  <div className="form-group">
                     <label className="form-label">CMND/CCCD *</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={tenantFormData.identificationNumber}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
-                      placeholder="Nhập số CMND/CCCD"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-id-card"></i>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tenantFormData.identificationNumber}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
+                        placeholder="Nhập số CMND/CCCD"
+                      />
+                    </div>
                     {tenantFormErrors.identificationNumber && (
                       <div className="error-message">{tenantFormErrors.identificationNumber}</div>
                     )}
                   </div>
+                </div>
+                
+                <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">Địa chỉ</label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      value={tenantFormData.address}
-                      onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
-                      placeholder="Nhập địa chỉ (không bắt buộc)"
-                    />
+                    <div className="form-input-group">
+                      <i className="input-icon fas fa-map-marker-alt"></i>
+                      <input
+                        type="text"
+                        className="form-input"
+                        value={tenantFormData.address}
+                        onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
+                        placeholder="Nhập địa chỉ (không bắt buộc)"
+                      />
+                    </div>
                     {tenantFormErrors.address && (
                       <div className="error-message">{tenantFormErrors.address}</div>
                     )}

@@ -318,11 +318,134 @@ export const sendPropertyHiddenEmail = async ({ to, ownerName, propertyTitle, re
     }
 };
 
+// Gửi email thông báo hóa đơn mới
+export const sendInvoiceEmail = async (invoice, tenant, room, landlord) => {
+    try {
+        if (!tenant.email) {
+            return { success: false, error: 'Tenant has no email' };
+        }
+
+        const transporter = createTransporter();
+        
+        // Format currency
+        const formatCurrency = (amount) => {
+            return new Intl.NumberFormat('vi-VN').format(amount) + 'đ';
+        };
+        
+        // Format date
+        const formatDate = (date) => {
+            return new Date(date).toLocaleDateString('vi-VN');
+        };
+        
+        // Tạo link Zalo để chat với landlord
+        const zaloLink = landlord.phone ? `https://zalo.me/${landlord.phone}` : '#';
+        
+        // Tạo danh sách charges
+        const chargesHTML = invoice.charges.map((charge, idx) => `
+            <tr>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${idx + 1}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee;">${charge.description}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #eee; text-align: right;">${formatCurrency(charge.amount)}</td>
+            </tr>
+        `).join('');
+        
+        const mailOptions = {
+            from: process.env.GMAIL_USER,
+            to: tenant.email,
+            subject: `Thông báo hóa đơn ${invoice.invoiceNumber} - Phòng ${room.roomNumber}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f5f5f5;">
+                    <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                        <h2 style="color: #007bff; text-align: center; margin-bottom: 20px;">🔔 THÔNG BÁO HÓA ĐƠN MỚI</h2>
+                        
+                        <p style="font-size: 16px;">Xin chào <strong>${tenant.fullName}</strong>,</p>
+                        <p>Bạn vừa nhận được hóa đơn mới cho phòng trọ của mình:</p>
+                        
+                        <div style="background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666;">Mã hóa đơn:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right;">${invoice.invoiceNumber}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666;">Phòng:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right;">${room.roomNumber}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666;">Kỳ hóa đơn:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right;">${formatDate(invoice.periodStart)} - ${formatDate(invoice.periodEnd)}</td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 8px 0; color: #666;">Hạn thanh toán:</td>
+                                    <td style="padding: 8px 0; font-weight: bold; text-align: right; color: #dc3545;">${formatDate(invoice.dueDate)}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <h3 style="color: #333; margin-top: 30px;">Chi tiết các khoản thu:</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin: 15px 0;">
+                            <thead>
+                                <tr style="background-color: #007bff; color: white;">
+                                    <th style="padding: 12px; text-align: left;">STT</th>
+                                    <th style="padding: 12px; text-align: left;">Nội dung</th>
+                                    <th style="padding: 12px; text-align: right;">Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${chargesHTML}
+                            </tbody>
+                            <tfoot>
+                                <tr style="background-color: #28a745; color: white; font-weight: bold; font-size: 18px;">
+                                    <td colspan="2" style="padding: 15px;">TỔNG CỘNG</td>
+                                    <td style="padding: 15px; text-align: right;">${formatCurrency(invoice.totalAmount)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                        
+                        <div style="background-color: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                            <p style="margin: 0; color: #856404;">
+                                ⏰ Vui lòng thanh toán trước ngày <strong>${formatDate(invoice.dueDate)}</strong> để tránh phát sinh chi phí.
+                            </p>
+                        </div>
+                        
+                        <div style="text-align: center; margin: 30px 0;">
+                            <a href="${zaloLink}" 
+                               style="display: inline-block; background-color: #0068FF; color: white; padding: 15px 40px; text-decoration: none; border-radius: 5px; font-weight: bold; font-size: 16px;">
+                                💬 Liên hệ qua Zalo
+                            </a>
+                        </div>
+                        
+                        ${invoice.notes ? `
+                        <div style="background-color: #e7f3ff; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                            <p style="margin: 0; color: #004085;"><strong>Ghi chú:</strong> ${invoice.notes}</p>
+                        </div>
+                        ` : ''}
+                        
+                        <hr style="border: none; height: 1px; background-color: #eee; margin: 30px 0;">
+                        <p style="color: #666; font-size: 14px; text-align: center;">
+                            Trân trọng,<br>
+                            <strong>${landlord.name || 'Quản lý trọ'}</strong><br>
+                            ${landlord.phone ? `📞 ${landlord.phone}` : ''}
+                        </p>
+                    </div>
+                </div>
+            `
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Error sending invoice email:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Export tất cả functions
 export default {
     generateOTP,
     sendOTPEmail,
     sendVerificationEmail,
     sendWarningEmail,
-    sendPropertyHiddenEmail
+    sendPropertyHiddenEmail,
+    sendInvoiceEmail
 };
