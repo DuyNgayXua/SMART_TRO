@@ -4050,7 +4050,7 @@ const RoomsManagement = () => {
                       <div className="form-input-group">
                         <i className="input-icon fas fa-envelope"></i>
                         <input
-                          type="email"
+                          type=""
                           className={`form-input ${rentalContractErrors[`tenantEmail_${index}`] ? 'error' : ''}`}
                           value={tenant.tenantEmail}
                           onChange={(e) => updateTenant(index, 'tenantEmail', e.target.value)}

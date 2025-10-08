@@ -6328,7 +6328,7 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
 
 /* Vehicle Modal Styles - Matching Tenant Modal - Higher Specificity */
 .room-modal.vehicle-modal .room-modal-header {
-  background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%) !important;
+  background: transparent !important;
   border-bottom: 1px solid #e2e8f0 !important;
   padding: 20px 24px !important;
   display: flex !important;

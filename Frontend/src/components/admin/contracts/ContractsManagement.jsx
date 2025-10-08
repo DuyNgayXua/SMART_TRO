@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import SideBar from '../../common/adminSidebar';
 import '../admin-global.css';
 import './contracts.css';
+import '../rooms/rooms.css'; // Import rooms CSS for modal styles
 import contractsAPI from '../../../services/contractsAPI';
 import depositContractsAPI from '../../../services/depositContractsAPI';
 import roomsAPI from '../../../services/roomsAPI';
@@ -29,7 +30,35 @@ const ContractsManagement = () => {
   });
   const [roomOptions, setRoomOptions] = useState([]);
   const [tenantOptions, setTenantOptions] = useState([]);
-  const [viewing, setViewing] = useState(null);
+  const [openActionMenu, setOpenActionMenu] = useState(null);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  
+  // Edit contract states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingContract, setEditingContract] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    tenants: [],
+    vehicles: [],
+    startDate: '',
+    endDate: '',
+    monthlyRent: '',
+    deposit: '',
+    electricityPrice: 3500,
+    waterPrice: 25000,
+    waterPricePerPerson: 50000,
+    waterChargeType: 'fixed',
+    servicePrice: 150000,
+    currentElectricIndex: '',
+    currentWaterIndex: '',
+    paymentCycle: 'monthly',
+    notes: ''
+  });
+
+  // Format number helper function
+  const formatNumber = (num) => {
+    if (!num && num !== 0) return '0';
+    return Number(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  };
 
   const fetchOptions = useCallback(async () => {
     try {
@@ -51,6 +80,8 @@ const ContractsManagement = () => {
             id: c._id,
             room: c.room?.roomNumber || c.roomNumber || c.room,
             tenant: c.tenant?.fullName || c.tenantName || c.tenant,
+            tenants: c.tenants || [], // Array of tenant objects
+            tenantCount: Array.isArray(c.tenants) ? c.tenants.length : (c.tenant ? 1 : 0),
             startDate: c.startDate,
             endDate: c.endDate,
             monthlyRent: c.monthlyRent,
@@ -124,7 +155,91 @@ const ContractsManagement = () => {
   }, [activeTab, filters, pagination.currentPage, pagination.itemsPerPage]);
 
   useEffect(()=>{ fetchContracts(); }, [fetchContracts]);
+  
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (openActionMenu && !e.target.closest('.action-menu-btn') && !e.target.closest('.action-menu-dropdown')) {
+        setOpenActionMenu(null);
+      }
+    };
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, [openActionMenu]);
   useEffect(()=>{ fetchOptions(); }, [fetchOptions]);
+
+  // Handle edit contract
+  const handleEditContract = async (contract) => {
+    try {
+      // Fetch full contract details from API
+      const res = await contractsAPI.getContractById(contract.id);
+      
+      if (res.success && res.data) {
+        const fullContract = res.data;
+        
+        // Prepare edit form data
+        const editData = {
+          tenants: (fullContract.tenants || []).map(tenant => ({
+            _id: tenant._id,
+            tenantName: tenant.fullName || '',
+            tenantPhone: tenant.phone || '',
+            tenantEmail: tenant.email || '',
+            tenantId: tenant.identificationNumber || '',
+            tenantImages: tenant.images || []
+          })),
+          vehicles: (fullContract.vehicles || []).map(vehicle => ({
+            _id: vehicle._id,
+            licensePlate: vehicle.licensePlate || '',
+            vehicleType: vehicle.vehicleType || '',
+            ownerIndex: 0 // Will be updated based on tenant mapping
+          })),
+          startDate: fullContract.startDate ? fullContract.startDate.split('T')[0] : '',
+          endDate: fullContract.endDate ? fullContract.endDate.split('T')[0] : '',
+          monthlyRent: fullContract.monthlyRent || 0,
+          deposit: fullContract.deposit || 0,
+          electricityPrice: fullContract.electricPrice !== undefined ? fullContract.electricPrice : 3500,
+          waterPrice: fullContract.waterPrice !== undefined ? fullContract.waterPrice : 25000,
+          waterPricePerPerson: fullContract.waterPricePerPerson !== undefined ? fullContract.waterPricePerPerson : 50000,
+          waterChargeType: fullContract.waterChargeType || 'fixed',
+          servicePrice: fullContract.servicePrice !== undefined ? fullContract.servicePrice : 150000,
+          currentElectricIndex: fullContract.currentElectricIndex ? String(fullContract.currentElectricIndex) : '',
+          currentWaterIndex: fullContract.currentWaterIndex ? String(fullContract.currentWaterIndex) : '',
+          paymentCycle: fullContract.paymentCycle || 'monthly',
+          notes: fullContract.notes || '',
+          room: fullContract.room // Keep room info
+        };
+        
+        setEditFormData(editData);
+        setEditingContract(fullContract);
+        setShowEditModal(true);
+      }
+    } catch (error) {
+      console.error('Error loading contract for edit:', error);
+      alert('Không thể tải thông tin hợp đồng để chỉnh sửa');
+    }
+  };
+
+  const closeEditModal = () => {
+    setShowEditModal(false);
+    setEditingContract(null);
+    setEditFormData({
+      tenants: [],
+      vehicles: [],
+      startDate: '',
+      endDate: '',
+      monthlyRent: '',
+      deposit: '',
+      electricityPrice: 3500,
+      waterPrice: 25000,
+      waterPricePerPerson: 50000,
+      waterChargeType: 'fixed',
+      servicePrice: 150000,
+      currentElectricIndex: '',
+      currentWaterIndex: '',
+      paymentCycle: 'monthly',
+      notes: ''
+    });
+  };
 
   const openCreate = () => { setForm({ room:'', tenant:'', startDate:'', endDate:'', monthlyRent:'', deposit:'', electricPrice:'', waterPrice:'', servicePrice:'', rules:'', notes:'' }); setErrors({}); setShowCreateModal(true); };
   const closeCreate = () => setShowCreateModal(false);
@@ -307,7 +422,7 @@ const ContractsManagement = () => {
                       <th>{t('contracts.endDate')}</th>
                       <th>{t('contracts.monthlyRent')}</th>
                       <th>{t('contracts.status.label')}</th>
-                      <th>{t('common.actions')}</th>
+                      <th style={{ width: '100px', textAlign: 'center' }}>{t('common.actions')}</th>
                     </>
                   ) : (
                     <>
@@ -329,23 +444,64 @@ const ContractsManagement = () => {
                     {activeTab === 'rental' ? (
                       <>
                         <td>{c.room}</td>
-                        <td>{c.tenant}</td>
+                        <td>
+                          <span className="tenant-count-badge">
+                            <i className="fas fa-users"></i>
+                            {c.tenantCount} {c.tenantCount === 1 ? t('contracts.person') : t('contracts.people')}
+                          </span>
+                        </td>
                         <td>{new Date(c.startDate).toLocaleDateString('vi-VN')}</td>
                         <td>{new Date(c.endDate).toLocaleDateString('vi-VN')}</td>
-                        <td>{c.monthlyRent?.toLocaleString('vi-VN')} VNĐ</td>
+                        <td>{formatNumber(c.monthlyRent)} VNĐ</td>
                         <td>
                           <span className={`status-badge status-${c.status}`}>
                             {t(`contracts.status.${c.status}`, { defaultValue: c.status })}
                           </span>
                         </td>
-                        <td>
-                          <button 
-                            className="action-btn view-btn"
-                            onClick={() => setViewing(c)}
-                            title={t('common.view')}
+                        <td style={{ textAlign: 'center', position: 'relative' }}>
+                          <button
+                            className="action-menu-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                              const scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+                              
+                              let top = rect.bottom + scrollTop + 4;
+                              let left = rect.left + scrollLeft - 150;
+                              
+                              if (left < 4) {
+                                left = 4;
+                              }
+                              
+                              setDropdownPosition({ top, left });
+                              setOpenActionMenu(c.id);
+                            }}
                           >
-                            <i className="fas fa-eye"></i>
+                            <i className="fas fa-ellipsis-v"></i>
                           </button>
+                          {openActionMenu === c.id && (
+                            <div 
+                              className="action-menu-dropdown fixed-position"
+                              style={{
+                                position: 'fixed',
+                                top: `${dropdownPosition.top}px`,
+                                left: `${dropdownPosition.left}px`,
+                                zIndex: 2147483647
+                              }}
+                            >
+                              <button
+                                className="action-menu-item"
+                                onClick={() => {
+                                  handleEditContract(c);
+                                  setOpenActionMenu(null);
+                                }}
+                              >
+                                <i className="fas fa-edit"></i>
+                                {t('common.edit')}
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </>
                     ) : (
@@ -357,8 +513,8 @@ const ContractsManagement = () => {
                         <td>{new Date(c.expectedMoveInDate).toLocaleDateString('vi-VN')}</td>
                         <td>
                           <div className="price-info">
-                            <div className="price-main">{c.depositAmount?.toLocaleString('vi-VN')} VNĐ</div>
-                            <div className="price-sub">{t('contracts.deposit.roomPrice')}: {c.roomPrice?.toLocaleString('vi-VN')} VNĐ</div>
+                            <div className="price-main">{formatNumber(c.depositAmount)} VNĐ</div>
+                            <div className="price-sub">{t('contracts.deposit.roomPrice')}: {formatNumber(c.roomPrice)} VNĐ</div>
                           </div>
                         </td>
                         <td>
@@ -369,10 +525,10 @@ const ContractsManagement = () => {
                         <td>
                           <button 
                             className="action-btn view-btn"
-                            onClick={() => setViewing(c)}
-                            title={t('common.view')}
+                            onClick={() => handleEditContract(c)}
+                            title={t('common.edit')}
                           >
-                            <i className="fas fa-eye"></i>
+                            <i className="fas fa-edit"></i>
                           </button>
                         </td>
                       </>
@@ -466,25 +622,346 @@ const ContractsManagement = () => {
         </div>
       )}
 
-      {viewing && (
-        <div className="room-modal-backdrop" onClick={()=>setViewing(null)}>
-          <div className="room-modal" onClick={e=>e.stopPropagation()}>
+      {/* Edit Contract Modal - Copy from RoomsManagement */}
+      {showEditModal && editingContract && (
+        <div className="room-modal-backdrop" onClick={closeEditModal}>
+          <div className="room-modal rental-contract-modal" onClick={e => e.stopPropagation()}>
             <div className="room-modal-header">
-              <h2 className="room-modal-title">{t('contracts.detailTitle')}</h2>
-              <button className="room-modal-close" onClick={()=>setViewing(null)}>×</button>
+              <h2 className="room-modal-title">
+                <i className="fas fa-file-contract"></i> 
+                Chỉnh sửa hợp đồng - {editFormData.room?.roomNumber || editingContract.room?.roomNumber || ''}
+              </h2>
+              <button className="room-modal-close" onClick={closeEditModal}>×</button>
             </div>
-            <div className="room-view-grid">
-              <p><strong>{t('contracts.room')}:</strong> {viewing.room}</p>
-              <p><strong>{t('contracts.tenant')}:</strong> {viewing.tenant}</p>
-              <p><strong>{t('contracts.startDate')}:</strong> {new Date(viewing.startDate).toLocaleDateString()}</p>
-              <p><strong>{t('contracts.endDate')}:</strong> {new Date(viewing.endDate).toLocaleDateString()}</p>
-              <p><strong>{t('contracts.monthlyRent')}:</strong> {viewing.monthlyRent?.toLocaleString()} VND</p>
-              <p><strong>{t('contracts.deposit')}:</strong> {viewing.deposit?.toLocaleString()} VND</p>
-              <p><strong>{t('contracts.status.label')}:</strong> {t(`contracts.status.${viewing.status}`, { defaultValue:viewing.status })}</p>
-              {viewing.notes && <p><strong>{t('contracts.notes')}:</strong> {viewing.notes}</p>}
+            
+            <div className="room-modal-content">
+              <div className="rental-contract-two-columns">
+                {/* Left Column - Tenant Information */}
+                <div className="rental-contract-left">
+                  {/* Tenant Information */}
+                  <div className="form-section tenant-section">
+                    <div className="section-header">
+                      <h3><i className="fas fa-users"></i> Thông tin người thuê ({editFormData.tenants.length})</h3>
+                    </div>
+                    
+                    <p className="info-message">
+                      <i className="fas fa-info-circle"></i>
+                      Để chỉnh sửa thông tin người thuê, vui lòng vào trang <strong>Quản lý phòng</strong> và chọn phòng tương ứng.
+                    </p>
+
+                    {editFormData.tenants.map((tenant, index) => (
+                      <div key={index} className="tenant-item view-mode">
+                        <div className="item-header">
+                          <h4><i className="fas fa-user"></i> Người thuê {index + 1}</h4>
+                        </div>
+                        
+                        <div className="form-row">
+                          <div className="form-group">
+                            <label className="form-label">Họ và tên</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={tenant.tenantName}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Số điện thoại</label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              value={tenant.tenantPhone}
+                              readOnly
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Vehicle Information */}
+                  {editFormData.vehicles && editFormData.vehicles.length > 0 && (
+                    <div className="form-section tenant-section">
+                      <div className="section-header">
+                        <h3><i className="fas fa-car"></i> Thông tin phương tiện ({editFormData.vehicles.length})</h3>
+                      </div>
+                      
+                      <p className="info-message">
+                        <i className="fas fa-info-circle"></i>
+                        Để chỉnh sửa thông tin phương tiện, vui lòng vào trang <strong>Quản lý phòng</strong>.
+                      </p>
+
+                      {editFormData.vehicles.map((vehicle, idx) => (
+                        <div key={idx} className="tenant-item view-mode">
+                          <div className="form-row">
+                            <div className="form-group">
+                              <label className="form-label">Biển số</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={vehicle.licensePlate}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group">
+                              <label className="form-label">Loại xe</label>
+                              <input
+                                type="text"
+                                className="form-input"
+                                value={vehicle.vehicleType}
+                                readOnly
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column - Contract Information (Editable) */}
+                <div className="rental-contract-right">
+                  {/* Contract Dates */}
+                  <div className="form-section">
+                    <h3><i className="fas fa-calendar-alt"></i> Thông tin hợp đồng</h3>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Ngày bắt đầu</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={editFormData.startDate}
+                          onChange={(e) => setEditFormData(prev => ({...prev, startDate: e.target.value}))}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Ngày kết thúc</label>
+                        <input
+                          type="date"
+                          className="form-input"
+                          value={editFormData.endDate}
+                          onChange={(e) => setEditFormData(prev => ({...prev, endDate: e.target.value}))}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Tiền cọc (VNĐ)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.deposit)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, deposit: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Tiền thuê hàng tháng (VNĐ)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.monthlyRent)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, monthlyRent: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Pricing Information */}
+                  <div className="form-section">
+                    <h3><i className="fas fa-calculator"></i> Chi phí dịch vụ</h3>
+                    
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Giá điện (VNĐ/kWh)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.electricityPrice)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, electricityPrice: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Phí dịch vụ (VNĐ/tháng)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.servicePrice)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, servicePrice: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Cách tính tiền nước</label>
+                      <select
+                        className="form-input"
+                        value={editFormData.waterChargeType}
+                        onChange={(e) => setEditFormData(prev => ({...prev, waterChargeType: e.target.value}))}
+                      >
+                        <option value="fixed">💧 Giá cố định</option>
+                        <option value="per_person">👥 Tính theo người</option>
+                      </select>
+                    </div>
+
+                    {editFormData.waterChargeType === 'fixed' ? (
+                      <div className="form-group">
+                        <label className="form-label">Giá nước (VNĐ/khối)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.waterPrice)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, waterPrice: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="form-group">
+                        <label className="form-label">Giá nước theo người (VNĐ/người/tháng)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.waterPricePerPerson)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, waterPricePerPerson: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+
+                    <div className="form-group">
+                      <label className="form-label">Chu kỳ thanh toán</label>
+                      <select
+                        className="form-input"
+                        value={editFormData.paymentCycle}
+                        onChange={(e) => setEditFormData(prev => ({...prev, paymentCycle: e.target.value}))}
+                      >
+                        <option value="monthly">📅 Hàng tháng</option>
+                        <option value="quarterly">📊 Hàng quý</option>
+                        <option value="yearly">📈 Hàng năm</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">Ghi chú</label>
+                      <textarea
+                        className="form-input"
+                        value={editFormData.notes}
+                        onChange={(e) => setEditFormData(prev => ({...prev, notes: e.target.value}))}
+                        rows="3"
+                        style={{resize: 'vertical'}}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Meter Readings */}
+                  <div className="form-section">
+                    <h3><i className="fas fa-tachometer-alt"></i> Chỉ số điện nước hiện tại</h3>
+                    <div className="form-row">
+                      <div className="form-group">
+                        <label className="form-label">Chỉ số điện (kWh)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.currentElectricIndex)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, currentElectricIndex: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Chỉ số nước (m³)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          value={formatNumber(editFormData.currentWaterIndex)}
+                          onChange={(e) => {
+                            const value = e.target.value.replace(/\./g, '');
+                            if (!isNaN(value)) {
+                              setEditFormData(prev => ({...prev, currentWaterIndex: value}));
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
+
             <div className="room-modal-footer">
-              <button className="btn-secondary" onClick={()=>setViewing(null)}>{t('common.close')}</button>
+              <button type="button" className="btn-cancel" onClick={closeEditModal}>
+                <i className="fas fa-times"></i> Hủy bỏ
+              </button>
+              <button 
+                type="submit" 
+                className="btn-submit"
+                onClick={async () => {
+                  try {
+                    const updateData = {
+                      startDate: editFormData.startDate,
+                      endDate: editFormData.endDate,
+                      monthlyRent: Number(editFormData.monthlyRent),
+                      deposit: Number(editFormData.deposit),
+                      electricPrice: Number(editFormData.electricityPrice),
+                      waterPrice: Number(editFormData.waterPrice),
+                      waterPricePerPerson: Number(editFormData.waterPricePerPerson),
+                      waterChargeType: editFormData.waterChargeType,
+                      servicePrice: Number(editFormData.servicePrice),
+                      currentElectricIndex: Number(editFormData.currentElectricIndex),
+                      currentWaterIndex: Number(editFormData.currentWaterIndex),
+                      paymentCycle: editFormData.paymentCycle,
+                      notes: editFormData.notes
+                    };
+
+                    const res = await contractsAPI.updateContract(editingContract._id, updateData);
+                    
+                    if (res.success) {
+                      alert('Cập nhật hợp đồng thành công!');
+                      closeEditModal();
+                      fetchContracts(); // Refresh list
+                    } else {
+                      alert('Lỗi: ' + (res.message || 'Không thể cập nhật hợp đồng'));
+                    }
+                  } catch (error) {
+                    console.error('Error updating contract:', error);
+                    alert('Lỗi khi cập nhật hợp đồng');
+                  }
+                }}
+              >
+                <i className="fas fa-check"></i> Cập nhật
+              </button>
             </div>
           </div>
         </div>
@@ -494,3 +971,4 @@ const ContractsManagement = () => {
 };
 
 export default ContractsManagement;
+

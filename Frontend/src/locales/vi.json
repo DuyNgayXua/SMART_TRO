@@ -444,6 +444,8 @@
     "emptyDescription": "Tạo hợp đồng mới để bắt đầu.",
     "createTitle": "Tạo hợp đồng",
     "detailTitle": "Chi tiết hợp đồng",
+    "person": "người",
+    "people": "người",
     "tabs": {
       "rental": "Hợp đồng thuê",
       "deposit": "Hợp đồng đặt cọc"
