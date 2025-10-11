@@ -146,6 +146,14 @@ const invoiceSchema = new mongoose.Schema({
     },
     transactionId: String,
     
+    // Thông tin QR thanh toán
+    paymentQRCode: {
+        type: String
+    },
+    paymentQRContent: {
+        type: String
+    },
+    
     // Ghi chú
     notes: String,
     

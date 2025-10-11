@@ -148,6 +148,12 @@
       "rooms": "phòng"
     },
     "loadingList": "Đang tải danh sách phòng...",
+    "modal": {
+      "sendInvoiceZalo": "Gửi hóa đơn Zalo cho khách thuê",
+      "confirmExpiring": "Xác nhận đánh dấu sắp kết thúc",
+      "confirmExpiringMessage": "Bạn có chắc chắn muốn đánh dấu phòng sắp kết thúc?",
+      "autoCalculateDueDate": "Tự động tính 5 ngày sau ngày kết thúc chu kỳ"
+    },
     "form": {
       "modalTitle": "Thêm phòng mới",
       "property": "Bất động sản",
@@ -312,7 +318,21 @@
       "notes": "Ghi chú",
       "notesPlaceholder": "Ghi chú thêm về hóa đơn (không bắt buộc)",
       "create": "Tạo hóa đơn",
-      "creating": "Đang tạo..."
+      "creating": "Đang tạo...",
+      "createSuccess": "Tạo hóa đơn thành công",
+      "createWithQRSuccess": "Tạo hóa đơn và mã QR thanh toán thành công",
+      "createSuccessQRFailed": "Tạo hóa đơn thành công nhưng không thể tạo mã QR",
+      "createSuccessQRError": "Tạo hóa đơn thành công nhưng lỗi khi tạo mã QR"
+    }
+  },
+  "invoices": {
+    "form": {
+      "oldReading": "Chỉ số cũ",
+      "newReading": "Chỉ số mới *",
+      "consumption": "Tiêu thụ",
+      "totalAmount": "Thành tiền",
+      "numberOfTenants": "Số người thuê",
+      "sendZaloToTenant": "Gửi hóa đơn Zalo cho khách thuê"
     }
   },
   "common": {
@@ -323,6 +343,7 @@
     "edit": "Sửa",
     "delete": "Xóa",
     "view": "Xem",
+    "currency": "VNĐ",
     "add": "Thêm",
     "search": "Tìm kiếm",
     "filter": "Lọc",
@@ -349,7 +370,8 @@
     "none": "Không có",
     "unknown": "Không xác định",
     "actions": "Thao tác",
-    "networkError": "Lỗi kết nối mạng"
+    "networkError": "Lỗi kết nối mạng",
+    "monthNumber": "Tháng {{number}}"
   },
   "settings": {
     "title": "Cài đặt",
@@ -420,7 +442,8 @@
       "saving": "Đang lưu...",
       "updating": "Đang cập nhật...",
       "update": "Cập nhật",
-      "add": "Thêm khách thuê"
+      "add": "Thêm khách thuê",
+      "selectRoom": "Vui lòng chọn phòng"
     },
     "messages": {
       "deletedButContractUpdateFailed": "Đã xóa tenant nhưng không thể cập nhật hợp đồng",
@@ -430,7 +453,8 @@
       "tenantNotFoundPleaseAdd": "Không tìm thấy khách thuê với thông tin này. Vui lòng thêm khách thuê trước.",
       "loadTenantsFailed": "Không thể tải danh sách tenant",
       "updateSuccess": "Đã cập nhật thông tin khách thuê",
-      "addSuccess": "Đã thêm khách thuê mới"
+      "addSuccess": "Tạo khách thuê thành công!",
+      "addSuccessButImagesFailed": "Tạo khách thuê thành công nhưng upload ảnh thất bại"
     },
     "confirm": {
       "deleteTenant": "Bạn có chắc muốn xóa khách thuê \"{{tenantName}}\"?"
@@ -537,10 +561,11 @@
     },
     "rental": {
       "title": "Tạo hợp đồng thuê",
+      "editTitle": "Chỉnh sửa hợp đồng thuê",
       "tenantInfo": {
         "title": "Thông tin người thuê",
-        "addTenant": "Thêm người",
-        "removeTenant": "Xóa",
+        "addTenant": "Thêm người thuê",
+        "removeTenant": "Xóa người thuê này",
         "tenantLabel": "Người thuê",
         "fullName": "Họ và tên",
         "fullNamePlaceholder": "Nhập họ và tên đầy đủ",
@@ -555,6 +580,7 @@
       "vehicleInfo": {
         "title": "Thông tin phương tiện",
         "addVehicle": "Thêm xe",
+        "addVehicleBtn": "Thêm phương tiện",
         "removeVehicle": "Xóa xe này",
         "vehicleLabel": "Xe",
         "licensePlate": "Biển số xe",
@@ -612,7 +638,63 @@
       "actions": {
         "cancel": "Hủy bỏ",
         "creating": "Đang tạo...",
-        "create": "Tạo hợp đồng thuê"
+        "create": "Tạo hợp đồng thuê",
+        "editInfo": "Sửa thông tin",
+        "endContract": "Kết thúc hợp đồng",
+        "deleteVehicle": "Xóa xe"
+      },
+      "tenantsSection": {
+        "loading": "Đang tải danh sách khách thuê...",
+        "noTenants": "Chưa có khách thuê",
+        "noTenantsDesc": "Phòng này chưa có khách thuê nào."
+      },
+      "form": {
+        "tenantInfoTitle": "Thông tin khách thuê",
+        "fullName": "Họ và tên *",
+        "fullNamePlaceholder": "Nhập họ và tên",
+        "phone": "Số điện thoại *",
+        "phonePlaceholder": "Nhập số điện thoại",
+        "email": "Email",
+        "emailPlaceholder": "email@example.com",
+        "idNumber": "CMND/CCCD *",
+        "idNumberPlaceholder": "Nhập số CMND/CCCD",
+        "address": "Địa chỉ",
+        "addressPlaceholder": "Nhập địa chỉ (không bắt buộc)",
+        "idImages": "Ảnh căn cước/chân dung",
+        "maxImagesWarning": "Chỉ có thể tải lên tối đa 5 ảnh. Đã thêm {{count}} ảnh đầu tiên.",
+        "addImage": "Thêm ảnh"
+      },
+      "confirmModals": {
+        "markExpiring": {
+          "title": "Xác nhận đánh dấu sắp kết thúc",
+          "message": "Bạn có chắc chắn muốn đánh dấu phòng sắp kết thúc?",
+          "actionTitle": "Hành động này sẽ:",
+          "action1": "Chuyển trạng thái phòng sang \"Sắp kết thúc\"",
+          "action2": "Cập nhật trạng thái các hợp đồng đang hoạt động sang \"Sắp kết thúc\""
+        },
+        "cancelExpiring": {
+          "title": "Xác nhận hủy báo kết thúc",
+          "message": "Bạn có chắc chắn muốn hủy báo kết thúc phòng?",
+          "actionTitle": "Hành động này sẽ:",
+          "action1": "Chuyển trạng thái phòng về \"Đã thuê\"",
+          "action2": "Cập nhật trạng thái các hợp đồng về \"Đang hoạt động\""
+        },
+        "terminateContract": {
+          "title": "Xác nhận kết thúc hợp đồng",
+          "message": "Bạn có chắc chắn muốn kết thúc hợp đồng phòng?",
+          "actionTitle": "Hành động này sẽ:",
+          "action1": "Chuyển trạng thái hợp đồng sang \"Đã kết thúc\"",
+          "action2": "Xóa tất cả khách thuê khỏi phòng",
+          "action3": "Chuyển trạng thái phòng về \"Trống\"",
+          "action4": "Mở form tạo hóa đơn thanh toán tháng cuối"
+        }
+      },
+      "vehicleTypes": {
+        "motorcycle": "🏍️ Xe máy",
+        "bicycle": "🚲 Xe đạp",
+        "car": "🚗 Ô tô",
+        "electric": "⚡ Xe điện",
+        "other": "🔧 Khác"
       }
     }
   },
@@ -915,8 +997,16 @@
       "editTitle": "Chỉnh sửa thông tin xe",
       "vehicleInfo": "Thông tin xe",
       "licensePlate": "Biển số xe",
+      "licensePlatePlaceholder": "Nhập biển số xe",
       "vehicleType": "Loại xe",
       "owner": "Chủ xe",
+      "ownerInfoTitle": "Thông tin chủ xe",
+      "ownerName": "Tên chủ xe *",
+      "ownerNamePlaceholder": "Nhập tên chủ xe",
+      "ownerPhone": "Số điện thoại *",
+      "ownerPhonePlaceholder": "Nhập số điện thoại",
+      "additionalInfoTitle": "Thông tin bổ sung",
+      "notes": "Ghi chú",
       "selectOwner": "Chọn chủ xe",
       "noTenants": "Chưa có người thuê",
       "adding": "Đang thêm xe...",
@@ -924,11 +1014,18 @@
       "update": "Cập nhật",
       "saving": "Đang lưu...",
       "selectVehicleType": "Chọn loại xe",
-      "vehicleTypePlaceholder": "Nhập loại xe (VD: Xe máy, Xe đạp, Ô tô...)",
-      "notesPlaceholder": "Ghi chú thêm về xe (tùy chọn)"
+      "vehicleTypePlaceholder": "Xe máy, Ô tô, Xe đạp...",
+      "notesPlaceholder": "Ghi chú thêm về xe (tùy chọn)",
+      "addVehicleInfo": "Thêm thông tin xe",
+      "removeVehicleInfo": "Bỏ thông tin xe",
+      "vehicleLimitReached": "Phòng này đã đạt giới hạn xe"
     },
     "types": {
-      "motorcycle": "Xe máy"
+      "motorcycle": "Xe máy",
+      "bicycle": "Xe đạp",
+      "car": "Ô tô",
+      "electric": "Xe điện",
+      "other": "Khác"
     },
     "messages": {
       "fetchError": "Không thể tải danh sách xe",
@@ -971,12 +1068,42 @@
     "noInvoicesDescription": "Chưa có hóa đơn nào được tạo",
     "markPaidSuccess": "Đánh dấu thanh toán thành công",
     "markPaidError": "Lỗi khi đánh dấu thanh toán",
+    "batchExport": "Xuất hóa đơn hàng loạt",
+    "exportPDF": "Xuất PDF",
+    "exportPDFTooltip": "Xuất hóa đơn PDF kèm QR thanh toán",
+    "markAsPaid": "Đánh dấu đã thanh toán",
+    "viewDetail": "Xem chi tiết",
+    "invoiceDetail": "Chi tiết hóa đơn",
+    "generalInfo": "Thông tin chung",
+    "paymentDetail": "Chi tiết thanh toán",
+    "room": "Phòng",
+    "tenant": "Khách thuê",
     "status": {
+      "label": "Trạng thái",
       "all": "Tất cả",
       "paid": "Đã thanh toán",
       "unpaid": "Chưa thanh toán",
       "overdue": "Quá hạn",
       "pending": "Chờ xử lý"
+    },
+    "period": "Kỳ",
+    "issueDate": "Ngày lập",
+    "dueDate": "Hạn thanh toán",
+    "totalAmount": "Tổng tiền",
+    "paidOn": "Đã thanh toán",
+    "close": "Đóng",
+    "cancel": "Hủy",
+    "batchExportModal": {
+      "title": "Xuất hóa đơn hàng loạt",
+      "filterStatus": "Trạng thái",
+      "filterMonth": "Tháng",
+      "clearFilter": "Xóa lọc",
+      "selectAll": "Chọn tất cả",
+      "deselectAll": "Bỏ chọn tất cả",
+      "selected": "Đã chọn",
+      "noInvoices": "Không có hóa đơn nào phù hợp với bộ lọc",
+      "exporting": "Đang xuất...",
+      "exportCount": "Xuất {{count}} hóa đơn"
     }
   }
 }

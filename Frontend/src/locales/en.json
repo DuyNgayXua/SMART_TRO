@@ -147,6 +147,12 @@
       "rooms": "rooms"
     },
     "loadingList": "Loading room list...",
+    "modal": {
+      "sendInvoiceZalo": "Send invoice to tenant via Zalo",
+      "confirmExpiring": "Confirm mark as expiring",
+      "confirmExpiringMessage": "Are you sure you want to mark this room as expiring?",
+      "autoCalculateDueDate": "Auto calculate 5 days after period end date"
+    },
     "form": {
       "modalTitle": "Add New Room",
       "property": "Property",
@@ -332,7 +338,19 @@
     "none": "None",
     "unknown": "Unknown",
     "actions": "Actions",
-    "networkError": "Network connection error"
+    "networkError": "Network connection error",
+    "monthNumber": "Month {{number}}",
+    "currency": "VND"
+  },
+  "invoices": {
+    "form": {
+      "oldReading": "Old Reading",
+      "newReading": "New Reading *",
+      "consumption": "Consumption",
+      "totalAmount": "Total Amount",
+      "numberOfTenants": "Number of Tenants",
+      "sendZaloToTenant": "Send invoice via Zalo to tenant"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -594,8 +612,66 @@
       "actions": {
         "cancel": "Cancel",
         "creating": "Creating...",
-        "create": "Create Rental Contract"
-      }
+        "create": "Create Rental Contract",
+        "editInfo": "Edit Info",
+        "endContract": "End Contract",
+        "deleteVehicle": "Delete Vehicle",
+        "addVehicleBtn": "Add Vehicle"
+      },
+      "tenantsSection": {
+        "loading": "Loading tenant list...",
+        "noTenants": "No tenants yet",
+        "noTenantsDesc": "This room has no tenants yet."
+      },
+      "form": {
+        "tenantInfoTitle": "Tenant Information",
+        "fullName": "Full Name *",
+        "fullNamePlaceholder": "Enter full name",
+        "phone": "Phone Number *",
+        "phonePlaceholder": "Enter phone number",
+        "email": "Email",
+        "emailPlaceholder": "email@example.com",
+        "idNumber": "ID Card *",
+        "idNumberPlaceholder": "Enter ID card number",
+        "address": "Address",
+        "addressPlaceholder": "Enter address (optional)",
+        "idImages": "ID/Portrait Images",
+        "maxImagesWarning": "Maximum 5 images can be uploaded. Added first {{count}} images.",
+        "addImage": "Add Image"
+      },
+      "confirmModals": {
+        "markExpiring": {
+          "title": "Confirm Mark as Expiring",
+          "message": "Are you sure you want to mark this room as expiring?",
+          "actionTitle": "This action will:",
+          "action1": "Change room status to \"Expiring\"",
+          "action2": "Update active contracts status to \"Expiring\""
+        },
+        "cancelExpiring": {
+          "title": "Confirm Cancel Expiring Notice",
+          "message": "Are you sure you want to cancel the expiring notice for this room?",
+          "actionTitle": "This action will:",
+          "action1": "Change room status back to \"Rented\"",
+          "action2": "Update contracts status back to \"Active\""
+        },
+        "terminateContract": {
+          "title": "Confirm Terminate Contract",
+          "message": "Are you sure you want to terminate the contract for this room?",
+          "actionTitle": "This action will:",
+          "action1": "Change contract status to \"Terminated\"",
+          "action2": "Remove all tenants from the room",
+          "action3": "Change room status back to \"Available\"",
+          "action4": "Open final month invoice creation form"
+        }
+      },
+      "vehicleTypes": {
+        "motorcycle": "🏍️ Motorcycle",
+        "bicycle": "🚲 Bicycle",
+        "car": "🚗 Car",
+        "electric": "⚡ Electric Vehicle",
+        "other": "🔧 Other"
+      },
+      "editTitle": "Edit Rental Contract"
     }
   },
   "header": {
@@ -897,8 +973,16 @@
       "editTitle": "Edit Vehicle Information",
       "vehicleInfo": "Vehicle Information",
       "licensePlate": "License Plate",
+      "licensePlatePlaceholder": "Enter license plate",
       "vehicleType": "Vehicle Type",
       "owner": "Owner",
+      "ownerInfoTitle": "Owner Information",
+      "ownerName": "Owner Name *",
+      "ownerNamePlaceholder": "Enter owner name",
+      "ownerPhone": "Phone Number *",
+      "ownerPhonePlaceholder": "Enter phone number",
+      "additionalInfoTitle": "Additional Information",
+      "notes": "Notes",
       "selectOwner": "Select Owner",
       "noTenants": "No tenants available",
       "adding": "Adding vehicle...",
@@ -906,11 +990,18 @@
       "update": "Update",
       "saving": "Saving...",
       "selectVehicleType": "Select Vehicle Type",
-      "vehicleTypePlaceholder": "Enter vehicle type (e.g., Motorcycle, Bicycle, Car...)",
-      "notesPlaceholder": "Additional notes about the vehicle (optional)"
+      "vehicleTypePlaceholder": "Motorcycle, Car, Bicycle...",
+      "notesPlaceholder": "Additional notes about the vehicle (optional)",
+      "addVehicleInfo": "Add Vehicle Info",
+      "removeVehicleInfo": "Remove Vehicle Info",
+      "vehicleLimitReached": "This room has reached vehicle limit"
     },
     "types": {
-      "motorcycle": "Motorcycle"
+      "motorcycle": "Motorcycle",
+      "bicycle": "Bicycle",
+      "car": "Car",
+      "electric": "Electric Vehicle",
+      "other": "Other"
     },
     "messages": {
       "fetchError": "Unable to load vehicle list",
@@ -942,6 +1033,53 @@
       "removeFromFavorites": "Removed from favorites",
       "loginRequired": "Please login to use this feature",
       "toggleError": "Error toggling favorite"
+    }
+  },
+  "payments": {
+    "title": "Payment Management",
+    "searchPlaceholder": "Search by room, tenant...",
+    "month": "Month",
+    "year": "Year",
+    "noInvoices": "No invoices",
+    "noInvoicesDescription": "No invoices have been created yet",
+    "markPaidSuccess": "Marked as paid successfully",
+    "markPaidError": "Error marking as paid",
+    "batchExport": "Batch Export Invoices",
+    "exportPDF": "Export PDF",
+    "exportPDFTooltip": "Export invoice PDF with payment QR code",
+    "markAsPaid": "Mark as Paid",
+    "viewDetail": "View Details",
+    "invoiceDetail": "Invoice Details",
+    "generalInfo": "General Information",
+    "paymentDetail": "Payment Details",
+    "room": "Room",
+    "tenant": "Tenant",
+    "status": {
+      "label": "Status",
+      "all": "All",
+      "paid": "Paid",
+      "unpaid": "Unpaid",
+      "overdue": "Overdue",
+      "pending": "Pending"
+    },
+    "period": "Period",
+    "issueDate": "Issue Date",
+    "dueDate": "Due Date",
+    "totalAmount": "Total Amount",
+    "paidOn": "Paid On",
+    "close": "Close",
+    "cancel": "Cancel",
+    "batchExportModal": {
+      "title": "Batch Export Invoices",
+      "filterStatus": "Status",
+      "filterMonth": "Month",
+      "clearFilter": "Clear Filter",
+      "selectAll": "Select All",
+      "deselectAll": "Deselect All",
+      "selected": "Selected",
+      "noInvoices": "No invoices match the filter",
+      "exporting": "Exporting...",
+      "exportCount": "Export {{count}} invoices"
     }
   }
 }

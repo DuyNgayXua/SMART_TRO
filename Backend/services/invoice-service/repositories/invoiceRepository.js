@@ -179,9 +179,11 @@ class InvoiceRepository {
                 total: 0,
                 totalAmount: 0,
                 paid: { count: 0, amount: 0 },
+                sent: { count: 0, amount: 0 },
                 pending: { count: 0, amount: 0 },
                 overdue: { count: 0, amount: 0 },
-                draft: { count: 0, amount: 0 }
+                draft: { count: 0, amount: 0 },
+                cancelled: { count: 0, amount: 0 }
             };
 
             stats.forEach(stat => {

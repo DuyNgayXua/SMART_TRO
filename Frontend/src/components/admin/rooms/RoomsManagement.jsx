@@ -11,6 +11,7 @@ import depositContractsAPI from '../../../services/depositContractsAPI';
 import contractsAPI from '../../../services/contractsAPI';
 import tenantsAPI from '../../../services/tenantsAPI';
 import invoicesAPI from '../../../services/invoicesAPI';
+import sebayAPI from '../../../services/sebayAPI';
 import api from '../../../services/api';
 
 const RoomsManagement = () => {
@@ -106,6 +107,13 @@ const RoomsManagement = () => {
   // Cancel Expiring Modal States
   const [showCancelExpiringModal, setShowCancelExpiringModal] = useState(false);
   const [selectedRoomForCancelExpiring, setSelectedRoomForCancelExpiring] = useState(null);
+  
+  // Terminate Contract Modal States
+  const [showTerminateContractModal, setShowTerminateContractModal] = useState(false);
+  const [selectedRoomForTerminate, setSelectedRoomForTerminate] = useState(null);
+  const [createFinalInvoice, setCreateFinalInvoice] = useState(false);
+  const [terminatingContract, setTerminatingContract] = useState(false);
+  const [pendingTermination, setPendingTermination] = useState(false); // Flag để xử lý kết thúc sau khi tạo hóa đơn
   
   const [currentRoomContract, setCurrentRoomContract] = useState(null);
   const [availableRoomsForTransfer, setAvailableRoomsForTransfer] = useState([]);
@@ -2310,8 +2318,43 @@ const RoomsManagement = () => {
       const response = await invoicesAPI.createInvoice(invoiceData);
 
       if (response.success) {
-        showToast('success', 'Tạo hóa đơn thành công');
+        // Nếu chọn gửi email/zalo, tạo QR code thanh toán
+        if (sendZaloInvoice && response.data) {
+          try {
+            // Tính tổng tiền hóa đơn
+            const totalAmount = response.data.totalAmount || calculateInvoiceTotal();
+            
+            // Tạo nội dung chuyển khoản
+            const description = `Thanh toan hoa don phong ${selectedRoomForInvoice?.roomNumber || ''} - ${invoiceFormData.periodStart} den ${invoiceFormData.periodEnd}`;
+            
+            // Gọi API Sebay tạo QR code
+            const qrResponse = await sebayAPI.createPaymentQR({
+              amount: totalAmount,
+              description: description,
+              invoiceId: response.data._id || response.data.id
+            });
+            
+            if (qrResponse.success) {
+              showToast('success', 'Tạo hóa đơn và mã QR thanh toán thành công');
+            } else {
+              showToast('warning', 'Tạo hóa đơn thành công nhưng không thể tạo mã QR');
+            }
+          } catch (qrError) {
+            console.error('Error creating QR code:', qrError);
+            showToast('warning', 'Tạo hóa đơn thành công nhưng lỗi khi tạo mã QR');
+          }
+        } else {
+          showToast('success', 'Tạo hóa đơn thành công');
+        }
+        
         setShowInvoiceModal(false);
+        
+        // Nếu đang trong flow kết thúc hợp đồng, thực hiện kết thúc sau khi tạo hóa đơn
+        if (pendingTermination) {
+          await executeTerminateContract();
+          setPendingTermination(false);
+        }
+        
         // Reset form
         setInvoiceFormData({
           issueDate: new Date().toISOString().split('T')[0],
@@ -2448,11 +2491,73 @@ const RoomsManagement = () => {
   };
 
   const handleTerminateContract = (room) => {
-    // TODO: Implement terminate contract modal/page
-    if (window.confirm(t('rooms.messages.confirmTerminate'))) {
-      console.log('Terminate contract for room:', room);
-      showToast('info', t('rooms.messages.terminateContractDev') || 'Chức năng đang phát triển');
+    setSelectedRoomForTerminate(room);
+    setCreateFinalInvoice(false);
+    setShowTerminateContractModal(true);
+  };
+
+  const confirmTerminateContract = async () => {
+    if (!selectedRoomForTerminate) return;
+    
+    // Nếu chọn tạo hóa đơn tháng cuối, mở form tạo hóa đơn
+    if (createFinalInvoice) {
+      setShowTerminateContractModal(false);
+      setPendingTermination(true); // Đánh dấu sẽ kết thúc hợp đồng sau khi tạo hóa đơn
+      await handleCreateInvoice(selectedRoomForTerminate);
+      return;
     }
+    
+    // Nếu không tạo hóa đơn, kết thúc hợp đồng luôn
+    await executeTerminateContract();
+  };
+
+  const executeTerminateContract = async () => {
+    if (!selectedRoomForTerminate) return;
+    
+    setTerminatingContract(true);
+    setShowTerminateContractModal(false);
+    
+    try {
+      // 1. Lấy tất cả hợp đồng của phòng
+      const contractsRes = await contractsAPI.getContractsByRoom(selectedRoomForTerminate.id);
+      
+      if (contractsRes.success && contractsRes.data) {
+        const activeContracts = Array.isArray(contractsRes.data) 
+          ? contractsRes.data.filter(c => c.status === 'active' || c.status === 'expiring')
+          : (contractsRes.data.status === 'active' || contractsRes.data.status === 'expiring' ? [contractsRes.data] : []);
+        
+        // 2. Xóa hoặc cập nhật trạng thái hợp đồng về 'terminated'
+        for (const contract of activeContracts) {
+          await contractsAPI.updateContract(contract._id, { status: 'terminated' });
+        }
+        
+        // 3. Lấy tất cả khách thuê của phòng và xóa khỏi phòng
+        const tenantsRes = await tenantsAPI.getTenantsByRoom(selectedRoomForTerminate.id, { isActive: true });
+        const tenants = tenantsRes.success ? (Array.isArray(tenantsRes.data) ? tenantsRes.data : []) : [];
+        
+        // 4. Cập nhật phòng: xóa tenants và chuyển status về available
+        await roomsAPI.updateRoom(selectedRoomForTerminate.id, { 
+          status: 'available',
+          tenants: []
+        });
+        
+        showToast('success', `Đã kết thúc hợp đồng và xóa ${tenants.length} khách thuê khỏi phòng`);
+        fetchRooms();
+      }
+    } catch (error) {
+      console.error('Error terminating contract:', error);
+      showToast('error', 'Lỗi khi kết thúc hợp đồng');
+    } finally {
+      setTerminatingContract(false);
+      setSelectedRoomForTerminate(null);
+      setCreateFinalInvoice(false);
+    }
+  };
+
+  const cancelTerminateContract = () => {
+    setShowTerminateContractModal(false);
+    setSelectedRoomForTerminate(null);
+    setCreateFinalInvoice(false);
   };
 
   const handleMarkAsExpiring = async (room) => {
@@ -4245,7 +4350,7 @@ const RoomsManagement = () => {
                             <label htmlFor={`tenantImages_${index}`} className="image-upload-btn">
                               <div className="image-upload-placeholder">
                                 <i className="fas fa-plus-circle"></i>
-                                <span>Thêm ảnh</span>
+                                <span>{t('contracts.rental.form.addImage', 'Thêm ảnh')}</span>
                                 <small>({tenant.tenantImages ? tenant.tenantImages.length : 0}/5)</small>
                               </div>
                             </label>
@@ -4351,8 +4456,8 @@ const RoomsManagement = () => {
               ) : (
                 <div className="no-vehicles-message">
                   <i className="fas fa-car"></i>
-                  <p>Chưa có thông tin phương tiện nào</p>
-                  <small>Nhấn "Thêm xe" để thêm thông tin phương tiện</small>
+                  <p>{t('contracts.rental.vehicleInfo.noVehicles', 'Chưa có thông tin phương tiện nào')}</p>
+                  <small>{t('contracts.rental.vehicleInfo.noVehiclesDesc', 'Nhấn "Thêm xe" để thêm thông tin phương tiện')}</small>
                 </div>
               )}
             </div>
@@ -4362,30 +4467,30 @@ const RoomsManagement = () => {
             <div className="rental-contract-right">
               {/* Room Information */}
               <div className="form-section">
-                <h3><i className="fas fa-home"></i> Thông tin phòng</h3>
+                <h3><i className="fas fa-home"></i> {t('contracts.rental.roomInfo.title', 'Thông tin phòng')}</h3>
                 
                 <div className="room-info-card">
                   <div className="room-info-item">
-                    <span className="info-label">Tên phòng:</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.roomName', 'Tên phòng:')}</span>
                     <span className="info-value">{selectedRoomForContract.name}</span>
                   </div>
                   <div className="room-info-item">
-                    <span className="info-label">Sức chứa:</span>
-                    <span className="info-value">{selectedRoomForContract.capacity} người</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.capacity', 'Sức chứa:')}</span>
+                    <span className="info-value">{selectedRoomForContract.capacity} {t('contracts.rental.roomInfo.capacityUnit', 'người')}</span>
                   </div>
                   <div className="room-info-item">
-                    <span className="info-label">Diện tích:</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.area', 'Diện tích:')}</span>
                     <span className="info-value">{selectedRoomForContract.area} m²</span>
                   </div>
                   <div className="room-info-item">
-                    <span className="info-label">Giá phòng:</span>
+                    <span className="info-label">{t('contracts.rental.roomInfo.price', 'Giá phòng:')}</span>
                     <span className="info-value highlight">{Number(selectedRoomForContract.price).toLocaleString('vi-VN')} VNĐ</span>
                   </div>
                   
                   {/* Amenities */}
                   {selectedRoomForContract.amenities && selectedRoomForContract.amenities.length > 0 && (
                     <div className="room-info-item amenities-item">
-                      <span className="info-label">Tiện ích:</span>
+                      <span className="info-label">{t('contracts.rental.roomInfo.amenities', 'Tiện ích:')}</span>
                       <div className="amenities-list" style={{
                         display: 'flex', 
                         flexWrap: 'wrap', 
@@ -4419,12 +4524,12 @@ const RoomsManagement = () => {
 
             {/* Contract Information */}
             <div className="form-section">
-              <h3><i className="fas fa-calendar-alt"></i> Thông tin hợp đồng</h3>
+              <h3><i className="fas fa-calendar-alt"></i> {t('contracts.rental.contractInfo.title', 'Thông tin hợp đồng')}</h3>
               
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="startDate" className="form-label">
-                    Ngày bắt đầu <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.startDate', 'Ngày bắt đầu')} <span className="required">*</span>
                   </label>
                   <input
                     type="date"
@@ -4438,7 +4543,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="endDate" className="form-label">
-                    Ngày kết thúc <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.endDate', 'Ngày kết thúc')} <span className="required">*</span>
                   </label>
                   <div className="date-input-container">
                     <input
@@ -4453,17 +4558,17 @@ const RoomsManagement = () => {
                         type="button"
                         className="quick-date-btn"
                         onClick={() => setEndDateQuick(6)}
-                        title="6 tháng từ ngày bắt đầu"
+                        title={t('contracts.rental.contractInfo.quickDate6M', '6 tháng từ ngày bắt đầu')}
                       >
-                        6T
+                        {t('contracts.rental.contractInfo.quick6M', '6T')}
                       </button>
                       <button
                         type="button"
                         className="quick-date-btn"
                         onClick={() => setEndDateQuick(12)}
-                        title="1 năm từ ngày bắt đầu"
+                        title={t('contracts.rental.contractInfo.quickDate1Y', '1 năm từ ngày bắt đầu')}
                       >
-                        1N
+                        {t('contracts.rental.contractInfo.quick1Y', '1N')}
                       </button>
                     </div>
                   </div>
@@ -4474,7 +4579,7 @@ const RoomsManagement = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="deposit" className="form-label">
-                    Tiền cọc <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.deposit', 'Tiền cọc')} <span className="required">*</span>
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-money-bill-wave"></i>
@@ -4495,7 +4600,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="monthlyRent" className="form-label">
-                    Tiền thuê hàng tháng <span className="required">*</span>
+                    {t('contracts.rental.contractInfo.monthlyRent', 'Tiền thuê hàng tháng')} <span className="required">*</span>
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-home"></i>
@@ -4518,12 +4623,12 @@ const RoomsManagement = () => {
 
             {/* Pricing Information */}
             <div className="form-section">
-              <h3><i className="fas fa-calculator"></i> Chi phí dịch vụ</h3>
+              <h3><i className="fas fa-calculator"></i> {t('contracts.rental.serviceInfo.title', 'Chi phí dịch vụ')}</h3>
               
               <div className="service-pricing-grid">
                 <div className="form-group">
                   <label htmlFor="electricityPrice" className="form-label">
-                    Giá điện (VNĐ/kWh)
+                    {t('contracts.rental.serviceInfo.electricityPrice', 'Giá điện (VNĐ/kWh)')}
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-bolt"></i>
@@ -4543,7 +4648,7 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label htmlFor="servicePrice" className="form-label">
-                    Phí dịch vụ (VNĐ/tháng)
+                    {t('contracts.rental.serviceInfo.servicePrice', 'Phí dịch vụ (VNĐ/tháng)')}
                   </label>
                   <div className="form-input-group">
                     <i className="input-icon fas fa-concierge-bell"></i>
@@ -4563,22 +4668,22 @@ const RoomsManagement = () => {
 
                 <div className="form-group">
                   <label className="form-label">
-                    Cách tính tiền nước
+                    {t('contracts.rental.serviceInfo.waterChargeType', 'Cách tính tiền nước')}
                   </label>
                   <select
                     className="form-input"
                     value={rentalContractData.waterChargeType}
                     onChange={(e) => setRentalContractData(prev => ({...prev, waterChargeType: e.target.value}))}
                   >
-                    <option value="fixed">💧 Giá cố định</option>
-                    <option value="per_person">👥 Tính theo người</option>
+                    <option value="fixed">{t('contracts.rental.serviceInfo.waterChargeFixed', '💧 Giá cố định')}</option>
+                    <option value="per_person">{t('contracts.rental.serviceInfo.waterChargePerPerson', '👥 Tính theo người')}</option>
                   </select>
                 </div>
 
                 {rentalContractData.waterChargeType === 'fixed' && (
                   <div className="form-group">
                     <label htmlFor="waterPrice" className="form-label">
-                      Giá nước<br />(VNĐ/khối)
+                      {t('contracts.rental.serviceInfo.waterPrice', 'Giá nước')}<br />{t('contracts.rental.serviceInfo.waterPriceUnit', '(VNĐ/khối)')}
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-tint"></i>
@@ -4600,7 +4705,7 @@ const RoomsManagement = () => {
                 {rentalContractData.waterChargeType === 'per_person' && (
                   <div className="form-group">
                     <label htmlFor="waterPricePerPerson" className="form-label">
-                      Giá nước theo người (VNĐ/người/tháng)
+                      {t('contracts.rental.serviceInfo.waterPricePerPerson', 'Giá nước theo người (VNĐ/người/tháng)')}
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-user-friends"></i>
@@ -4623,7 +4728,7 @@ const RoomsManagement = () => {
               <div className="form-row">
                 <div className="form-group">
                   <label htmlFor="paymentCycle" className="form-label">
-                    Chu kỳ thanh toán
+                    {t('contracts.rental.serviceInfo.paymentCycle', 'Chu kỳ thanh toán')}
                   </label>
                   <select
                     id="paymentCycle"
@@ -4631,23 +4736,23 @@ const RoomsManagement = () => {
                     value={rentalContractData.paymentCycle}
                     onChange={(e) => setRentalContractData(prev => ({...prev, paymentCycle: e.target.value}))}
                   >
-                    <option value="monthly">📅 Hàng tháng</option>
-                    <option value="quarterly">📊 Hàng quý</option>
-                    <option value="yearly">📈 Hàng năm</option>
+                    <option value="monthly">{t('contracts.rental.serviceInfo.paymentMonthly', '📅 Hàng tháng')}</option>
+                    <option value="quarterly">{t('contracts.rental.serviceInfo.paymentQuarterly', '📊 Hàng quý')}</option>
+                    <option value="yearly">{t('contracts.rental.serviceInfo.paymentYearly', '📈 Hàng năm')}</option>
                   </select>
                 </div>
 
                 <div className="form-group">
                   <label htmlFor="notes" className="form-label">
-                    Ghi chú
+                    {t('contracts.rental.serviceInfo.notes', 'Ghi chú')}
                   </label>
                   <textarea
                     id="notes"
                     className="form-input"
+                    rows="3"
                     value={rentalContractData.notes}
                     onChange={(e) => setRentalContractData(prev => ({...prev, notes: e.target.value}))}
-                    placeholder={t('contracts.form.notesPlaceholder')}
-                    rows="3"
+                    placeholder={t('contracts.rental.serviceInfo.notesPlaceholder', 'Nhập ghi chú bổ sung (tùy chọn)')}
                     style={{resize: 'vertical', minHeight: '80px'}}
                   />
                 </div>
@@ -4655,11 +4760,11 @@ const RoomsManagement = () => {
 
               {/* Current Meter Readings */}
               <div className="meter-readings-section">
-                <h3><i className="fas fa-tachometer-alt"></i>Chỉ số điện nước hiện tại</h3>
+                <h3><i className="fas fa-tachometer-alt"></i>{t('contracts.rental.meterReadings.title', 'Chỉ số điện nước hiện tại')}</h3>
                 <div className="form-row">
                   <div className="form-group">
                     <label className="form-label">
-                      Chỉ số điện (kWh) <span className="required">*</span>
+                      {t('contracts.rental.meterReadings.electricIndex', 'Chỉ số điện (kWh)')} <span className="required">*</span>
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-bolt"></i>
@@ -4669,7 +4774,7 @@ const RoomsManagement = () => {
                         className={`form-input ${rentalContractErrors.currentElectricIndex ? 'error' : ''}`}
                         value={rentalContractData.currentElectricIndex}
                         onChange={(e) => setRentalContractData(prev => ({...prev, currentElectricIndex: e.target.value}))}
-                        placeholder="Nhập chỉ số điện hiện tại"
+                        placeholder={t('contracts.rental.meterReadings.electricIndexPlaceholder', 'Nhập chỉ số điện hiện tại')}
                       />
                     </div>
                     {rentalContractErrors.currentElectricIndex && (
@@ -4679,7 +4784,7 @@ const RoomsManagement = () => {
                   
                   <div className="form-group">
                     <label className="form-label">
-                      Chỉ số nước (m³) <span className="required">*</span>
+                      {t('contracts.rental.meterReadings.waterIndex', 'Chỉ số nước (m³)')} <span className="required">*</span>
                     </label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-tint"></i>
@@ -4689,7 +4794,7 @@ const RoomsManagement = () => {
                         className={`form-input ${rentalContractErrors.currentWaterIndex ? 'error' : ''}`}
                         value={rentalContractData.currentWaterIndex}
                         onChange={(e) => setRentalContractData(prev => ({...prev, currentWaterIndex: e.target.value}))}
-                        placeholder="Nhập chỉ số nước hiện tại"
+                        placeholder={t('contracts.rental.meterReadings.waterIndexPlaceholder', 'Nhập chỉ số nước hiện tại')}
                       />
                     </div>
                     {rentalContractErrors.currentWaterIndex && (
@@ -4756,16 +4861,16 @@ const RoomsManagement = () => {
             {loadingTenants ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
-                <p>Đang tải danh sách khách thuê...</p>
+                <p>{t('contracts.rental.tenantsSection.loading', 'Đang tải danh sách khách thuê...')}</p>
               </div>
             ) : roomTenants.length === 0 ? (
               <div className="empty-tenants">
                 <div className="empty-icon">👥</div>
-                <h3>Chưa có khách thuê</h3>
-                <p>Phòng này chưa có khách thuê nào.</p>
+                <h3>{t('contracts.rental.tenantsSection.noTenants', 'Chưa có khách thuê')}</h3>
+                <p>{t('contracts.rental.tenantsSection.noTenantsDesc', 'Phòng này chưa có khách thuê nào.')}</p>
                 <button className="btn-primary" onClick={handleAddTenant}>
                   <i className="fas fa-user-plus"></i>
-                  Thêm khách thuê đầu tiên
+                  {t('contracts.rental.tenantInfo.addTenant', 'Thêm khách thuê đầu tiên')}
                 </button>
               </div>
             ) : (
@@ -4837,11 +4942,11 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h4 className="section-title">
                   <i className="fas fa-user"></i>
-                  Thông tin khách thuê
+                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin khách thuê')}
                 </h4>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Họ và tên *</label>
+                    <label className="form-label">{t('contracts.rental.form.fullName', 'Họ và tên *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-user"></i>
                       <input
@@ -4849,7 +4954,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.fullName}
                         onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
-                        placeholder="Nhập họ và tên"
+                        placeholder={t('contracts.rental.form.fullNamePlaceholder', 'Nhập họ và tên')}
                       />
                     </div>
                     {tenantFormErrors.fullName && (
@@ -4857,7 +4962,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Số điện thoại *</label>
+                    <label className="form-label">{t('contracts.rental.form.phone', 'Số điện thoại *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-phone"></i>
                       <input
@@ -4865,7 +4970,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.phone}
                         onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
-                        placeholder="Nhập số điện thoại"
+                        placeholder={t('contracts.rental.form.phonePlaceholder', 'Nhập số điện thoại')}
                       />
                     </div>
                     {tenantFormErrors.phone && (
@@ -4876,7 +4981,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Email</label>
+                    <label className="form-label">{t('contracts.rental.form.email', 'Email')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-envelope"></i>
                       <input
@@ -4884,7 +4989,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.email}
                         onChange={(e) => setTenantFormData(prev => ({...prev, email: e.target.value}))}
-                        placeholder="email@example.com"
+                        placeholder={t('contracts.rental.form.emailPlaceholder', 'email@example.com')}
                       />
                     </div>
                     {tenantFormErrors.email && (
@@ -4892,7 +4997,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">CMND/CCCD *</label>
+                    <label className="form-label">{t('contracts.rental.form.idNumber', 'CMND/CCCD *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-id-card"></i>
                       <input
@@ -4900,7 +5005,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.identificationNumber}
                         onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
-                        placeholder="Nhập số CMND/CCCD"
+                        placeholder={t('contracts.rental.form.idNumberPlaceholder', 'Nhập số CMND/CCCD')}
                       />
                     </div>
                     {tenantFormErrors.identificationNumber && (
@@ -4911,7 +5016,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Địa chỉ</label>
+                    <label className="form-label">{t('contracts.rental.form.address', 'Địa chỉ')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-map-marker-alt"></i>
                       <input
@@ -4919,7 +5024,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.address}
                         onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
-                        placeholder="Nhập địa chỉ (không bắt buộc)"
+                        placeholder={t('contracts.rental.form.addressPlaceholder', 'Nhập địa chỉ (không bắt buộc)')}
                       />
                     </div>
                     {tenantFormErrors.address && (
@@ -4931,7 +5036,7 @@ const RoomsManagement = () => {
                 {/* Image Upload Section */}
                 <div className="form-row">
                   <div className="form-group full-width">
-                    <label className="form-label">Ảnh căn cước/chân dung</label>
+                    <label className="form-label">{t('contracts.rental.form.idImages', 'Ảnh căn cước/chân dung')}</label>
                     <div className="image-upload-section">
                       <div className="image-upload-area">
                         <input
@@ -4945,7 +5050,7 @@ const RoomsManagement = () => {
                             const filesToAdd = files.slice(0, availableSlots);
                             
                             if (files.length > availableSlots) {
-                              showToast(`Chỉ có thể tải lên tối đa 5 ảnh. Đã thêm ${filesToAdd.length} ảnh đầu tiên.`, 'warning');
+                              showToast(t('contracts.rental.form.maxImagesWarning', `Chỉ có thể tải lên tối đa 5 ảnh. Đã thêm ${filesToAdd.length} ảnh đầu tiên.`, {count: filesToAdd.length}), 'warning');
                             }
                             
                             setTenantFormData(prev => ({
@@ -5009,7 +5114,7 @@ const RoomsManagement = () => {
                               className="btn-add-vehicle"
                               onClick={() => setShowVehicleForm(true)}
                             >
-                              <i className="fas fa-plus"></i> Thêm thông tin xe ({currentVehicles}/{maxVehicles})
+                              <i className="fas fa-plus"></i> {t('vehicles.form.addVehicleInfo', 'Thêm thông tin xe')} ({currentVehicles}/{maxVehicles})
                             </button>
                           </div>
                         </div>
@@ -5019,13 +5124,13 @@ const RoomsManagement = () => {
                         <div className="vehicle-form-section">
                           <div className="form-row">
                             <div className="form-group">
-                              <label className="form-label">Biển số xe</label>
+                              <label className="form-label">{t('vehicles.form.licensePlate', 'Biển số xe')}</label>
                               <input
                                 type="text"
                                 className="form-input"
                                 value={tenantFormData.vehicleLicensePlate}
                                 onChange={(e) => setTenantFormData(prev => ({...prev, vehicleLicensePlate: e.target.value}))}
-                                placeholder="Nhập biển số xe"
+                                placeholder={t('vehicles.form.licensePlatePlaceholder', 'Nhập biển số xe')}
                               />
                             </div>
                             <div className="form-group">
@@ -5049,7 +5154,7 @@ const RoomsManagement = () => {
                                   setTenantFormData(prev => ({...prev, vehicleLicensePlate: '', vehicleType: ''}));
                                 }}
                               >
-                                <i className="fas fa-times"></i> Bỏ thông tin xe
+                                <i className="fas fa-times"></i> {t('vehicles.form.removeVehicleInfo', 'Bỏ thông tin xe')}
                               </button>
                             </div>
                           </div>
@@ -5061,7 +5166,7 @@ const RoomsManagement = () => {
                           <div className="form-group full-width">
                             <div className="vehicle-limit-message">
                               <i className="fas fa-info-circle"></i>
-                              Phòng này đã đạt giới hạn xe ({currentVehicles}/{maxVehicles})
+                              {t('vehicles.form.vehicleLimitReached', 'Phòng này đã đạt giới hạn xe')} ({currentVehicles}/{maxVehicles})
                             </div>
                           </div>
                         </div>
@@ -5075,7 +5180,7 @@ const RoomsManagement = () => {
 
           <div className="room-modal-footer">
             <button className="btn-secondary" onClick={closeTenantModals} disabled={savingTenant}>
-              <i className="fas fa-times"></i> Hủy
+              <i className="fas fa-times"></i> {t('common.cancel', 'Hủy')}
             </button>
             <button className="btn-primary" onClick={handleSaveTenant} disabled={savingTenant}>
               {savingTenant ? (
@@ -5106,11 +5211,11 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h4 className="section-title">
                   <i className="fas fa-user"></i>
-                  Thông tin khách thuê
+                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin khách thuê')}
                 </h4>
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Họ và tên *</label>
+                    <label className="form-label">{t('contracts.rental.form.fullName', 'Họ và tên *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-user"></i>
                       <input
@@ -5118,7 +5223,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.fullName}
                         onChange={(e) => setTenantFormData(prev => ({...prev, fullName: e.target.value}))}
-                        placeholder="Nhập họ và tên"
+                        placeholder={t('contracts.rental.form.fullNamePlaceholder', 'Nhập họ và tên')}
                       />
                     </div>
                     {tenantFormErrors.fullName && (
@@ -5126,7 +5231,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Số điện thoại *</label>
+                    <label className="form-label">{t('contracts.rental.form.phone', 'Số điện thoại *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-phone"></i>
                       <input
@@ -5134,7 +5239,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.phone}
                         onChange={(e) => setTenantFormData(prev => ({...prev, phone: e.target.value}))}
-                        placeholder="Nhập số điện thoại"
+                        placeholder={t('contracts.rental.form.phonePlaceholder', 'Nhập số điện thoại')}
                       />
                     </div>
                     {tenantFormErrors.phone && (
@@ -5145,7 +5250,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Email</label>
+                    <label className="form-label">{t('contracts.rental.form.email', 'Email')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-envelope"></i>
                       <input
@@ -5153,7 +5258,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.email}
                         onChange={(e) => setTenantFormData(prev => ({...prev, email: e.target.value}))}
-                        placeholder="email@example.com"
+                        placeholder={t('contracts.rental.form.emailPlaceholder', 'email@example.com')}
                       />
                     </div>
                     {tenantFormErrors.email && (
@@ -5161,7 +5266,7 @@ const RoomsManagement = () => {
                     )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">CMND/CCCD *</label>
+                    <label className="form-label">{t('contracts.rental.form.idNumber', 'CMND/CCCD *')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-id-card"></i>
                       <input
@@ -5169,7 +5274,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.identificationNumber}
                         onChange={(e) => setTenantFormData(prev => ({...prev, identificationNumber: e.target.value}))}
-                        placeholder="Nhập số CMND/CCCD"
+                        placeholder={t('contracts.rental.form.idNumberPlaceholder', 'Nhập số CMND/CCCD')}
                       />
                     </div>
                     {tenantFormErrors.identificationNumber && (
@@ -5180,7 +5285,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-row">
                   <div className="form-group">
-                    <label className="form-label">Địa chỉ</label>
+                    <label className="form-label">{t('contracts.rental.form.address', 'Địa chỉ')}</label>
                     <div className="form-input-group">
                       <i className="input-icon fas fa-map-marker-alt"></i>
                       <input
@@ -5188,7 +5293,7 @@ const RoomsManagement = () => {
                         className="form-input"
                         value={tenantFormData.address}
                         onChange={(e) => setTenantFormData(prev => ({...prev, address: e.target.value}))}
-                        placeholder="Nhập địa chỉ (không bắt buộc)"
+                        placeholder={t('contracts.rental.form.addressPlaceholder', 'Nhập địa chỉ (không bắt buộc)')}
                       />
                     </div>
                     {tenantFormErrors.address && (
@@ -5200,7 +5305,7 @@ const RoomsManagement = () => {
                 {/* Image Upload Section */}
                 <div className="form-row">
                   <div className="form-group full-width">
-                    <label className="form-label">Ảnh căn cước/chân dung</label>
+                    <label className="form-label">{t('contracts.rental.form.idImages', 'Ảnh căn cước/chân dung')}</label>
                     <div className="image-upload-section">
                       <div className="image-upload-area">
                         <input
@@ -5509,7 +5614,7 @@ const RoomsManagement = () => {
                 
                 <div className="form-grid">
                   <div className="form-group">
-                    <label className="form-label">Biển số xe *</label>
+                    <label className="form-label">{t('vehicles.form.licensePlate', 'Biển số xe *')}</label>
                     <input
                       type="text"
                       className={`form-input ${vehicleFormErrors.licensePlate ? 'error' : ''}`}
@@ -5518,7 +5623,7 @@ const RoomsManagement = () => {
                         ...prev,
                         licensePlate: e.target.value
                       }))}
-                      placeholder="Nhập biển số xe"
+                      placeholder={t('vehicles.form.licensePlatePlaceholder', 'Nhập biển số xe')}
                     />
                     {vehicleFormErrors.licensePlate && (
                       <span className="error-message">{vehicleFormErrors.licensePlate}</span>
@@ -5536,11 +5641,11 @@ const RoomsManagement = () => {
                       }))}
                     >
                       <option value="">{t('vehicles.form.selectVehicleType')}</option>
-                      <option value="Xe máy">🏍️ Xe máy</option>
-                      <option value="Xe đạp">🚲 Xe đạp</option>
-                      <option value="Ô tô">🚗 Ô tô</option>
-                      <option value="Xe điện">⚡ Xe điện</option>
-                      <option value="Khác">🔧 Khác</option>
+                      <option value="Xe máy">🏍️ {t('vehicles.types.motorcycle', 'Xe máy')}</option>
+                      <option value="Xe đạp">🚲 {t('vehicles.types.bicycle', 'Xe đạp')}</option>
+                      <option value="Ô tô">🚗 {t('vehicles.types.car', 'Ô tô')}</option>
+                      <option value="Xe điện">⚡ {t('vehicles.types.electric', 'Xe điện')}</option>
+                      <option value="Khác">🔧 {t('vehicles.types.other', 'Khác')}</option>
                     </select>
                     {vehicleFormErrors.vehicleType && (
                       <span className="error-message">{vehicleFormErrors.vehicleType}</span>
@@ -5552,12 +5657,12 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h3 className="section-title">
                   <i className="fas fa-user"></i>
-                  Thông tin chủ xe
+                  {t('vehicles.form.ownerInfoTitle', 'Thông tin chủ xe')}
                 </h3>
                 
                 <div className="form-grid">
                   <div className="form-group">
-                    <label className="form-label">Tên chủ xe *</label>
+                    <label className="form-label">{t('vehicles.form.ownerName', 'Tên chủ xe *')}</label>
                     <input
                       type="text"
                       className={`form-input ${vehicleFormErrors.ownerName ? 'error' : ''}`}
@@ -5566,7 +5671,7 @@ const RoomsManagement = () => {
                         ...prev,
                         ownerName: e.target.value
                       }))}
-                      placeholder="Nhập tên chủ xe"
+                      placeholder={t('vehicles.form.ownerNamePlaceholder', 'Nhập tên chủ xe')}
                     />
                     {vehicleFormErrors.ownerName && (
                       <span className="error-message">{vehicleFormErrors.ownerName}</span>
@@ -5574,7 +5679,7 @@ const RoomsManagement = () => {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">Số điện thoại *</label>
+                    <label className="form-label">{t('vehicles.form.ownerPhone', 'Số điện thoại *')}</label>
                     <input
                       type="tel"
                       className={`form-input ${vehicleFormErrors.ownerPhone ? 'error' : ''}`}
@@ -5583,7 +5688,7 @@ const RoomsManagement = () => {
                         ...prev,
                         ownerPhone: e.target.value
                       }))}
-                      placeholder="Nhập số điện thoại"
+                      placeholder={t('vehicles.form.ownerPhonePlaceholder', 'Nhập số điện thoại')}
                     />
                     {vehicleFormErrors.ownerPhone && (
                       <span className="error-message">{vehicleFormErrors.ownerPhone}</span>
@@ -5595,11 +5700,11 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h3 className="section-title">
                   <i className="fas fa-sticky-note"></i>
-                  Thông tin bổ sung
+                  {t('vehicles.form.additionalInfoTitle', 'Thông tin bổ sung')}
                 </h3>
                 
                 <div className="form-group">
-                  <label className="form-label">Ghi chú</label>
+                  <label className="form-label">{t('vehicles.form.notes', 'Ghi chú')}</label>
                   <textarea
                     className="form-input"
                     value={vehicleFormData.notes}
@@ -5617,7 +5722,7 @@ const RoomsManagement = () => {
 
           <div className="room-modal-footer">
             <button className="btn-secondary" onClick={closeEditVehicleModal} disabled={savingVehicle}>
-              <i className="fas fa-times"></i> Hủy
+              <i className="fas fa-times"></i> {t('common.cancel', 'Hủy')}
             </button>
             <button className="btn-primary" onClick={handleSaveVehicle} disabled={savingVehicle}>
               {savingVehicle ? (
@@ -5937,7 +6042,7 @@ const RoomsManagement = () => {
                     </h4>
                     <div className="room-form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr auto'}}>
                       <div className="room-form-group">
-                        <label className="room-form-label">Chỉ số cũ</label>
+                        <label className="room-form-label">{t('invoices.form.oldReading', 'Chỉ số cũ')}</label>
                         <input
                           type="number"
                           min="0"
@@ -5950,7 +6055,7 @@ const RoomsManagement = () => {
                       </div>
 
                       <div className="room-form-group">
-                        <label className="room-form-label">Chỉ số mới *</label>
+                        <label className="room-form-label">{t('invoices.form.newReading', 'Chỉ số mới *')}</label>
                         <input
                           type="number"
                           name="electricNewReading"
@@ -5967,7 +6072,7 @@ const RoomsManagement = () => {
                       </div>
 
                       <div className="room-form-group">
-                        <label className="room-form-label">Tiêu thụ</label>
+                        <label className="room-form-label">{t('invoices.form.consumption', 'Tiêu thụ')}</label>
                         <input
                           type="number"
                           className="room-form-input"
@@ -5978,7 +6083,7 @@ const RoomsManagement = () => {
                       </div>
 
                       <div className="room-form-group">
-                        <label className="room-form-label">Thành tiền</label>
+                        <label className="room-form-label">{t('invoices.form.totalAmount', 'Thành tiền')}</label>
                         <div style={{
                           padding: '10px 12px',
                           backgroundColor: '#f0f9ff',
@@ -5989,7 +6094,7 @@ const RoomsManagement = () => {
                           textAlign: 'center',
                           minWidth: '120px'
                         }}>
-                          {(((invoiceFormData.electricNewReading || 0) - (invoiceFormData.electricOldReading || 0)) * (invoiceFormData.electricRate || 0)).toLocaleString('vi-VN')} VNĐ
+                          {(((invoiceFormData.electricNewReading || 0) - (invoiceFormData.electricOldReading || 0)) * (invoiceFormData.electricRate || 0)).toLocaleString('vi-VN')} {t('common.currency', 'VNĐ')}
                         </div>
                       </div>
                     </div>
@@ -6005,7 +6110,7 @@ const RoomsManagement = () => {
                         </h4>
                         <div className="room-form-grid" style={{gridTemplateColumns: '1fr 1fr 1fr auto'}}>
                           <div className="room-form-group">
-                            <label className="room-form-label">Chỉ số cũ</label>
+                            <label className="room-form-label">{t('invoices.form.oldReading', 'Chỉ số cũ')}</label>
                             <input
                               type="number"
                               min="0"
@@ -6018,7 +6123,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Chỉ số mới *</label>
+                            <label className="room-form-label">{t('invoices.form.newReading', 'Chỉ số mới *')}</label>
                             <input
                               type="number"
                               name="waterNewReading"
@@ -6035,7 +6140,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Tiêu thụ</label>
+                            <label className="room-form-label">{t('invoices.form.consumption', 'Tiêu thụ')}</label>
                             <input
                               type="number"
                               className="room-form-input"
@@ -6046,7 +6151,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Thành tiền</label>
+                            <label className="room-form-label">{t('invoices.form.totalAmount', 'Thành tiền')}</label>
                             <div style={{
                               padding: '10px 12px',
                               backgroundColor: '#f0fdfa',
@@ -6057,7 +6162,7 @@ const RoomsManagement = () => {
                               textAlign: 'center',
                               minWidth: '120px'
                             }}>
-                              {(((invoiceFormData.waterNewReading || 0) - (invoiceFormData.waterOldReading || 0)) * (invoiceFormData.waterRate || 0)).toLocaleString('vi-VN')} VNĐ
+                              {(((invoiceFormData.waterNewReading || 0) - (invoiceFormData.waterOldReading || 0)) * (invoiceFormData.waterRate || 0)).toLocaleString('vi-VN')} {t('common.currency', 'VNĐ')}
                             </div>
                           </div>
                         </div>
@@ -6070,7 +6175,7 @@ const RoomsManagement = () => {
                         </h4>
                         <div className="room-form-grid" style={{gridTemplateColumns: '1fr auto'}}>
                           <div className="room-form-group">
-                            <label className="room-form-label">Số người thuê</label>
+                            <label className="room-form-label">{t('invoices.form.numberOfTenants', 'Số người thuê')}</label>
                             <input
                               type="number"
                               className="room-form-input"
@@ -6081,7 +6186,7 @@ const RoomsManagement = () => {
                           </div>
 
                           <div className="room-form-group">
-                            <label className="room-form-label">Thành tiền</label>
+                            <label className="room-form-label">{t('invoices.form.totalAmount', 'Thành tiền')}</label>
                             <div style={{
                               padding: '10px 12px',
                               backgroundColor: '#f0fdfa',
@@ -6092,7 +6197,7 @@ const RoomsManagement = () => {
                               textAlign: 'center',
                               minWidth: '120px'
                             }}>
-                              {((contractInfo?.tenants?.length || 1) * (invoiceFormData.waterPricePerPerson || 0)).toLocaleString('vi-VN')} VNĐ
+                              {((contractInfo?.tenants?.length || 1) * (invoiceFormData.waterPricePerPerson || 0)).toLocaleString('vi-VN')} {t('common.currency', 'VNĐ')}
                             </div>
                           </div>
                         </div>
@@ -6304,7 +6409,7 @@ const RoomsManagement = () => {
                   }}
                 />
                 <i className="fab fa-telegram" style={{color: '#0088cc', fontSize: '16px'}}></i>
-                <span>Gửi hóa đơn Zalo cho khách thuê</span>
+                <span>{t('invoices.form.sendZaloToTenant', 'Gửi hóa đơn Zalo cho khách thuê')}</span>
               </label>
             </div>
             <div style={{display: 'flex', gap: '12px'}}>
@@ -6401,6 +6506,69 @@ const RoomsManagement = () => {
             <button className="room-confirm-btn-confirm" onClick={confirmCancelExpiring}>
               <i className="fas fa-check"></i>
               Xác nhận
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Terminate Contract Confirmation Modal */}
+    {showTerminateContractModal && selectedRoomForTerminate && (
+      <div className="room-modal-overlay" onClick={cancelTerminateContract}>
+        <div className="room-confirm-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="room-confirm-header">
+            <i className="fas fa-ban room-confirm-icon" style={{color: '#dc2626'}}></i>
+            <h3>Xác nhận kết thúc hợp đồng</h3>
+          </div>
+          <div className="room-confirm-body">
+            <p>Bạn có chắc chắn muốn kết thúc hợp đồng phòng <strong>{selectedRoomForTerminate.roomNumber}</strong>?</p>
+            
+            <div className="room-confirm-checkbox">
+              <label style={{display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', padding: '12px', background: '#f0f9ff', borderRadius: '8px', border: '1px solid #bfdbfe'}}>
+                <input
+                  type="checkbox"
+                  checked={createFinalInvoice}
+                  onChange={(e) => setCreateFinalInvoice(e.target.checked)}
+                  style={{
+                    width: '18px',
+                    height: '18px',
+                    accentColor: '#3b82f6',
+                    cursor: 'pointer'
+                  }}
+                />
+                <span style={{fontSize: '14px', color: '#1e40af', fontWeight: '500'}}>
+                  <i className="fas fa-file-invoice" style={{marginRight: '6px'}}></i>
+                  Tạo hóa đơn tháng cuối trước khi kết thúc
+                </span>
+              </label>
+            </div>
+            
+            <div className="room-confirm-info" style={{marginTop: '16px'}}>
+              <i className="fas fa-exclamation-triangle" style={{color: '#dc2626'}}></i>
+              <div>
+                <p><strong>Hành động này sẽ:</strong></p>
+                <ul>
+                  <li>Chuyển trạng thái hợp đồng sang "Đã kết thúc"</li>
+                  <li>Xóa tất cả khách thuê khỏi phòng</li>
+                  <li>Chuyển trạng thái phòng về "Trống"</li>
+                  {createFinalInvoice && <li style={{color: '#2563eb', fontWeight: '500'}}>Mở form tạo hóa đơn thanh toán tháng cuối</li>}
+                </ul>
+              </div>
+            </div>
+          </div>
+          <div className="room-confirm-footer">
+            <button className="room-confirm-btn-cancel" onClick={cancelTerminateContract}>
+              <i className="fas fa-times"></i>
+              Hủy
+            </button>
+            <button 
+              className="room-confirm-btn-confirm" 
+              onClick={confirmTerminateContract}
+              style={{background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)'}}
+              disabled={terminatingContract}
+            >
+              <i className="fas fa-ban"></i>
+              {terminatingContract ? 'Đang xử lý...' : 'Kết thúc hợp đồng'}
             </button>
           </div>
         </div>

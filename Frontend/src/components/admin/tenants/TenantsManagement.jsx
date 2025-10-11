@@ -222,7 +222,7 @@ const TenantsManagement = () => {
     if(!form.fullName) err.fullName = t('validation.required');
     if(!form.email) err.email = t('validation.required');
     if(!form.phone) err.phone = t('validation.required');
-    if(!form.roomId) err.roomId = 'Vui lòng chọn phòng';
+    if(!form.roomId) err.roomId = t('tenants.form.selectRoom', 'Vui lòng chọn phòng');
     return err;
   };
 
@@ -257,15 +257,15 @@ const TenantsManagement = () => {
           try {
             const uploadRes = await tenantsAPI.uploadTenantImages(createdTenant._id, form.tenantImages);
             if (!uploadRes.success) {
-              showToast('warning', 'Tạo khách thuê thành công nhưng upload ảnh thất bại');
+              showToast('warning', t('tenants.messages.addSuccessButImagesFailed', 'Tạo khách thuê thành công nhưng upload ảnh thất bại'));
             }
           } catch (uploadErr) {
             console.error('Error uploading images:', uploadErr);
-            showToast('warning', 'Tạo khách thuê thành công nhưng upload ảnh thất bại');
+            showToast('warning', t('tenants.messages.addSuccessButImagesFailed', 'Tạo khách thuê thành công nhưng upload ảnh thất bại'));
           }
         }
         
-        showToast('success', 'Tạo khách thuê thành công!');
+        showToast('success', t('tenants.messages.addSuccess', 'Tạo khách thuê thành công!'));
         closeCreate();
         fetchRoomsWithTenants();
       } else {

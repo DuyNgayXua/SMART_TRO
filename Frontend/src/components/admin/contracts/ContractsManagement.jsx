@@ -20,7 +20,7 @@ const ContractsManagement = () => {
   const [form, setForm] = useState({ room:'', tenant:'', startDate:'', endDate:'', monthlyRent:'', deposit:'', electricPrice:'', waterPrice:'', servicePrice:'', rules:'', notes:'' });
   const [errors, setErrors] = useState({});
   const [pagination, setPagination] = useState({ currentPage:1, totalPages:1, totalItems:0, itemsPerPage:12 });
-  const [filters, setFilters] = useState({ status:'', search:'' });
+  const [filters, setFilters] = useState({ status:'active', search:'' });
   const [statusCounts, setStatusCounts] = useState({ 
     all: 0,
     active: 0, 
@@ -287,7 +287,7 @@ const ContractsManagement = () => {
             onClick={() => {
               setActiveTab('rental');
               setPagination(p => ({ ...p, currentPage: 1 }));
-              setFilters({ status: '', search: '' });
+              setFilters({ status: 'active', search: '' });
               setStatusCounts({ all: 0, active: 0, pending: 0, expired: 0, terminated: 0 });
             }}
           >
@@ -299,7 +299,7 @@ const ContractsManagement = () => {
             onClick={() => {
               setActiveTab('deposit');
               setPagination(p => ({ ...p, currentPage: 1 }));
-              setFilters({ status: '', search: '' });
+              setFilters({ status: 'active', search: '' });
               setStatusCounts({ all: 0, active: 0, pending: 0, expired: 0, terminated: 0 });
             }}
           >
@@ -327,7 +327,6 @@ const ContractsManagement = () => {
                 value={filters.status} 
                 onChange={e=>{ setFilters(f=>({...f,status:e.target.value})); setPagination(p=>({...p,currentPage:1})); }}
               >
-                <option value="">{t('common.all')}</option>
                 <option value="active">{t('contracts.status.active')}</option>
                 <option value="pending">{t('contracts.status.pending')}</option>
                 <option value="expired">{t('contracts.status.expired')}</option>
@@ -349,16 +348,6 @@ const ContractsManagement = () => {
 
         {/* Status Filter Tabs */}
         <div className="contracts-status-tabs">
-          <button 
-            className={`contracts-status-tab ${filters.status === '' ? 'active' : ''}`}
-            onClick={() => {
-              setFilters(prev => ({ ...prev, status: '' }));
-              setPagination(prev => ({ ...prev, currentPage: 1 }));
-            }}
-          >
-            {t('common.all') || 'Tất cả'}
-            <span className="tab-count">{statusCounts.all}</span>
-          </button>
           <button 
             className={`contracts-status-tab ${filters.status === 'active' ? 'active' : ''}`}
             onClick={() => {

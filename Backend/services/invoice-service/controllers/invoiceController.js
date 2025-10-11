@@ -2,8 +2,8 @@
  * Invoice Controller - Xử lý logic nghiệp vụ cho hóa đơn
  */
 import invoiceRepository from '../repositories/invoiceRepository.js';
-import { Contract, Room, Tenant, User } from '../../../schemas/index.js';
-import { sendInvoiceEmail } from '../../emailService.js';
+import { Contract, Room, Tenant, User, Invoice } from '../../../schemas/index.js';
+import { sendInvoiceEmail, sendEmail } from '../../emailService.js';
 
 class InvoiceController {
     // Tạo hóa đơn mới
@@ -142,7 +142,7 @@ class InvoiceController {
             
             // Gửi email thông báo hóa đơn nếu được yêu cầu
             if (sendZaloInvoice) {
-                console.log('📧 Attempting to send invoice email...');
+                console.log('📧 Attempting to send invoice email with QR code...');
                 console.log('   sendZaloInvoice:', sendZaloInvoice);
                 
                 try {
@@ -151,15 +151,113 @@ class InvoiceController {
                     const landlordInfo = await User.findById(landlordId);
                     
                     console.log('   Tenant email:', tenantInfo.email);
-                    console.log('   Landlord phone:', landlordInfo.phone);
+                    console.log('   Room:', roomInfo.roomNumber);
                     
                     if (!tenantInfo.email) {
                         console.warn('⚠️ Tenant has no email, skipping notification');
                     } else {
-                        const emailResult = await sendInvoiceEmail(invoice, tenantInfo, roomInfo, landlordInfo);
+                        // Tạo QR code thanh toán
+                        const bankCode = process.env.SEPAY_BANK_CODE || 'TPBank';
+                        const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || '10002322482';
+                        const accountName = process.env.SEPAY_ACCOUNT_NAME || 'TRAN QUOC HUY';
+                        
+                        // Format nội dung chuyển khoản
+                        const transferContent = `THANH TOAN HOA DON PHONG ${roomInfo.roomNumber} - ${new Date(finalPeriodStart).toLocaleDateString('vi-VN')} DEN ${new Date(finalPeriodEnd).toLocaleDateString('vi-VN')}`;
+                        const formattedContent = transferContent
+                            .normalize('NFD')
+                            .replace(/[\u0300-\u036f]/g, '')
+                            .replace(/\//g, '-')
+                            .toUpperCase();
+                        
+                        // Tạo QR URL
+                        const qrCodeUrl = `https://qr.sepay.vn/img?acc=${accountNumber}&bank=${bankCode}&amount=${invoice.totalAmount}&des=${encodeURIComponent(formattedContent)}`;
+                        
+                        // Cập nhật invoice với QR code
+                        await Invoice.findByIdAndUpdate(invoice._id, {
+                            $set: {
+                                paymentQRCode: qrCodeUrl,
+                                paymentQRContent: formattedContent
+                            }
+                        });
+                        
+                        console.log('   QR Code created:', qrCodeUrl);
+                        
+                        // Tạo email HTML với QR code
+                        const emailSubject = `Hóa đơn phòng ${roomInfo.roomNumber} - Tháng ${new Date(finalPeriodStart).getMonth() + 1}/${new Date(finalPeriodStart).getFullYear()}`;
+                        
+                        const emailContent = `
+                            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #ddd; border-radius: 8px;">
+                                <h2 style="color: #333; text-align: center;">HÓA ĐƠN TIỀN PHÒNG</h2>
+                                
+                                <div style="margin: 20px 0;">
+                                    <p><strong>Phòng:</strong> ${roomInfo.roomNumber}</p>
+                                    <p><strong>Kỳ thanh toán:</strong> ${new Date(finalPeriodStart).toLocaleDateString('vi-VN')} - ${new Date(finalPeriodEnd).toLocaleDateString('vi-VN')}</p>
+                                    <p><strong>Ngày lập:</strong> ${new Date(invoice.issueDate).toLocaleDateString('vi-VN')}</p>
+                                    <p><strong>Hạn thanh toán:</strong> ${new Date(invoice.dueDate).toLocaleDateString('vi-VN')}</p>
+                                </div>
+
+                                <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
+                                    <h3 style="color: #333; margin-top: 0;">Chi tiết thanh toán:</h3>
+                                    ${invoice.charges?.map(charge => `
+                                        <div style="display: flex; justify-content: space-between; margin: 5px 0;">
+                                            <span>${charge.description}</span>
+                                            <span>${charge.amount.toLocaleString('vi-VN')} VNĐ</span>
+                                        </div>
+                                    `).join('') || ''}
+                                    ${invoice.discount > 0 ? `
+                                        <div style="display: flex; justify-content: space-between; margin: 5px 0; color: #e74c3c;">
+                                            <span>Giảm giá</span>
+                                            <span>-${invoice.discount.toLocaleString('vi-VN')} VNĐ</span>
+                                        </div>
+                                    ` : ''}
+                                    <hr style="margin: 10px 0; border: none; border-top: 2px solid #333;">
+                                    <div style="display: flex; justify-content: space-between; margin: 10px 0; font-size: 18px; font-weight: bold; color: #e74c3c;">
+                                        <span>TỔNG CỘNG</span>
+                                        <span>${invoice.totalAmount.toLocaleString('vi-VN')} VNĐ</span>
+                                    </div>
+                                </div>
+
+                                <div style="text-align: center; margin: 30px 0;">
+                                    <h3 style="color: #333;">Quét mã QR để thanh toán</h3>
+                                    <img src="${qrCodeUrl}" alt="QR Code thanh toán" style="max-width: 300px; border: 2px solid #ddd; border-radius: 8px; padding: 10px;" />
+                                    <p style="margin-top: 10px; color: #666; font-size: 14px;">
+                                        <strong>Ngân hàng:</strong> ${bankCode}<br/>
+                                        <strong>Số tài khoản:</strong> ${accountNumber}<br/>
+                                        <strong>Chủ tài khoản:</strong> ${accountName}<br/>
+                                        <strong>Số tiền:</strong> ${invoice.totalAmount.toLocaleString('vi-VN')} VNĐ<br/>
+                                        <strong>Nội dung:</strong> ${formattedContent}
+                                    </p>
+                                </div>
+
+                                <div style="background-color: #fff3cd; padding: 15px; border-radius: 5px; border-left: 4px solid #ffc107;">
+                                    <p style="margin: 0; color: #856404;">
+                                        <strong>Lưu ý:</strong> Vui lòng thanh toán đúng số tiền và nội dung chuyển khoản để hệ thống tự động xác nhận thanh toán.
+                                    </p>
+                                </div>
+
+                                ${invoice.notes ? `
+                                    <div style="margin: 20px 0; padding: 10px; background-color: #f8f9fa; border-radius: 5px;">
+                                        <p style="margin: 0;"><strong>Ghi chú:</strong></p>
+                                        <p style="margin: 5px 0 0 0;">${invoice.notes}</p>
+                                    </div>
+                                ` : ''}
+
+                                <div style="text-align: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #ddd; color: #666; font-size: 12px;">
+                                    <p>Cảm ơn bạn đã tin tưởng sử dụng dịch vụ của chúng tôi!</p>
+                                    ${landlordInfo.phone ? `<p>Liên hệ: ${landlordInfo.phone}</p>` : ''}
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Gửi email
+                        const emailResult = await sendEmail({
+                            to: tenantInfo.email,
+                            subject: emailSubject,
+                            html: emailContent
+                        });
                         
                         if (emailResult.success) {
-                            console.log('✅ Invoice email sent successfully');
+                            console.log('✅ Invoice email with QR code sent successfully');
                         } else {
                             console.error('❌ Failed to send email:', emailResult.error);
                         }

@@ -440,6 +440,28 @@ export const sendInvoiceEmail = async (invoice, tenant, room, landlord) => {
     }
 };
 
+// Generic email sending function
+export const sendEmail = async ({ to, subject, html, text }) => {
+    try {
+        const transporter = createTransporter();
+        
+        const mailOptions = {
+            from: process.env.GMAIL_USER,
+            to: to,
+            subject: subject,
+            html: html,
+            text: text
+        };
+
+        const info = await transporter.sendMail(mailOptions);
+        console.log('Email sent successfully:', info.messageId);
+        return { success: true, messageId: info.messageId };
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return { success: false, error: error.message };
+    }
+};
+
 // Export tất cả functions
 export default {
     generateOTP,
@@ -447,5 +469,6 @@ export default {
     sendVerificationEmail,
     sendWarningEmail,
     sendPropertyHiddenEmail,
-    sendInvoiceEmail
+    sendInvoiceEmail,
+    sendEmail
 };

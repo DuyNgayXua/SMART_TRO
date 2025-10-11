@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import SideBar from '../../common/adminSidebar';
 import { useToast } from '../../../hooks/useToast';
+import jsPDF from 'jspdf';
 import '../admin-global.css';
 import './payments.css';
 import invoicesAPI from '../../../services/invoicesAPI';
@@ -15,7 +16,7 @@ const PaymentsManagement = () => {
   const [searchFilters, setSearchFilters] = useState({
     search: '',
     status: '',
-    month: '',
+    month: (new Date().getMonth() + 1).toString(), // Tháng hiện tại (1-12)
     year: new Date().getFullYear().toString()
   });
   const [pagination, setPagination] = useState({
@@ -33,6 +34,13 @@ const PaymentsManagement = () => {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
+  const [showBatchExportModal, setShowBatchExportModal] = useState(false);
+  const [selectedInvoices, setSelectedInvoices] = useState([]);
+  const [isExporting, setIsExporting] = useState(false);
+  const [batchFilters, setBatchFilters] = useState({
+    status: '',
+    month: (new Date().getMonth() + 1).toString() // Mặc định tháng hiện tại
+  });
 
   const statusLabels = {
     all: t('payments.status.all', 'Tất cả'),
@@ -144,6 +152,1025 @@ const PaymentsManagement = () => {
     }
   };
 
+  // Toggle select invoice in modal
+  const toggleSelectInvoice = (invoiceId) => {
+    setSelectedInvoices(prev => {
+      if (prev.includes(invoiceId)) {
+        return prev.filter(id => id !== invoiceId);
+      } else {
+        return [...prev, invoiceId];
+      }
+    });
+  };
+
+  // Open batch export modal
+  const openBatchExportModal = () => {
+    setSelectedInvoices([]);
+    setBatchFilters({
+      status: '',
+      month: (new Date().getMonth() + 1).toString() // Mặc định tháng hiện tại
+    });
+    setShowBatchExportModal(true);
+  };
+
+  // Close batch export modal
+  const closeBatchExportModal = () => {
+    setShowBatchExportModal(false);
+    setSelectedInvoices([]);
+    setBatchFilters({
+      status: '',
+      month: ''
+    });
+  };
+
+  // Get filtered invoices for batch export
+  const getFilteredInvoicesForBatch = () => {
+    let filtered = [...invoices];
+    
+    if (batchFilters.status) {
+      filtered = filtered.filter(inv => {
+        if (batchFilters.status === 'unpaid') {
+          return inv.status === 'draft' || inv.status === 'sent' || inv.status === 'pending';
+        }
+        return inv.status === batchFilters.status;
+      });
+    }
+    
+    if (batchFilters.month) {
+      filtered = filtered.filter(inv => {
+        const invoiceMonth = new Date(inv.issueDate).getMonth() + 1; // Lọc theo ngày tạo hóa đơn
+        return invoiceMonth.toString() === batchFilters.month;
+      });
+    }
+    
+    return filtered;
+  };
+
+  // Select all filtered invoices in modal
+  const handleSelectAll = () => {
+    const filteredInvoices = getFilteredInvoicesForBatch();
+    if (selectedInvoices.length === filteredInvoices.length) {
+      setSelectedInvoices([]);
+    } else {
+      setSelectedInvoices(filteredInvoices.map(inv => inv._id));
+    }
+  };
+
+  // Export single invoice PDF (simplified version for batch)
+  const exportSingleInvoicePDF = async (invoice) => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    let yPos = margin;
+
+    // Helper function to remove accents
+    const removeAccents = (str) => {
+      if (!str) return '';
+      return str
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'D');
+    };
+
+    // Helper function to format currency for PDF (without VND symbol)
+    const formatMoney = (amount) => {
+      if (!amount) return '0';
+      return new Intl.NumberFormat('vi-VN').format(amount);
+    };
+
+    pdf.setFont('times');
+    
+    // ===== HEADER =====
+    pdf.setFontSize(16);
+    pdf.setFont('times', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text('NHA TRO SMART TRO', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 8;
+    
+    pdf.setFontSize(10);
+    pdf.setFont('times', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('Dia chi: [Dia chi nha tro]', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 5;
+    pdf.text('Dien thoai: [So dien thoai]', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 10;
+
+    pdf.setFontSize(22);
+    pdf.setFont('times', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    pdf.text('HOA DON TIEN PHONG', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 7;
+    
+    pdf.setFontSize(11);
+    pdf.setFont('times', 'normal');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text(`So hoa don: ${invoice.invoiceNumber || 'N/A'}`, pageWidth / 2, yPos, { align: 'center' });
+    yPos += 12;
+
+    // ===== INFO BOX =====
+    const boxY = yPos;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.5);
+    pdf.rect(margin, boxY, pageWidth - 2 * margin, 42);
+    
+    pdf.setFontSize(11);
+    pdf.setFont('times', 'bold');
+    pdf.setTextColor(0, 0, 0);
+    yPos = boxY + 7;
+    
+    pdf.text('THONG TIN KHACH THUE', margin + 3, yPos);
+    yPos += 6;
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(10);
+    pdf.text(`Phong: ${removeAccents(invoice.room?.roomNumber || 'N/A')}`, margin + 3, yPos);
+    yPos += 5;
+    pdf.text(`Ho ten: ${removeAccents(invoice.tenant?.fullName || 'N/A')}`, margin + 3, yPos);
+    yPos += 5;
+    pdf.text(`Dien thoai: ${invoice.tenant?.phone || 'N/A'}`, margin + 3, yPos);
+    yPos += 5;
+    pdf.text(`Email: ${invoice.tenant?.email || 'N/A'}`, margin + 3, yPos);
+
+    yPos = boxY + 7;
+    pdf.setFont('times', 'bold');
+    pdf.setFontSize(11);
+    pdf.text('THONG TIN HOA DON', pageWidth / 2 + 5, yPos);
+    yPos += 6;
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(10);
+    pdf.text(`Ky: ${new Date(invoice.periodStart).toLocaleDateString('vi-VN')} - ${new Date(invoice.periodEnd).toLocaleDateString('vi-VN')}`, pageWidth / 2 + 5, yPos);
+    yPos += 5;
+    pdf.text(`Ngay lap: ${new Date(invoice.issueDate).toLocaleDateString('vi-VN')}`, pageWidth / 2 + 5, yPos);
+    yPos += 5;
+    pdf.text(`Han thanh toan: ${new Date(invoice.dueDate).toLocaleDateString('vi-VN')}`, pageWidth / 2 + 5, yPos);
+    yPos += 5;
+    
+    const statusText = invoice.status === 'paid' ? 'Da thanh toan' : 
+                      invoice.status === 'sent' ? 'Da gui' :
+                      invoice.status === 'overdue' ? 'Qua han' : 'Chua thanh toan';
+    const statusColor = invoice.status === 'paid' ? [39, 174, 96] : 
+                       invoice.status === 'overdue' ? [231, 76, 60] : [243, 156, 18];
+    pdf.setTextColor(...statusColor);
+    pdf.setFont('times', 'bold');
+    pdf.text(`Trang thai: ${removeAccents(statusText)}`, pageWidth / 2 + 5, yPos);
+    pdf.setTextColor(0, 0, 0);
+
+    yPos = boxY + 47;
+
+    // ===== METER READINGS (if available) =====
+    const hasElectric = invoice.electricOldReading !== undefined && invoice.electricNewReading !== undefined;
+    const hasWater = invoice.waterOldReading !== undefined && invoice.waterNewReading !== undefined;
+    
+    if (hasElectric || hasWater) {
+      yPos += 8;
+      pdf.setFontSize(13);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(41, 128, 185);
+      pdf.text('CHI SO DIEN NUOC', margin, yPos);
+      yPos += 8;
+
+      const tableWidth = pageWidth - 2 * margin;
+      const col1 = 28;
+      const col2 = 30;
+      const col3 = 30;
+      const col4 = 35;
+      const col5 = tableWidth - col1 - col2 - col3 - col4;
+      
+      pdf.setFillColor(52, 152, 219);
+      pdf.rect(margin, yPos, tableWidth, 9, 'F');
+      pdf.setDrawColor(52, 152, 219);
+      pdf.rect(margin, yPos, tableWidth, 9);
+      
+      pdf.setFontSize(11);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      
+      let xPos = margin + 2;
+      pdf.text('Loai', xPos + col1 / 2, yPos + 6, { align: 'center' });
+      xPos += col1;
+      pdf.text('CS cu', xPos + col2 / 2, yPos + 6, { align: 'center' });
+      xPos += col2;
+      pdf.text('CS moi', xPos + col3 / 2, yPos + 6, { align: 'center' });
+      xPos += col3;
+      pdf.text('Tieu thu', xPos + col4 / 2, yPos + 6, { align: 'center' });
+      xPos += col4;
+      pdf.text('Don gia', xPos + col5 / 2, yPos + 6, { align: 'center' });
+      yPos += 9;
+
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      
+      if (hasElectric) {
+        pdf.setFillColor(236, 240, 241);
+        pdf.rect(margin, yPos, tableWidth, 8);
+        pdf.setDrawColor(189, 195, 199);
+        pdf.setLineWidth(0.3);
+        pdf.rect(margin, yPos, tableWidth, 8);
+        
+        const electricConsumption = invoice.electricNewReading - invoice.electricOldReading;
+        xPos = margin + 2;
+        pdf.setFont('times', 'bold');
+        pdf.text('Dien', xPos + col1 / 2, yPos + 5.5, { align: 'center' });
+        pdf.setFont('times', 'normal');
+        xPos += col1;
+        pdf.text(invoice.electricOldReading.toString(), xPos + col2 / 2, yPos + 5.5, { align: 'center' });
+        xPos += col2;
+        pdf.text(invoice.electricNewReading.toString(), xPos + col3 / 2, yPos + 5.5, { align: 'center' });
+        xPos += col3;
+        pdf.setFont('times', 'bold');
+        pdf.text(`${electricConsumption}`, xPos + col4 / 2, yPos + 5.5, { align: 'center' });
+        pdf.setFont('times', 'normal');
+        xPos += col4;
+        pdf.text(`${formatMoney(invoice.electricRate || 3500)}`, xPos + col5 / 2, yPos + 5.5, { align: 'center' });
+        yPos += 8;
+      }
+
+      if (hasWater) {
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(margin, yPos, tableWidth, 8);
+        pdf.setDrawColor(189, 195, 199);
+        pdf.setLineWidth(0.3);
+        pdf.rect(margin, yPos, tableWidth, 8);
+        
+        const waterConsumption = invoice.waterNewReading - invoice.waterOldReading;
+        const waterPrice = invoice.waterBillingType === 'perPerson' 
+          ? invoice.waterPricePerPerson || 50000
+          : invoice.waterRate || 20000;
+        
+        xPos = margin + 2;
+        pdf.setFont('times', 'bold');
+        pdf.text('Nuoc', xPos + col1 / 2, yPos + 5.5, { align: 'center' });
+        pdf.setFont('times', 'normal');
+        xPos += col1;
+        pdf.text(invoice.waterOldReading.toString(), xPos + col2 / 2, yPos + 5.5, { align: 'center' });
+        xPos += col2;
+        pdf.text(invoice.waterNewReading.toString(), xPos + col3 / 2, yPos + 5.5, { align: 'center' });
+        xPos += col3;
+        pdf.setFont('times', 'bold');
+        pdf.text(`${waterConsumption}`, xPos + col4 / 2, yPos + 5.5, { align: 'center' });
+        pdf.setFont('times', 'normal');
+        xPos += col4;
+        pdf.text(`${formatMoney(waterPrice)}`, xPos + col5 / 2, yPos + 5.5, { align: 'center' });
+        yPos += 8;
+      }
+      
+      yPos += 6;
+    }
+
+    // ===== CHARGES TABLE =====
+    yPos += 3;
+    pdf.setFontSize(13);
+    pdf.setFont('times', 'bold');
+    pdf.setTextColor(41, 128, 185);
+    pdf.text('CHI TIET THANH TOAN', margin, yPos);
+    yPos += 8;
+
+    const chargesTableWidth = pageWidth - 2 * margin;
+    const colSTT = 15;
+    const colSoLuong = 20;
+    const colDonGia = 38;
+    const colThanhTien = 38;
+    const colNoiDung = chargesTableWidth - colSTT - colSoLuong - colDonGia - colThanhTien;
+    
+    pdf.setFillColor(52, 152, 219);
+    pdf.rect(margin, yPos, chargesTableWidth, 9, 'F');
+    pdf.setDrawColor(52, 152, 219);
+    pdf.rect(margin, yPos, chargesTableWidth, 9);
+    
+    pdf.setFontSize(11);
+    pdf.setFont('times', 'bold');
+    pdf.setTextColor(255, 255, 255);
+    
+    let xPos = margin;
+    pdf.text('STT', xPos + colSTT / 2, yPos + 6, { align: 'center' });
+    xPos += colSTT;
+    pdf.text('Noi dung', xPos + 3, yPos + 6);
+    xPos += colNoiDung;
+    pdf.text('SL', xPos + colSoLuong / 2, yPos + 6, { align: 'center' });
+    xPos += colSoLuong;
+    pdf.text('Don gia', xPos + colDonGia / 2, yPos + 6, { align: 'center' });
+    xPos += colDonGia;
+    pdf.text('Thanh tien', xPos + colThanhTien / 2, yPos + 6, { align: 'center' });
+    yPos += 9;
+
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(10);
+    pdf.setTextColor(0, 0, 0);
+    
+    invoice.charges?.forEach((charge, index) => {
+      const rowHeight = 8;
+      
+      if (index % 2 === 0) {
+        pdf.setFillColor(236, 240, 241);
+      } else {
+        pdf.setFillColor(255, 255, 255);
+      }
+      pdf.rect(margin, yPos, chargesTableWidth, rowHeight, 'F');
+      
+      pdf.setDrawColor(189, 195, 199);
+      pdf.setLineWidth(0.3);
+      pdf.rect(margin, yPos, chargesTableWidth, rowHeight);
+      
+      const description = removeAccents(charge.description || '');
+      
+      xPos = margin;
+      pdf.text((index + 1).toString(), xPos + colSTT / 2, yPos + 5.5, { align: 'center' });
+      xPos += colSTT;
+      
+      const maxWidth = colNoiDung - 6;
+      const descLines = pdf.splitTextToSize(description, maxWidth);
+      pdf.text(descLines[0] || '', xPos + 3, yPos + 5.5);
+      xPos += colNoiDung;
+      
+      pdf.text((charge.quantity || 1).toString(), xPos + colSoLuong / 2, yPos + 5.5, { align: 'center' });
+      xPos += colSoLuong;
+      
+      const unitPrice = formatMoney(charge.unitPrice || charge.amount);
+      pdf.text(unitPrice, xPos + colDonGia - 3, yPos + 5.5, { align: 'right' });
+      xPos += colDonGia;
+      
+      const amount = formatMoney(charge.amount);
+      pdf.text(amount, xPos + colThanhTien - 3, yPos + 5.5, { align: 'right' });
+      
+      yPos += rowHeight;
+    });
+
+    // Subtotal section
+    yPos += 4;
+    const summaryX = pageWidth - margin - 85;
+    const summaryLabelX = summaryX;
+    const summaryValueX = pageWidth - margin - 3;
+    
+    pdf.setDrawColor(189, 195, 199);
+    pdf.setLineWidth(0.5);
+    pdf.line(summaryX, yPos, pageWidth - margin, yPos);
+    yPos += 7;
+    
+    pdf.setFont('times', 'normal');
+    pdf.setFontSize(11);
+    pdf.text('Tam tinh:', summaryLabelX, yPos);
+    pdf.text(formatMoney(invoice.subtotal || invoice.totalAmount), summaryValueX, yPos, { align: 'right' });
+
+    if (invoice.discount > 0) {
+      yPos += 6;
+      pdf.setTextColor(231, 76, 60);
+      pdf.text('Giam gia:', summaryLabelX, yPos);
+      pdf.text(`-${formatMoney(invoice.discount)}`, summaryValueX, yPos, { align: 'right' });
+      pdf.setTextColor(0, 0, 0);
+    }
+
+    yPos += 3;
+    pdf.setDrawColor(52, 73, 94);
+    pdf.setLineWidth(1);
+    pdf.line(summaryX, yPos, pageWidth - margin, yPos);
+    yPos += 8;
+    
+    pdf.setFontSize(14);
+    pdf.setFont('times', 'bold');
+    pdf.setTextColor(231, 76, 60);
+    pdf.text('TONG CONG:', summaryLabelX, yPos);
+    pdf.setFontSize(15);
+    pdf.text(formatMoney(invoice.totalAmount) + ' VND', summaryValueX, yPos, { align: 'right' });
+    pdf.setTextColor(0, 0, 0);
+    pdf.setFontSize(10);
+    yPos += 10;
+
+    // ===== QR CODE SECTION =====
+    if (invoice.paymentQRCode && invoice.status !== 'paid') {
+      if (yPos > pageHeight - 100) {
+        pdf.addPage();
+        yPos = margin;
+      }
+
+      pdf.setLineWidth(0.5);
+      pdf.setDrawColor(200, 200, 200);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 10;
+
+      pdf.setFontSize(13);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(41, 128, 185);
+      pdf.text('THANH TOAN QUA CHUYEN KHOAN', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 8;
+
+      try {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.src = invoice.paymentQRCode;
+        
+        await new Promise((resolve, reject) => {
+          img.onload = () => {
+            const qrSize = 70;
+            const qrX = (pageWidth - qrSize) / 2;
+            
+            pdf.setDrawColor(200, 200, 200);
+            pdf.setLineWidth(1);
+            pdf.rect(qrX - 2, yPos - 2, qrSize + 4, qrSize + 4);
+            
+            pdf.addImage(img, 'PNG', qrX, yPos, qrSize, qrSize);
+            yPos += qrSize + 10;
+            resolve();
+          };
+          img.onerror = reject;
+          setTimeout(() => reject(new Error('QR load timeout')), 5000);
+        });
+
+        pdf.setFillColor(236, 240, 241);
+        pdf.setDrawColor(189, 195, 199);
+        pdf.setLineWidth(0.5);
+        pdf.rect(margin + 10, yPos, pageWidth - 2 * margin - 20, 32, 'FD');
+        
+        pdf.setFontSize(11);
+        pdf.setFont('times', 'bold');
+        pdf.setTextColor(52, 73, 94);
+        yPos += 7;
+        
+        const bankCode = process.env.REACT_APP_SEPAY_BANK_CODE || 'TPBank';
+        const accountNumber = process.env.REACT_APP_SEPAY_ACCOUNT_NUMBER || '0382173105';
+        const accountName = removeAccents(process.env.REACT_APP_SEPAY_ACCOUNT_NAME || 'TRUONG CONG DUY');
+        
+        pdf.text('Thong tin chuyen khoan:', margin + 13, yPos);
+        yPos += 6;
+        
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+        pdf.text(`Ngan hang: ${bankCode}`, margin + 13, yPos);
+        yPos += 5;
+        pdf.text(`So tai khoan: ${accountNumber}`, margin + 13, yPos);
+        yPos += 5;
+        pdf.text(`Chu tai khoan: ${accountName}`, margin + 13, yPos);
+        yPos += 5;
+        pdf.setFont('times', 'bold');
+        pdf.setFontSize(11);
+        pdf.setTextColor(231, 76, 60);
+        pdf.text(`So tien: ${formatMoney(invoice.totalAmount)} VND`, margin + 13, yPos);
+        pdf.setTextColor(0, 0, 0);
+        
+        yPos += 8;
+        if (invoice.paymentQRContent) {
+          pdf.setFontSize(9);
+          pdf.setFont('times', 'italic');
+          pdf.setTextColor(100, 100, 100);
+          pdf.text(`Noi dung: ${removeAccents(invoice.paymentQRContent)}`, pageWidth / 2, yPos, { align: 'center' });
+          pdf.setTextColor(0, 0, 0);
+        }
+      } catch (error) {
+        console.error('Error loading QR code:', error);
+        pdf.setFontSize(10);
+        pdf.setTextColor(231, 76, 60);
+        pdf.text('Loi tai ma QR. Vui long lien he chu tro de nhan thong tin chuyen khoan.', pageWidth / 2, yPos, { align: 'center' });
+        pdf.setTextColor(0, 0, 0);
+      }
+    }
+
+    // ===== NOTES =====
+    if (invoice.notes) {
+      yPos += 15;
+      if (yPos > pageHeight - 30) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      
+      pdf.setFontSize(10);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      pdf.text('Ghi chu:', margin, yPos);
+      yPos += 5;
+      
+      pdf.setFont('times', 'italic');
+      const notes = removeAccents(invoice.notes);
+      const noteLines = pdf.splitTextToSize(notes, pageWidth - 2 * margin);
+      pdf.text(noteLines, margin, yPos);
+    }
+
+    // ===== FOOTER =====
+    yPos = pageHeight - 15;
+    pdf.setDrawColor(200, 200, 200);
+    pdf.setLineWidth(0.3);
+    pdf.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+    
+    pdf.setFontSize(9);
+    pdf.setFont('times', 'italic');
+    pdf.setTextColor(100, 100, 100);
+    pdf.text('Cam on quy khach da su dung dich vu!', pageWidth / 2, yPos, { align: 'center' });
+    yPos += 4;
+    pdf.text('Moi thac mac xin lien he: [So dien thoai chu tro]', pageWidth / 2, yPos, { align: 'center' });
+
+    return pdf;
+  };
+
+  // Export batch invoices
+  const handleBatchExport = async () => {
+    if (selectedInvoices.length === 0) {
+      showToast('warning', 'Vui long chon it nhat mot hoa don');
+      return;
+    }
+
+    setIsExporting(true);
+    try {
+      // Get full invoice details for selected invoices
+      const invoicesToExport = invoices.filter(inv => selectedInvoices.includes(inv._id));
+      
+      for (let i = 0; i < invoicesToExport.length; i++) {
+        const invoice = invoicesToExport[i];
+        const detailResponse = await invoicesAPI.getInvoiceById(invoice._id);
+        
+        if (detailResponse.success) {
+          const pdf = await exportSingleInvoicePDF(detailResponse.data);
+          const fileName = `HoaDon_Phong${detailResponse.data.room?.roomNumber}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.pdf`;
+          pdf.save(fileName);
+          
+          // Small delay between exports
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+      
+      showToast('success', `Da xuat ${invoicesToExport.length} hoa don thanh cong!`);
+      closeBatchExportModal();
+    } catch (error) {
+      console.error('Error batch exporting:', error);
+      showToast('error', 'Loi khi xuat hoa don hang loat');
+    } finally {
+      setIsExporting(false);
+    }
+  };  const handleExportPDF = async () => {
+    if (!selectedInvoice) return;
+
+    try {
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+      const margin = 20;
+      let yPos = margin;
+
+      // Helper function to remove accents
+      const removeAccents = (str) => {
+        if (!str) return '';
+        return str
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/đ/g, 'd')
+          .replace(/Đ/g, 'D');
+      };
+
+      // Helper function to format currency for PDF (without VND symbol)
+      const formatMoney = (amount) => {
+        if (!amount) return '0';
+        return new Intl.NumberFormat('vi-VN').format(amount);
+      };
+
+      // Sử dụng font Times
+      pdf.setFont('times');
+      
+      // ===== HEADER =====
+      // Company/Property name (if available)
+      pdf.setFontSize(16);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(41, 128, 185); // Blue
+      pdf.text('NHA TRO SMART TRO', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 8;
+      
+      pdf.setFontSize(10);
+      pdf.setFont('times', 'normal');
+      pdf.setTextColor(100, 100, 100); // Gray
+      pdf.text('Dia chi: [Dia chi nha tro]', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 5;
+      pdf.text('Dien thoai: [So dien thoai]', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 10;
+
+      // Invoice title
+      pdf.setFontSize(22);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(0, 0, 0); // Black
+      pdf.text('HOA DON TIEN PHONG', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 7;
+      
+      // Invoice number
+      pdf.setFontSize(11);
+      pdf.setFont('times', 'normal');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text(`So hoa don: ${selectedInvoice.invoiceNumber || 'N/A'}`, pageWidth / 2, yPos, { align: 'center' });
+      yPos += 12;
+
+      // ===== INFO BOX =====
+      const boxY = yPos;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.5);
+      pdf.rect(margin, boxY, pageWidth - 2 * margin, 42);
+      
+      // Left column
+      pdf.setFontSize(11);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(0, 0, 0);
+      yPos = boxY + 7;
+      
+      pdf.text('THONG TIN KHACH THUE', margin + 3, yPos);
+      yPos += 6;
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Phong: ${removeAccents(selectedInvoice.room?.roomNumber || 'N/A')}`, margin + 3, yPos);
+      yPos += 5;
+      pdf.text(`Ho ten: ${removeAccents(selectedInvoice.tenant?.fullName || 'N/A')}`, margin + 3, yPos);
+      yPos += 5;
+      pdf.text(`Dien thoai: ${selectedInvoice.tenant?.phone || 'N/A'}`, margin + 3, yPos);
+      yPos += 5;
+      pdf.text(`Email: ${selectedInvoice.tenant?.email || 'N/A'}`, margin + 3, yPos);
+
+      // Right column
+      yPos = boxY + 7;
+      pdf.setFont('times', 'bold');
+      pdf.setFontSize(11);
+      pdf.text('THONG TIN HOA DON', pageWidth / 2 + 5, yPos);
+      yPos += 6;
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(10);
+      pdf.text(`Ky: ${new Date(selectedInvoice.periodStart).toLocaleDateString('vi-VN')} - ${new Date(selectedInvoice.periodEnd).toLocaleDateString('vi-VN')}`, pageWidth / 2 + 5, yPos);
+      yPos += 5;
+      pdf.text(`Ngay lap: ${new Date(selectedInvoice.issueDate).toLocaleDateString('vi-VN')}`, pageWidth / 2 + 5, yPos);
+      yPos += 5;
+      pdf.text(`Han thanh toan: ${new Date(selectedInvoice.dueDate).toLocaleDateString('vi-VN')}`, pageWidth / 2 + 5, yPos);
+      yPos += 5;
+      
+      // Status
+      const statusText = selectedInvoice.status === 'paid' ? 'Da thanh toan' : 
+                        selectedInvoice.status === 'sent' ? 'Da gui' :
+                        selectedInvoice.status === 'overdue' ? 'Qua han' : 'Chua thanh toan';
+      const statusColor = selectedInvoice.status === 'paid' ? [39, 174, 96] : 
+                         selectedInvoice.status === 'overdue' ? [231, 76, 60] : [243, 156, 18];
+      pdf.setTextColor(...statusColor);
+      pdf.setFont('times', 'bold');
+      pdf.text(`Trang thai: ${removeAccents(statusText)}`, pageWidth / 2 + 5, yPos);
+      pdf.setTextColor(0, 0, 0);
+
+      yPos = boxY + 47;
+
+      // ===== METER READINGS (if available) =====
+      const hasElectric = selectedInvoice.electricOldReading !== undefined && selectedInvoice.electricNewReading !== undefined;
+      const hasWater = selectedInvoice.waterOldReading !== undefined && selectedInvoice.waterNewReading !== undefined;
+      
+      if (hasElectric || hasWater) {
+        yPos += 8;
+        pdf.setFontSize(13);
+        pdf.setFont('times', 'bold');
+        pdf.setTextColor(41, 128, 185);
+        pdf.text('CHI SO DIEN NUOC', margin, yPos);
+        yPos += 8;
+
+        // Table header
+        const tableWidth = pageWidth - 2 * margin;
+        const col1 = 28;  // Loại
+        const col2 = 30;  // Chỉ số cũ
+        const col3 = 30;  // Chỉ số mới
+        const col4 = 35;  // Tiêu thụ
+        const col5 = tableWidth - col1 - col2 - col3 - col4;  // Đơn giá
+        
+        pdf.setFillColor(52, 152, 219);
+        pdf.rect(margin, yPos, tableWidth, 9, 'F');
+        pdf.setDrawColor(52, 152, 219);
+        pdf.rect(margin, yPos, tableWidth, 9);
+        
+        pdf.setFontSize(11);
+        pdf.setFont('times', 'bold');
+        pdf.setTextColor(255, 255, 255);
+        
+        let xPos = margin + 2;
+        pdf.text('Loai', xPos + col1 / 2, yPos + 6, { align: 'center' });
+        xPos += col1;
+        pdf.text('CS cu', xPos + col2 / 2, yPos + 6, { align: 'center' });
+        xPos += col2;
+        pdf.text('CS moi', xPos + col3 / 2, yPos + 6, { align: 'center' });
+        xPos += col3;
+        pdf.text('Tieu thu', xPos + col4 / 2, yPos + 6, { align: 'center' });
+        xPos += col4;
+        pdf.text('Don gia', xPos + col5 / 2, yPos + 6, { align: 'center' });
+        yPos += 9;
+
+        pdf.setFont('times', 'normal');
+        pdf.setFontSize(10);
+        pdf.setTextColor(0, 0, 0);
+        
+        // Electric row
+        if (hasElectric) {
+          pdf.setFillColor(236, 240, 241);
+          pdf.rect(margin, yPos, tableWidth, 8);
+          pdf.setDrawColor(189, 195, 199);
+          pdf.setLineWidth(0.3);
+          pdf.rect(margin, yPos, tableWidth, 8);
+          
+          const electricConsumption = selectedInvoice.electricNewReading - selectedInvoice.electricOldReading;
+          xPos = margin + 2;
+          pdf.setFont('times', 'bold');
+          pdf.text('Dien', xPos + col1 / 2, yPos + 5.5, { align: 'center' });
+          pdf.setFont('times', 'normal');
+          xPos += col1;
+          pdf.text(selectedInvoice.electricOldReading.toString(), xPos + col2 / 2, yPos + 5.5, { align: 'center' });
+          xPos += col2;
+          pdf.text(selectedInvoice.electricNewReading.toString(), xPos + col3 / 2, yPos + 5.5, { align: 'center' });
+          xPos += col3;
+          pdf.setFont('times', 'bold');
+          pdf.text(`${electricConsumption}`, xPos + col4 / 2, yPos + 5.5, { align: 'center' });
+          pdf.setFont('times', 'normal');
+          xPos += col4;
+          pdf.text(`${formatMoney(selectedInvoice.electricRate || 3500)}`, xPos + col5 / 2, yPos + 5.5, { align: 'center' });
+          yPos += 8;
+        }
+
+        // Water row
+        if (hasWater) {
+          pdf.setFillColor(255, 255, 255);
+          pdf.rect(margin, yPos, tableWidth, 8);
+          pdf.setDrawColor(189, 195, 199);
+          pdf.setLineWidth(0.3);
+          pdf.rect(margin, yPos, tableWidth, 8);
+          
+          const waterConsumption = selectedInvoice.waterNewReading - selectedInvoice.waterOldReading;
+          const waterPrice = selectedInvoice.waterBillingType === 'perPerson' 
+            ? selectedInvoice.waterPricePerPerson || 50000
+            : selectedInvoice.waterRate || 20000;
+          
+          xPos = margin + 2;
+          pdf.setFont('times', 'bold');
+          pdf.text('Nuoc', xPos + col1 / 2, yPos + 5.5, { align: 'center' });
+          pdf.setFont('times', 'normal');
+          xPos += col1;
+          pdf.text(selectedInvoice.waterOldReading.toString(), xPos + col2 / 2, yPos + 5.5, { align: 'center' });
+          xPos += col2;
+          pdf.text(selectedInvoice.waterNewReading.toString(), xPos + col3 / 2, yPos + 5.5, { align: 'center' });
+          xPos += col3;
+          pdf.setFont('times', 'bold');
+          pdf.text(`${waterConsumption}`, xPos + col4 / 2, yPos + 5.5, { align: 'center' });
+          pdf.setFont('times', 'normal');
+          xPos += col4;
+          pdf.text(`${formatMoney(waterPrice)}`, xPos + col5 / 2, yPos + 5.5, { align: 'center' });
+          yPos += 8;
+        }
+        
+        yPos += 6;
+      }
+
+      // ===== CHARGES TABLE =====
+      yPos += 3;
+      pdf.setFontSize(13);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(41, 128, 185);
+      pdf.text('CHI TIET THANH TOAN', margin, yPos);
+      yPos += 8;
+
+      // Table header
+      const tableWidth = pageWidth - 2 * margin;
+      const colSTT = 15;
+      const colSoLuong = 20;
+      const colDonGia = 38;
+      const colThanhTien = 38;
+      const colNoiDung = tableWidth - colSTT - colSoLuong - colDonGia - colThanhTien;
+      
+      pdf.setFillColor(52, 152, 219);
+      pdf.rect(margin, yPos, tableWidth, 9, 'F');
+      pdf.setDrawColor(52, 152, 219);
+      pdf.rect(margin, yPos, tableWidth, 9);
+      
+      pdf.setFontSize(11);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(255, 255, 255);
+      
+      let xPos = margin;
+      pdf.text('STT', xPos + colSTT / 2, yPos + 6, { align: 'center' });
+      xPos += colSTT;
+      pdf.text('Noi dung', xPos + 3, yPos + 6);
+      xPos += colNoiDung;
+      pdf.text('SL', xPos + colSoLuong / 2, yPos + 6, { align: 'center' });
+      xPos += colSoLuong;
+      pdf.text('Don gia', xPos + colDonGia / 2, yPos + 6, { align: 'center' });
+      xPos += colDonGia;
+      pdf.text('Thanh tien', xPos + colThanhTien / 2, yPos + 6, { align: 'center' });
+      yPos += 9;
+
+      // Table rows
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      
+      selectedInvoice.charges?.forEach((charge, index) => {
+        const rowHeight = 8;
+        
+        // Zebra striping
+        if (index % 2 === 0) {
+          pdf.setFillColor(236, 240, 241);
+        } else {
+          pdf.setFillColor(255, 255, 255);
+        }
+        pdf.rect(margin, yPos, tableWidth, rowHeight, 'F');
+        
+        pdf.setDrawColor(189, 195, 199);
+        pdf.setLineWidth(0.3);
+        pdf.rect(margin, yPos, tableWidth, rowHeight);
+        
+        const description = removeAccents(charge.description || '');
+        
+        xPos = margin;
+        pdf.text((index + 1).toString(), xPos + colSTT / 2, yPos + 5.5, { align: 'center' });
+        xPos += colSTT;
+        
+        // Wrap text if too long
+        const maxWidth = colNoiDung - 6;
+        const descLines = pdf.splitTextToSize(description, maxWidth);
+        pdf.text(descLines[0] || '', xPos + 3, yPos + 5.5);
+        xPos += colNoiDung;
+        
+        pdf.text((charge.quantity || 1).toString(), xPos + colSoLuong / 2, yPos + 5.5, { align: 'center' });
+        xPos += colSoLuong;
+        
+        const unitPrice = formatMoney(charge.unitPrice || charge.amount);
+        pdf.text(unitPrice, xPos + colDonGia - 3, yPos + 5.5, { align: 'right' });
+        xPos += colDonGia;
+        
+        const amount = formatMoney(charge.amount);
+        pdf.text(amount, xPos + colThanhTien - 3, yPos + 5.5, { align: 'right' });
+        
+        yPos += rowHeight;
+      });
+
+      // Subtotal section
+      yPos += 4;
+      const summaryX = pageWidth - margin - 85;
+      const summaryLabelX = summaryX;
+      const summaryValueX = pageWidth - margin - 3;
+      
+      pdf.setDrawColor(189, 195, 199);
+      pdf.setLineWidth(0.5);
+      pdf.line(summaryX, yPos, pageWidth - margin, yPos);
+      yPos += 7;
+      
+      pdf.setFont('times', 'normal');
+      pdf.setFontSize(11);
+      pdf.text('Tam tinh:', summaryLabelX, yPos);
+      pdf.text(formatMoney(selectedInvoice.subtotal || selectedInvoice.totalAmount), summaryValueX, yPos, { align: 'right' });
+
+      // Discount (if any)
+      if (selectedInvoice.discount > 0) {
+        yPos += 6;
+        pdf.setTextColor(231, 76, 60);
+        pdf.text('Giam gia:', summaryLabelX, yPos);
+        pdf.text(`-${formatMoney(selectedInvoice.discount)}`, summaryValueX, yPos, { align: 'right' });
+        pdf.setTextColor(0, 0, 0);
+      }
+
+      // Total
+      yPos += 3;
+      pdf.setDrawColor(52, 73, 94);
+      pdf.setLineWidth(1);
+      pdf.line(summaryX, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+      
+      pdf.setFontSize(14);
+      pdf.setFont('times', 'bold');
+      pdf.setTextColor(231, 76, 60);
+      pdf.text('TONG CONG:', summaryLabelX, yPos);
+      pdf.setFontSize(15);
+      pdf.text(formatMoney(selectedInvoice.totalAmount) + ' VND', summaryValueX, yPos, { align: 'right' });
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFontSize(10);
+      yPos += 10;
+
+      // ===== QR CODE SECTION =====
+      if (selectedInvoice.paymentQRCode && selectedInvoice.status !== 'paid') {
+        // Check if we need a new page
+        if (yPos > pageHeight - 100) {
+          pdf.addPage();
+          yPos = margin;
+        }
+
+        pdf.setLineWidth(0.5);
+        pdf.setDrawColor(200, 200, 200);
+        pdf.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 10;
+
+        pdf.setFontSize(13);
+        pdf.setFont('times', 'bold');
+        pdf.setTextColor(41, 128, 185);
+        pdf.text('THANH TOAN QUA CHUYEN KHOAN', pageWidth / 2, yPos, { align: 'center' });
+        yPos += 8;
+
+        try {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.src = selectedInvoice.paymentQRCode;
+          
+          await new Promise((resolve, reject) => {
+            img.onload = () => {
+              const qrSize = 70;
+              const qrX = (pageWidth - qrSize) / 2;
+              
+              // QR border
+              pdf.setDrawColor(200, 200, 200);
+              pdf.setLineWidth(1);
+              pdf.rect(qrX - 2, yPos - 2, qrSize + 4, qrSize + 4);
+              
+              pdf.addImage(img, 'PNG', qrX, yPos, qrSize, qrSize);
+              yPos += qrSize + 10;
+              resolve();
+            };
+            img.onerror = reject;
+            setTimeout(() => reject(new Error('QR load timeout')), 5000);
+          });
+
+          // Bank info box
+          pdf.setFillColor(236, 240, 241);
+          pdf.setDrawColor(189, 195, 199);
+          pdf.setLineWidth(0.5);
+          pdf.rect(margin + 10, yPos, pageWidth - 2 * margin - 20, 32, 'FD');
+          
+          pdf.setFontSize(11);
+          pdf.setFont('times', 'bold');
+          pdf.setTextColor(52, 73, 94);
+          yPos += 7;
+          
+          const bankCode = process.env.REACT_APP_SEPAY_BANK_CODE || 'TPBank';
+          const accountNumber = process.env.REACT_APP_SEPAY_ACCOUNT_NUMBER || '0382173105';
+          const accountName = removeAccents(process.env.REACT_APP_SEPAY_ACCOUNT_NAME || 'TRUONG CONG DUY');
+          
+          pdf.text('Thong tin chuyen khoan:', margin + 13, yPos);
+          yPos += 6;
+          
+          pdf.setFont('times', 'normal');
+          pdf.setFontSize(10);
+          pdf.setTextColor(0, 0, 0);
+          pdf.text(`Ngan hang: ${bankCode}`, margin + 13, yPos);
+          yPos += 5;
+          pdf.text(`So tai khoan: ${accountNumber}`, margin + 13, yPos);
+          yPos += 5;
+          pdf.text(`Chu tai khoan: ${accountName}`, margin + 13, yPos);
+          yPos += 5;
+          pdf.setFont('times', 'bold');
+          pdf.setFontSize(11);
+          pdf.setTextColor(231, 76, 60);
+          pdf.text(`So tien: ${formatMoney(selectedInvoice.totalAmount)} VND`, margin + 13, yPos);
+          pdf.setTextColor(0, 0, 0);
+          
+          yPos += 8;
+          if (selectedInvoice.paymentQRContent) {
+            pdf.setFontSize(9);
+            pdf.setFont('times', 'italic');
+            pdf.setTextColor(100, 100, 100);
+            pdf.text(`Noi dung: ${removeAccents(selectedInvoice.paymentQRContent)}`, pageWidth / 2, yPos, { align: 'center' });
+            pdf.setTextColor(0, 0, 0);
+          }
+        } catch (error) {
+          console.error('Error loading QR code:', error);
+          pdf.setFontSize(10);
+          pdf.setTextColor(231, 76, 60);
+          pdf.text('Loi tai ma QR. Vui long lien he chu tro de nhan thong tin chuyen khoan.', pageWidth / 2, yPos, { align: 'center' });
+          pdf.setTextColor(0, 0, 0);
+        }
+      }
+
+      // ===== NOTES =====
+      if (selectedInvoice.notes) {
+        yPos += 15;
+        if (yPos > pageHeight - 30) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        
+        pdf.setFontSize(10);
+        pdf.setFont('times', 'bold');
+        pdf.setTextColor(0, 0, 0);
+        pdf.text('Ghi chu:', margin, yPos);
+        yPos += 5;
+        
+        pdf.setFont('times', 'italic');
+        const notes = removeAccents(selectedInvoice.notes);
+        const noteLines = pdf.splitTextToSize(notes, pageWidth - 2 * margin);
+        pdf.text(noteLines, margin, yPos);
+      }
+
+      // ===== FOOTER =====
+      yPos = pageHeight - 15;
+      pdf.setDrawColor(200, 200, 200);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos - 5, pageWidth - margin, yPos - 5);
+      
+      pdf.setFontSize(9);
+      pdf.setFont('times', 'italic');
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Cam on quy khach da su dung dich vu!', pageWidth / 2, yPos, { align: 'center' });
+      yPos += 4;
+      pdf.text('Moi thac mac xin lien he: [So dien thoai chu tro]', pageWidth / 2, yPos, { align: 'center' });
+
+      // Save PDF
+      const fileName = `HoaDon_Phong${selectedInvoice.room?.roomNumber}_${new Date().toLocaleDateString('vi-VN').replace(/\//g, '-')}.pdf`;
+      pdf.save(fileName);
+
+      showToast('success', 'Xuat PDF thanh cong!');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      showToast('error', 'Loi khi xuat PDF: ' + error.message);
+    }
+  };
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('vi-VN', {
       style: 'currency',
@@ -179,7 +1206,7 @@ const PaymentsManagement = () => {
   // Generate month options
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: (i + 1).toString(),
-    label: `Tháng ${i + 1}`
+    label: t('common.monthNumber', `Tháng ${i + 1}`)
   }));
 
   // Generate year options (current year and 2 years back)
@@ -195,6 +1222,15 @@ const PaymentsManagement = () => {
       <div className="payments-content">
         <div className="payments-header">
           <h1 className="payments-title">{t('payments.title', 'Quản lý thanh toán')}</h1>
+          <div className="header-actions">
+            <button 
+              className="btn-batch-export-trigger"
+              onClick={openBatchExportModal}
+            >
+              <i className="fas fa-file-export"></i>
+              {t('payments.batchExport', 'Xuất hóa đơn hàng loạt')}
+            </button>
+          </div>
         </div>
 
         {/* Filters */}
@@ -298,12 +1334,16 @@ const PaymentsManagement = () => {
         ) : (
           <div className="payments-grid">
             {invoices.map(invoice => (
-              <div key={invoice._id} className="payment-card" onClick={() => openDetail(invoice)}>
+              <div 
+                key={invoice._id} 
+                className="payment-card"
+                onClick={() => openDetail(invoice)}
+              >
                 <div className="payment-card-header">
                   <div className="payment-info">
                     <div className="payment-room">
                       <i className="fas fa-door-open"></i>
-                      <span>Phòng {invoice.room?.roomNumber || '-'}</span>
+                      <span>{t('payments.room', 'Phòng')} {invoice.room?.roomNumber || '-'}</span>
                     </div>
                     <div className="payment-tenant">
                       <i className="fas fa-user"></i>
@@ -319,30 +1359,30 @@ const PaymentsManagement = () => {
                   <div className="payment-period">
                     <i className="fas fa-calendar"></i>
                     <span>
-                      Kỳ: {formatDate(invoice.periodStart)} - {formatDate(invoice.periodEnd)}
+                      {t('payments.period', 'Kỳ')}: {formatDate(invoice.periodStart)} - {formatDate(invoice.periodEnd)}
                     </span>
                   </div>
                   
                   <div className="payment-dates">
                     <div className="date-item">
-                      <label>Ngày lập:</label>
+                      <label>{t('payments.issueDate', 'Ngày lập')}:</label>
                       <span>{formatDate(invoice.issueDate)}</span>
                     </div>
                     <div className="date-item">
-                      <label>Hạn thanh toán:</label>
+                      <label>{t('payments.dueDate', 'Hạn thanh toán')}:</label>
                       <span>{formatDate(invoice.dueDate)}</span>
                     </div>
                   </div>
 
                   <div className="payment-amount">
-                    <label>Tổng tiền:</label>
+                    <label>{t('payments.totalAmount', 'Tổng tiền')}:</label>
                     <span className="amount-value">{formatCurrency(invoice.totalAmount)}</span>
                   </div>
 
                   {invoice.status === 'paid' && invoice.paymentDate && (
                     <div className="payment-date-paid">
                       <i className="fas fa-check-circle"></i>
-                      <span>Đã thanh toán: {formatDate(invoice.paymentDate)}</span>
+                      <span>{t('payments.paidOn', 'Đã thanh toán')}: {formatDate(invoice.paymentDate)}</span>
                     </div>
                   )}
                 </div>
@@ -357,12 +1397,12 @@ const PaymentsManagement = () => {
                       }}
                     >
                       <i className="fas fa-check"></i>
-                      Đánh dấu đã thanh toán
+                      {t('payments.markAsPaid', 'Đánh dấu đã thanh toán')}
                     </button>
                   )}
                   <button className="btn-view-detail">
                     <i className="fas fa-eye"></i>
-                    Xem chi tiết
+                    {t('payments.viewDetail', 'Xem chi tiết')}
                   </button>
                 </div>
               </div>
@@ -399,30 +1439,30 @@ const PaymentsManagement = () => {
         <div className="modal-backdrop" onClick={closeDetail}>
           <div className="modal-container" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
-              <h2 className="modal-title">Chi tiết hóa đơn</h2>
+              <h2 className="modal-title">{t('payments.invoiceDetail', 'Chi tiết hóa đơn')}</h2>
               <button className="modal-close" onClick={closeDetail}>×</button>
             </div>
             
             {loadingDetail ? (
               <div className="modal-loading">
                 <div className="loading-spinner" />
-                <p>Đang tải...</p>
+                <p>{t('common.loading', 'Đang tải...')}</p>
               </div>
             ) : selectedInvoice ? (
               <div className="modal-body">
                 <div className="invoice-detail-grid">
                   <div className="detail-section">
-                    <h3>Thông tin chung</h3>
+                    <h3>{t('payments.generalInfo', 'Thông tin chung')}</h3>
                     <div className="detail-row">
-                      <label>Phòng:</label>
-                      <span>Phòng {selectedInvoice.room?.roomNumber}</span>
+                      <label>{t('payments.room', 'Phòng')}:</label>
+                      <span>{t('payments.room', 'Phòng')} {selectedInvoice.room?.roomNumber}</span>
                     </div>
                     <div className="detail-row">
-                      <label>Khách thuê:</label>
+                      <label>{t('payments.tenant', 'Khách thuê')}:</label>
                       <span>{selectedInvoice.tenant?.fullName}</span>
                     </div>
                     <div className="detail-row">
-                      <label>Trạng thái:</label>
+                      <label>{t('payments.status.label', 'Trạng thái')}:</label>
                       <span className={getStatusBadgeClass(selectedInvoice.status)}>
                         {getStatusText(selectedInvoice.status)}
                       </span>
@@ -430,7 +1470,7 @@ const PaymentsManagement = () => {
                   </div>
 
                   <div className="detail-section">
-                    <h3>Chi tiết thanh toán</h3>
+                    <h3>{t('payments.paymentDetail', 'Chi tiết thanh toán')}</h3>
                     {selectedInvoice.charges?.map((charge, index) => (
                       <div key={index} className="detail-row">
                         <label>{charge.description}:</label>
@@ -438,7 +1478,7 @@ const PaymentsManagement = () => {
                       </div>
                     ))}
                     <div className="detail-row total">
-                      <label>Tổng cộng:</label>
+                      <label>{t('payments.totalAmount', 'Tổng cộng')}:</label>
                       <span>{formatCurrency(selectedInvoice.totalAmount)}</span>
                     </div>
                   </div>
@@ -447,7 +1487,14 @@ const PaymentsManagement = () => {
             ) : null}
 
             <div className="modal-footer">
-              <button className="btn-secondary" onClick={closeDetail}>Đóng</button>
+              <button className="btn-secondary" onClick={closeDetail}>{t('payments.close', 'Đóng')}</button>
+              <button 
+                className="btn-success" 
+                onClick={handleExportPDF}
+                title={t('payments.exportPDFTooltip', 'Xuất hóa đơn PDF kèm QR thanh toán')}
+              >
+                📄 {t('payments.exportPDF', 'Xuất PDF')}
+              </button>
               {selectedInvoice && selectedInvoice.status !== 'paid' && (
                 <button
                   className="btn-primary"
@@ -455,9 +1502,168 @@ const PaymentsManagement = () => {
                     handleMarkAsPaid(selectedInvoice._id);
                   }}
                 >
-                  Đánh dấu đã thanh toán
+                  {t('payments.markAsPaid', 'Đánh dấu đã thanh toán')}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Export Modal */}
+      {showBatchExportModal && (
+        <div className="modal-backdrop" onClick={closeBatchExportModal}>
+          <div className="modal-container batch-export-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                <i className="fas fa-file-export"></i>
+                {t('payments.batchExportModal.title', 'Xuất hóa đơn hàng loạt')}
+              </h2>
+              <button className="modal-close" onClick={closeBatchExportModal}>×</button>
+            </div>
+            
+            <div className="modal-body">
+              {/* Filters Section */}
+              <div className="batch-filters">
+                <div className="batch-filter-group">
+                  <label className="batch-filter-label">
+                    <i className="fas fa-filter"></i>
+                    {t('payments.batchExportModal.filterStatus', 'Trạng thái')}
+                  </label>
+                  <select
+                    className="batch-filter-select"
+                    value={batchFilters.status}
+                    onChange={e => {
+                      setBatchFilters(f => ({ ...f, status: e.target.value }));
+                      setSelectedInvoices([]);
+                    }}
+                  >
+                    <option value="">{t('common.all', 'Tất cả')}</option>
+                    <option value="paid">{t('payments.status.paid', 'Đã thanh toán')}</option>
+                    <option value="unpaid">{t('payments.status.unpaid', 'Chưa thanh toán')}</option>
+                    <option value="overdue">{t('payments.status.overdue', 'Quá hạn')}</option>
+                  </select>
+                </div>
+
+                <div className="batch-filter-group">
+                  <label className="batch-filter-label">
+                    <i className="fas fa-calendar"></i>
+                    {t('payments.batchExportModal.filterMonth', 'Tháng')}
+                  </label>
+                  <select
+                    className="batch-filter-select"
+                    value={batchFilters.month}
+                    onChange={e => {
+                      setBatchFilters(f => ({ ...f, month: e.target.value }));
+                      setSelectedInvoices([]);
+                    }}
+                  >
+                    <option value="">{t('common.all', 'Tất cả')}</option>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <option key={i + 1} value={(i + 1).toString()}>
+                        {t('common.monthNumber', `Tháng ${i + 1}`)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {(batchFilters.status || batchFilters.month) && (
+                  <button 
+                    className="batch-filter-reset"
+                    onClick={() => {
+                      setBatchFilters({ status: '', month: '' });
+                      setSelectedInvoices([]);
+                    }}
+                  >
+                    <i className="fas fa-times-circle"></i>
+                    {t('payments.batchExportModal.clearFilter', 'Xóa lọc')}
+                  </button>
+                )}
+              </div>
+
+              <div className="batch-select-header">
+                <button 
+                  className="btn-select-all-modal"
+                  onClick={handleSelectAll}
+                >
+                  <i className={`fas ${selectedInvoices.length === getFilteredInvoicesForBatch().length && getFilteredInvoicesForBatch().length > 0 ? 'fa-check-square' : 'fa-square'}`}></i>
+                  {selectedInvoices.length === getFilteredInvoicesForBatch().length && getFilteredInvoicesForBatch().length > 0 
+                    ? t('payments.batchExportModal.deselectAll', 'Bỏ chọn tất cả') 
+                    : t('payments.batchExportModal.selectAll', 'Chọn tất cả')}
+                </button>
+                <span className="selected-info">
+                  {t('payments.batchExportModal.selected', 'Đã chọn')}: <strong>{selectedInvoices.length}</strong> / {getFilteredInvoicesForBatch().length}
+                </span>
+              </div>
+
+              <div className="batch-invoice-list">
+                {getFilteredInvoicesForBatch().length === 0 ? (
+                  <div className="batch-empty">
+                    <i className="fas fa-inbox"></i>
+                    <p>{t('payments.batchExportModal.noInvoices', 'Không có hóa đơn nào phù hợp với bộ lọc')}</p>
+                  </div>
+                ) : (
+                  getFilteredInvoicesForBatch().map(invoice => (
+                    <div 
+                      key={invoice._id}
+                      className={`batch-invoice-item ${selectedInvoices.includes(invoice._id) ? 'selected' : ''}`}
+                      onClick={() => toggleSelectInvoice(invoice._id)}
+                    >
+                      <div className="batch-checkbox">
+                        <input
+                          type="checkbox"
+                          checked={selectedInvoices.includes(invoice._id)}
+                          onChange={() => {}}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                    <div className="batch-invoice-info">
+                      <div className="batch-invoice-main">
+                        <span className="batch-room">
+                          <i className="fas fa-door-open"></i>
+                          {t('payments.room', 'Phòng')} {invoice.room?.roomNumber}
+                        </span>
+                        <span className="batch-tenant">
+                          <i className="fas fa-user"></i>
+                          {invoice.tenant?.fullName}
+                        </span>
+                      </div>
+                      <div className="batch-invoice-meta">
+                        <span className="batch-amount">
+                          {formatCurrency(invoice.totalAmount)}
+                        </span>
+                        <span className={`batch-status ${invoice.status}`}>
+                          {getStatusText(invoice.status)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={closeBatchExportModal}>
+                {t('payments.cancel', 'Hủy')}
+              </button>
+              <button 
+                className="btn-primary"
+                onClick={handleBatchExport}
+                disabled={selectedInvoices.length === 0 || isExporting}
+              >
+                {isExporting ? (
+                  <>
+                    <i className="fas fa-spinner fa-spin"></i>
+                    {t('payments.batchExportModal.exporting', 'Đang xuất...')}
+                  </>
+                ) : (
+                  <>
+                    <i className="fas fa-file-pdf"></i>
+                    {t('payments.batchExportModal.exportCount', `Xuất ${selectedInvoices.length} hóa đơn`, { count: selectedInvoices.length })}
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
