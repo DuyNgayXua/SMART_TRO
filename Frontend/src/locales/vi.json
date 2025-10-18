@@ -78,6 +78,18 @@
   "rooms": {
     "title": "Quản lý phòng trọ",
     "addNew": "Thêm phòng mới",
+    "importExcel": "Import Excel",
+    "exportExcel": "Xuất Excel",
+    "exportSuccess": "Xuất Excel thành công!",
+    "exportError": "Lỗi khi xuất Excel: ",
+    "downloadTemplate": "Tải file mẫu",
+    "templateHint": "Tải file mẫu để xem định dạng dữ liệu cần import",
+    "selectFile": "Chọn file Excel",
+    "chooseFile": "Chọn file...",
+    "dataPreview": "Xem trước dữ liệu",
+    "import": "Import",
+    "importing": "Đang import...",
+    "invalidRowsWarning": "Có một số dòng không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.",
     "search": "Tìm kiếm",
     "searchPlaceholder": "Tên phòng, mô tả...",
     "roomType": "Loại phòng",
@@ -325,7 +337,7 @@
       "createSuccessQRError": "Tạo hóa đơn thành công nhưng lỗi khi tạo mã QR"
     }
   },
-  "invoices": {
+    "invoices": {
     "form": {
       "oldReading": "Chỉ số cũ",
       "newReading": "Chỉ số mới *",

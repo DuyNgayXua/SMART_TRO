@@ -78,6 +78,56 @@
 
 .rooms-title { font-size:30px; font-weight:700; letter-spacing:.5px; background:linear-gradient(90deg,#1e3a8a,#9333ea); -webkit-background-clip:text; background-clip:text; color:transparent; }
 
+.import-excel-btn {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
+}
+
+.import-excel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.6);
+}
+
+.import-excel-btn i {
+  font-size: 18px;
+}
+
+.export-excel-btn {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4);
+}
+
+.export-excel-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.6);
+}
+
+.export-excel-btn i {
+  font-size: 18px;
+}
+
 .add-room-btn {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
@@ -7152,7 +7202,539 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
   align-items: center;
   gap: 8px;
   transition: all 0.2s ease;
+}
+
+/* Import Excel Modal Styles */
+.import-modal-content {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  max-width: 1100px;
+  width: 92%;
+  max-height: 88vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  z-index: 10006;
+}
+
+.import-modal-content .modal-header {
+  padding: 24px 28px;
+  border-bottom: 1px solid #e5e7eb;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.import-modal-content .modal-header h3 {
+  color: #1f2937;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.import-modal-content .modal-header h3 i {
+  font-size: 24px;
+  color: #3b82f6;
+}
+
+.import-modal-content .modal-close-btn {
+  color: #6b7280;
+  background: transparent;
   border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.import-modal-content .modal-close-btn:hover {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.import-modal-content .modal-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 28px;
+  background: #fafbfc;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.import-modal-content .modal-body::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.import-section {
+  margin-bottom: 24px;
+}
+
+.import-top-section {
+  margin-bottom: 24px;
+  padding: 20px;
+  background: white;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.template-download-area {
+  margin-bottom: 12px;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.template-download-btn {
+  background: #8b5cf6;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.template-download-btn:hover {
+  background: #7c3aed;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  transform: translateY(-1px);
+}
+
+.template-download-btn:active {
+  transform: translateY(0);
+}
+
+.template-download-btn i {
+  font-size: 16px;
+}
+
+.import-hint {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #eff6ff;
+  border-left: 3px solid #3b82f6;
+  border-radius: 8px;
+  color: #1e40af;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.import-hint i {
+  color: #3b82f6;
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.file-upload-label {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 10px;
+}
+
+.file-upload-label i {
+  color: #10b981;
+  margin-right: 6px;
+}
+
+.file-input {
+  display: none;
+}
+
+.file-input-btn {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 20px;
+  background: white;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  color: #64748b;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+  justify-content: center;
+}
+
+.file-input-btn:hover {
+  border-color: #3b82f6;
+  background: #f0f9ff;
+  color: #3b82f6;
+}
+
+.file-input-btn i {
+  font-size: 18px;
+}
+
+.preview-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.preview-title i {
+  color: #3b82f6;
+  font-size: 18px;
+}
+
+.import-data-grid {
+  max-height: 400px;
+  overflow: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.import-data-grid::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.import-data-grid::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+.import-data-grid::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.import-data-grid::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+.import-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  table-layout: fixed;
+}
+
+.import-table thead {
+  position: sticky;
+  top: 0;
+  background: #f8fafc;
+  z-index: 10;
+}
+
+.import-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: #64748b;
+  border-bottom: 2px solid #e5e7eb;
+  white-space: nowrap;
+  font-size: 13px;
+  background: #f8fafc;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.import-table th:nth-child(1) { width: 60px; } /* STT */
+.import-table th:nth-child(2) { width: 120px; } /* Tên phòng */
+.import-table th:nth-child(3) { width: 110px; } /* Trạng thái */
+.import-table th:nth-child(4) { width: 140px; } /* Giá thuê */
+.import-table th:nth-child(5) { width: 120px; } /* Giá cọc */
+.import-table th:nth-child(6) { width: 100px; } /* Diện tích */
+.import-table th:nth-child(7) { width: 100px; } /* Sức chứa */
+.import-table th:nth-child(8) { width: 80px; } /* Hợp lệ */
+
+.import-table td {
+  padding: 8px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #475569;
+}
+
+.import-table tbody tr {
+  transition: background 0.15s ease;
+  background: white;
+}
+
+.import-table tbody tr:hover {
+  background: #f8fafc;
+}
+
+.import-table tbody tr.invalid-row {
+  background: #fef2f2;
+}
+
+.import-table tbody tr.invalid-row:hover {
+  background: #fee2e2;
+}
+
+/* Editable cells in import table */
+.editable-cell {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.editable-cell:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  background: #f0f9ff;
+}
+
+.editable-cell:hover {
+  border-color: #cbd5e1;
+}
+
+.invalid-row .editable-cell {
+  border-color: #fca5a5;
+  background: #fef2f2;
+}
+
+.invalid-row .editable-cell:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+  background: white;
+}
+
+/* Highlight for first column (room name) in invalid rows */
+.invalid-row td:nth-child(2) .editable-cell {
+  border-color: #ef4444;
+  border-width: 2px;
+  font-weight: 600;
+}
+
+.editable-select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 4px;
+  font-size: 13px;
+  color: #374151;
+  background: white;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-sizing: border-box;
+}
+
+.editable-select:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.editable-select:hover {
+  border-color: #cbd5e1;
+}
+
+/* Remove spinner from number inputs */
+.editable-cell[type="number"]::-webkit-inner-spin-button,
+.editable-cell[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.editable-cell[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.valid-icon {
+  color: #10b981;
+  font-size: 18px;
+}
+
+.invalid-icon {
+  color: #ef4444;
+  font-size: 18px;
+  cursor: help;
+}
+
+.import-warning {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: #fef3c7;
+  border-left: 3px solid #f59e0b;
+  border-radius: 8px;
+  color: #92400e;
+  font-size: 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  line-height: 1.5;
+}
+
+.import-warning i {
+  color: #f59e0b;
+  font-size: 16px;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* Import Summary Stats */
+.import-summary {
+  display: flex;
+  gap: 12px;
+  margin-top: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+
+.summary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #374151;
+}
+
+.summary-item i {
+  font-size: 16px;
+}
+
+.summary-item strong {
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.summary-total {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.summary-total i {
+  color: #3b82f6;
+}
+
+.summary-valid {
+  border-color: #10b981;
+  background: #f0fdf4;
+}
+
+.summary-valid i {
+  color: #10b981;
+}
+
+.summary-invalid {
+  border-color: #ef4444;
+  background: #fef2f2;
+}
+
+.summary-invalid i {
+  color: #ef4444;
+}
+
+.import-modal-content .modal-footer {
+  padding: 20px 28px;
+  border-top: 1px solid #e5e7eb;
+  background: white;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.btn-cancel {
+  padding: 10px 24px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  color: #6b7280;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel:hover {
+  background: #f9fafb;
+  border-color: #9ca3af;
+  color: #374151;
+}
+
+.btn-cancel:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-import {
+  padding: 10px 24px;
+  background: #3b82f6;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.btn-import:hover:not(:disabled) {
+  background: #2563eb;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.btn-import:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.btn-import i.fa-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .room-confirm-btn-cancel {

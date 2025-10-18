@@ -1206,7 +1206,7 @@ const PaymentsManagement = () => {
   // Generate month options
   const monthOptions = Array.from({ length: 12 }, (_, i) => ({
     value: (i + 1).toString(),
-    label: t('common.monthNumber', `Tháng ${i + 1}`)
+    label: t('common.monthNumber', { number: i + 1, defaultValue: `Tháng ${i + 1}` })
   }));
 
   // Generate year options (current year and 2 years back)
@@ -1561,7 +1561,7 @@ const PaymentsManagement = () => {
                     <option value="">{t('common.all', 'Tất cả')}</option>
                     {Array.from({ length: 12 }, (_, i) => (
                       <option key={i + 1} value={(i + 1).toString()}>
-                        {t('common.monthNumber', `Tháng ${i + 1}`)}
+                        {t('common.monthNumber', { number: i + 1, defaultValue: `Tháng ${i + 1}` })}
                       </option>
                     ))}
                   </select>

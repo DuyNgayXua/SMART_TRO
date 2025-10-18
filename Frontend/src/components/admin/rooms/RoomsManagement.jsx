@@ -98,6 +98,12 @@ const RoomsManagement = () => {
   
   // Room Transfer Modal States
   const [showRoomTransferModal, setShowRoomTransferModal] = useState(false);
+  
+  // Import Excel Modal States
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState(null);
+  const [importData, setImportData] = useState([]);
+  const [importLoading, setImportLoading] = useState(false);
   const [selectedRoomForTransfer, setSelectedRoomForTransfer] = useState(null);
   
   // Expiring Confirm Modal States
@@ -320,8 +326,13 @@ const RoomsManagement = () => {
     const list = res.data.rooms.map(r => ({
           id: r._id,
           name: r.roomNumber,
+          roomNumber: r.roomNumber,
             status: r.status,
             price: r.price,
+            deposit: r.deposit,
+            electricityPrice: r.electricityPrice,
+            waterPrice: r.waterPrice,
+            servicePrice: r.servicePrice,
             area: r.area,
             capacity: r.capacity,
             vehicleCount: r.vehicleCount,
@@ -477,6 +488,365 @@ const RoomsManagement = () => {
       priceMin: '',
       priceMax: ''
     });
+  };
+
+  const handleExportExcel = () => {
+    try {
+      if (!window.XLSX) {
+        showToast('error', 'Thư viện Excel chưa được tải');
+        return;
+      }
+
+      if (rooms.length === 0) {
+        showToast('error', 'Không có dữ liệu để xuất');
+        return;
+      }
+
+      // Prepare data for export
+      const exportData = rooms.map((room, index) => {
+        // Process amenities - more robust handling
+        let amenitiesText = '-';
+        if (room.amenities) {
+          if (Array.isArray(room.amenities)) {
+            // If array of strings
+            if (typeof room.amenities[0] === 'string') {
+              amenitiesText = room.amenities.join(', ');
+            }
+            // If array of objects with name/label property
+            else if (typeof room.amenities[0] === 'object') {
+              amenitiesText = room.amenities
+                .map(a => a?.name || a?.label || a?.title || JSON.stringify(a))
+                .filter(Boolean)
+                .join(', ');
+            }
+          } else if (typeof room.amenities === 'object') {
+            // If object, try to extract meaningful values
+            const values = Object.entries(room.amenities)
+              .filter(([key, value]) => value && key !== '_id' && key !== '__v')
+              .map(([key, value]) => {
+                if (typeof value === 'string') return value;
+                if (typeof value === 'object' && value.name) return value.name;
+                return key;
+              });
+            amenitiesText = values.length > 0 ? values.join(', ') : JSON.stringify(room.amenities);
+          } else if (typeof room.amenities === 'string') {
+            amenitiesText = room.amenities;
+          }
+        }
+
+        // Format water price - Room schema only has waterPrice (VNĐ/m³)
+        const waterPriceText = room.waterPrice 
+          ? `${room.waterPrice.toLocaleString('vi-VN')} VNĐ/m³` 
+          : '-';
+
+        return {
+          'STT': index + 1,
+          'Tên phòng': room.name || room.roomNumber || '-',
+          'Trạng thái': room.status === 'available' ? 'Trống' :
+                       room.status === 'rented' ? 'Đã thuê' :
+                       room.status === 'deposit' ? 'Đã đặt cọc' :
+                       room.status === 'expiring' ? 'Sắp kết thúc' :
+                       room.status === 'maintenance' ? 'Bảo trì' : room.status || '-',
+          'Giá thuê (VNĐ/tháng)': room.price ? room.price.toLocaleString('vi-VN') : '-',
+          'Giá cọc (VNĐ)': room.deposit ? room.deposit.toLocaleString('vi-VN') : '-',
+          'Diện tích (m²)': room.area || '-',
+          'Sức chứa (người)': room.capacity || '-',
+          'Số xe tối đa': room.vehicleCount || room.maxVehicles || '-',
+          'Giá điện (VNĐ/kWh)': room.electricityPrice ? room.electricityPrice.toLocaleString('vi-VN') : '-',
+          'Giá nước': waterPriceText,
+          'Phí dịch vụ (VNĐ/tháng)': room.servicePrice ? room.servicePrice.toLocaleString('vi-VN') : '-',
+          'Tiện ích': amenitiesText
+        };
+      });
+
+      // Create worksheet
+      const ws = window.XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 5 },  // STT
+        { wch: 20 }, // Tên phòng
+        { wch: 15 }, // Trạng thái
+        { wch: 18 }, // Giá thuê
+        { wch: 15 }, // Giá cọc
+        { wch: 12 }, // Diện tích
+        { wch: 15 }, // Sức chứa
+        { wch: 12 }, // Số xe tối đa
+        { wch: 18 }, // Giá điện
+        { wch: 25 }, // Giá nước
+        { wch: 20 }, // Phí dịch vụ
+        { wch: 40 }  // Tiện ích
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Danh sách phòng');
+
+      // Generate filename with current date
+      const today = new Date();
+      const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
+      const filename = `Danh_sach_phong_${dateStr}.xlsx`;
+
+      // Save file
+      window.XLSX.writeFile(wb, filename);
+
+      showToast('success', t('rooms.exportSuccess', 'Xuất Excel thành công!'));
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      showToast('error', t('rooms.exportError', 'Lỗi khi xuất Excel: ') + error.message);
+    }
+  };
+
+  // Import Excel Functions
+  const handleDownloadTemplate = () => {
+    try {
+      if (!window.XLSX) {
+        showToast('error', 'Thư viện Excel chưa được tải');
+        return;
+      }
+
+      // Create template data with one example row
+      const templateData = [
+        {
+          'Tên phòng': 'P101',
+          'Trạng thái': 'Trống',
+          'Giá thuê (VNĐ/tháng)': '3000000',
+          'Giá cọc (VNĐ)': '3000000',
+          'Diện tích (m²)': '25',
+          'Sức chứa (người)': '2',
+          'Số xe tối đa': '1',
+          'Giá điện (VNĐ/kWh)': '3500',
+          'Giá nước (VNĐ/m³)': '25000',
+          'Phí dịch vụ (VNĐ/tháng)': '150000',
+          'Mô tả': 'Phòng đầy đủ tiện nghi, thoáng mát'
+        }
+      ];
+
+      const ws = window.XLSX.utils.json_to_sheet(templateData);
+      
+      // Set column widths
+      const colWidths = [
+        { wch: 15 }, // Tên phòng
+        { wch: 15 }, // Trạng thái
+        { wch: 20 }, // Giá thuê
+        { wch: 18 }, // Giá cọc
+        { wch: 15 }, // Diện tích
+        { wch: 18 }, // Sức chứa
+        { wch: 15 }, // Số xe
+        { wch: 20 }, // Giá điện
+        { wch: 22 }, // Giá nước
+        { wch: 22 }, // Phí dịch vụ
+        { wch: 40 }  // Mô tả
+      ];
+      ws['!cols'] = colWidths;
+
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Mẫu Import Phòng');
+
+      window.XLSX.writeFile(wb, 'Mau_Import_Phong.xlsx');
+      showToast('success', 'Tải file mẫu thành công!');
+    } catch (error) {
+      console.error('Error downloading template:', error);
+      showToast('error', 'Lỗi khi tải file mẫu: ' + error.message);
+    }
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'];
+    if (!validTypes.includes(file.type)) {
+      showToast('error', 'Vui lòng chọn file Excel (.xlsx, .xls)');
+      return;
+    }
+
+    setImportFile(file);
+    readExcelFile(file);
+  };
+
+  const readExcelFile = (file) => {
+    const reader = new FileReader();
+    
+    reader.onload = (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = window.XLSX.read(data, { type: 'array' });
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const jsonData = window.XLSX.utils.sheet_to_json(firstSheet);
+
+        // Transform data to match Room schema
+        const transformedData = jsonData.map((row, index) => {
+          // Map status
+          let status = 'available';
+          const statusText = row['Trạng thái']?.toLowerCase().trim();
+          if (statusText === 'đã thuê' || statusText === 'rented') status = 'rented';
+          else if (statusText === 'đã đặt cọc' || statusText === 'deposit' || statusText === 'reserved') status = 'reserved';
+          else if (statusText === 'sắp kết thúc' || statusText === 'expiring') status = 'expiring';
+
+          return {
+            id: `temp-${index}`,
+            roomNumber: row['Tên phòng']?.toString() || '',
+            status: status,
+            price: parseFloat(row['Giá thuê (VNĐ/tháng)']?.toString().replace(/[^0-9]/g, '') || 0),
+            deposit: parseFloat(row['Giá cọc (VNĐ)']?.toString().replace(/[^0-9]/g, '') || 0),
+            area: parseFloat(row['Diện tích (m²)'] || 0),
+            capacity: parseInt(row['Sức chứa (người)'] || 1),
+            vehicleCount: parseInt(row['Số xe tối đa'] || 0),
+            electricityPrice: parseFloat(row['Giá điện (VNĐ/kWh)']?.toString().replace(/[^0-9]/g, '') || 3500),
+            waterPrice: parseFloat(row['Giá nước (VNĐ/m³)']?.toString().replace(/[^0-9]/g, '') || 25000),
+            servicePrice: parseFloat(row['Phí dịch vụ (VNĐ/tháng)']?.toString().replace(/[^0-9]/g, '') || 150000),
+            description: row['Mô tả'] || '',
+            isValid: true,
+            errors: []
+          };
+        });
+
+        // Validate data
+        const validatedData = transformedData.map((room, index) => {
+          const errors = [];
+          
+          // Check required fields
+          if (!room.roomNumber) errors.push('Thiếu tên phòng');
+          if (room.price <= 0) errors.push('Giá thuê không hợp lệ');
+          if (room.deposit < 0) errors.push('Giá cọc không hợp lệ');
+          if (room.area <= 0) errors.push('Diện tích không hợp lệ');
+
+          // Check duplicate in import file
+          const duplicateInFile = transformedData.filter(
+            (r, i) => i !== index && r.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber?.toLowerCase()
+          );
+          if (duplicateInFile.length > 0) {
+            errors.push('Tên phòng bị trùng trong file');
+          }
+
+          // Check duplicate with existing rooms
+          const duplicateInSystem = rooms.find(
+            (r) => r.roomNumber && room.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber.toLowerCase()
+          );
+          if (duplicateInSystem) {
+            errors.push('Tên phòng đã tồn tại trong hệ thống');
+          }
+          
+          return {
+            ...room,
+            isValid: errors.length === 0,
+            errors
+          };
+        });
+
+        setImportData(validatedData);
+        showToast('success', `Đọc được ${validatedData.length} phòng từ file Excel`);
+      } catch (error) {
+        console.error('Error reading Excel file:', error);
+        showToast('error', 'Lỗi khi đọc file Excel: ' + error.message);
+        setImportData([]);
+      }
+    };
+
+    reader.onerror = () => {
+      showToast('error', 'Lỗi khi đọc file');
+      setImportData([]);
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleImport = async () => {
+    if (importData.length === 0) {
+      showToast('error', 'Không có dữ liệu để import');
+      return;
+    }
+
+    const validRooms = importData.filter(room => room.isValid);
+    if (validRooms.length === 0) {
+      showToast('error', 'Không có phòng hợp lệ để import');
+      return;
+    }
+
+    setImportLoading(true);
+    try {
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const room of validRooms) {
+        try {
+          const roomData = {
+            roomNumber: room.roomNumber,
+            price: room.price,
+            deposit: room.deposit,
+            area: room.area,
+            capacity: room.capacity,
+            vehicleCount: room.vehicleCount,
+            electricityPrice: room.electricityPrice,
+            waterPrice: room.waterPrice,
+            servicePrice: room.servicePrice,
+            description: room.description,
+            status: room.status,
+            amenities: [],
+            images: []
+          };
+
+          await roomsAPI.createRoom(roomData);
+          successCount++;
+        } catch (error) {
+          console.error('Error importing room:', room.roomNumber, error);
+          failCount++;
+        }
+      }
+
+      showToast('success', `Import thành công ${successCount} phòng${failCount > 0 ? `, thất bại ${failCount} phòng` : ''}`);
+      
+      // Close modal and refresh rooms list
+      setShowImportModal(false);
+      setImportFile(null);
+      setImportData([]);
+      fetchRooms();
+    } catch (error) {
+      console.error('Error during import:', error);
+      showToast('error', 'Lỗi khi import: ' + error.message);
+    } finally {
+      setImportLoading(false);
+    }
+  };
+
+  const handleEditImportRow = (index, field, value) => {
+    const updatedData = [...importData];
+    updatedData[index][field] = value;
+
+    // Re-validate all rows (to check duplicates)
+    updatedData.forEach((room, idx) => {
+      const errors = [];
+      
+      // Check required fields
+      if (!room.roomNumber) errors.push('Thiếu tên phòng');
+      if (room.price <= 0) errors.push('Giá thuê không hợp lệ');
+      if (room.deposit < 0) errors.push('Giá cọc không hợp lệ');
+      if (room.area <= 0) errors.push('Diện tích không hợp lệ');
+
+      // Check duplicate room name in import data
+      const duplicateInImport = updatedData.filter(
+        (r, i) => i !== idx && r.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber?.toLowerCase()
+      );
+      if (duplicateInImport.length > 0) {
+        errors.push('Tên phòng bị trùng trong file');
+      }
+
+      // Check duplicate with existing rooms
+      const duplicateInSystem = rooms.find(
+        (r) => r.roomNumber && room.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber.toLowerCase()
+      );
+      if (duplicateInSystem) {
+        errors.push('Tên phòng đã tồn tại trong hệ thống');
+      }
+
+      updatedData[idx].isValid = errors.length === 0;
+      updatedData[idx].errors = errors;
+    });
+
+    setImportData(updatedData);
   };
 
   const handleCancelDeposit = async (roomNumber) => {
@@ -3116,6 +3486,14 @@ const RoomsManagement = () => {
         <div className="rooms-header">
           <h1 className="rooms-title">{t('rooms.title')}</h1>
           <div className="header-actions">
+            <button className="import-excel-btn" onClick={() => setShowImportModal(true)}>
+              <i className="fas fa-file-import"></i>
+              {t('rooms.importExcel', 'Import Excel')}
+            </button>
+            <button className="export-excel-btn" onClick={handleExportExcel}>
+              <i className="fas fa-file-excel"></i>
+              {t('rooms.exportExcel', 'Xuất Excel')}
+            </button>
             <button className="add-room-btn" onClick={openCreateModal}>
               <i className="fas fa-plus"></i>
               {t('rooms.addNew')}
@@ -6569,6 +6947,218 @@ const RoomsManagement = () => {
             >
               <i className="fas fa-ban"></i>
               {terminatingContract ? 'Đang xử lý...' : 'Kết thúc hợp đồng'}
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Import Excel Modal */}
+    {showImportModal && (
+      <div className="modal-overlay" onClick={() => {
+        if (!importLoading) {
+          setShowImportModal(false);
+          setImportFile(null);
+          setImportData([]);
+        }
+      }}>
+        <div className="import-modal-content" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-header">
+            <h3>
+              <i className="fas fa-file-import"></i> {t('rooms.importExcel', 'Import Excel')}
+            </h3>
+            <button 
+              className="modal-close-btn" 
+              onClick={() => {
+                if (!importLoading) {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportData([]);
+                }
+              }}
+              disabled={importLoading}
+            >
+              <i className="fas fa-times"></i>
+            </button>
+          </div>
+
+          <div className="modal-body">
+            {/* Top Section with Template Button */}
+            <div className="import-top-section">
+              <div className="template-download-area">
+                <button className="template-download-btn" onClick={handleDownloadTemplate}>
+                  <i className="fas fa-download"></i>
+                  {t('rooms.downloadTemplate', 'Tải file mẫu')}
+                </button>
+              </div>
+              <p className="import-hint">
+                <i className="fas fa-info-circle"></i>
+                {t('rooms.templateHint', 'Tải file mẫu để xem định dạng dữ liệu cần import')}
+              </p>
+            </div>
+
+            {/* File Upload */}
+            <div className="import-section">
+              <label className="file-upload-label">
+                <i className="fas fa-file-excel"></i>
+                {t('rooms.selectFile', 'Chọn file Excel')}
+              </label>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileSelect}
+                className="file-input"
+                id="excel-file-input"
+                disabled={importLoading}
+              />
+              <label htmlFor="excel-file-input" className="file-input-btn">
+                <i className="fas fa-upload"></i>
+                {importFile ? importFile.name : t('rooms.chooseFile', 'Chọn file...')}
+              </label>
+            </div>
+
+            {/* Data Preview Grid */}
+            {importData.length > 0 && (
+              <div className="import-section">
+                <h4 className="preview-title">
+                  <i className="fas fa-table"></i>
+                  {t('rooms.dataPreview', 'Xem trước dữ liệu')} ({importData.length} phòng)
+                </h4>
+                <div className="import-data-grid">
+                  <table className="import-table">
+                    <thead>
+                      <tr>
+                        <th>STT</th>
+                        <th>Tên phòng</th>
+                        <th>Trạng thái</th>
+                        <th>Giá thuê</th>
+                        <th>Giá cọc</th>
+                        <th>Diện tích</th>
+                        <th>Sức chứa</th>
+                        <th>Hợp lệ</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {importData.map((room, index) => (
+                        <tr key={room.id} className={!room.isValid ? 'invalid-row' : ''}>
+                          <td>{index + 1}</td>
+                          <td>
+                            <input
+                              type="text"
+                              className="editable-cell"
+                              value={room.roomNumber}
+                              onChange={(e) => handleEditImportRow(index, 'roomNumber', e.target.value)}
+                              placeholder="Tên phòng"
+                            />
+                          </td>
+                          <td>
+                            <select
+                              className="editable-select"
+                              value={room.status}
+                              onChange={(e) => handleEditImportRow(index, 'status', e.target.value)}
+                            >
+                              <option value="available">Trống</option>
+                              <option value="rented">Đã thuê</option>
+                              <option value="reserved">Đã đặt cọc</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.price}
+                              onChange={(e) => handleEditImportRow(index, 'price', parseFloat(e.target.value) || 0)}
+                              placeholder="Giá thuê"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.deposit}
+                              onChange={(e) => handleEditImportRow(index, 'deposit', parseFloat(e.target.value) || 0)}
+                              placeholder="Giá cọc"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.area}
+                              onChange={(e) => handleEditImportRow(index, 'area', parseFloat(e.target.value) || 0)}
+                              placeholder="Diện tích"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.capacity}
+                              onChange={(e) => handleEditImportRow(index, 'capacity', parseInt(e.target.value) || 0)}
+                              placeholder="Sức chứa"
+                            />
+                          </td>
+                          <td>
+                            {room.isValid ? (
+                              <span className="valid-icon"><i className="fas fa-check-circle"></i></span>
+                            ) : (
+                              <span className="invalid-icon" title={room.errors.join(', ')}>
+                                <i className="fas fa-exclamation-circle"></i>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                
+                {/* Summary Stats */}
+                <div className="import-summary">
+                  <div className="summary-item summary-total">
+                    <i className="fas fa-list"></i>
+                    <span>Tổng: <strong>{importData.length}</strong> phòng</span>
+                  </div>
+                  <div className="summary-item summary-valid">
+                    <i className="fas fa-check-circle"></i>
+                    <span>Hợp lệ: <strong>{importData.filter(r => r.isValid).length}</strong> phòng</span>
+                  </div>
+                  <div className="summary-item summary-invalid">
+                    <i className="fas fa-exclamation-circle"></i>
+                    <span>Lỗi: <strong>{importData.filter(r => !r.isValid).length}</strong> phòng</span>
+                  </div>
+                </div>
+
+                {importData.some(r => !r.isValid) && (
+                  <p className="import-warning">
+                    <i className="fas fa-exclamation-triangle"></i>
+                    {t('rooms.invalidRowsWarning', 'Có một số dòng không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.')}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div className="modal-footer">
+            <button
+              className="btn-cancel"
+              onClick={() => {
+                setShowImportModal(false);
+                setImportFile(null);
+                setImportData([]);
+              }}
+              disabled={importLoading}
+            >
+              <i className="fas fa-times"></i>
+              {t('common.cancel', 'Hủy')}
+            </button>
+            <button
+              className="btn-import"
+              onClick={handleImport}
+              disabled={importLoading || importData.length === 0 || !importData.some(r => r.isValid)}
+            >
+              <i className={importLoading ? "fas fa-spinner fa-spin" : "fas fa-file-import"}></i>
+              {importLoading ? t('rooms.importing', 'Đang import...') : t('rooms.import', 'Import')}
             </button>
           </div>
         </div>
