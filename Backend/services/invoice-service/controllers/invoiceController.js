@@ -142,8 +142,6 @@ class InvoiceController {
             
             // Gửi email thông báo hóa đơn nếu được yêu cầu
             if (sendZaloInvoice) {
-                console.log('📧 Attempting to send invoice email with QR code...');
-                console.log('   sendZaloInvoice:', sendZaloInvoice);
                 
                 try {
                     const tenantInfo = await Tenant.findById(contract.tenants[0]._id);
@@ -157,9 +155,9 @@ class InvoiceController {
                         console.warn('⚠️ Tenant has no email, skipping notification');
                     } else {
                         // Tạo QR code thanh toán
-                        const bankCode = process.env.SEPAY_BANK_CODE || 'TPBank';
-                        const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || '10002322482';
-                        const accountName = process.env.SEPAY_ACCOUNT_NAME || 'TRAN QUOC HUY';
+                        const bankCode = process.env.SEPAY_BANK_CODE || 'MBBank';
+                        const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || '0382173105';
+                        const accountName = process.env.SEPAY_ACCOUNT_NAME || 'TRUONG CONG DUY';
                         
                         // Format nội dung chuyển khoản
                         const transferContent = `THANH TOAN HOA DON PHONG ${roomInfo.roomNumber} - ${new Date(finalPeriodStart).toLocaleDateString('vi-VN')} DEN ${new Date(finalPeriodEnd).toLocaleDateString('vi-VN')}`;
@@ -179,8 +177,6 @@ class InvoiceController {
                                 paymentQRContent: formattedContent
                             }
                         });
-                        
-                        console.log('   QR Code created:', qrCodeUrl);
                         
                         // Tạo email HTML với QR code
                         const emailSubject = `Hóa đơn phòng ${roomInfo.roomNumber} - Tháng ${new Date(finalPeriodStart).getMonth() + 1}/${new Date(finalPeriodStart).getFullYear()}`;
@@ -296,6 +292,8 @@ class InvoiceController {
                 status,
                 month,
                 year,
+                fromDate,
+                toDate,
                 sortBy = 'issueDate',
                 sortOrder = 'desc'
             } = req.query;
@@ -318,6 +316,8 @@ class InvoiceController {
                 status: statusFilter,
                 month: month ? Number(month) : undefined,
                 year: year ? Number(year) : undefined,
+                fromDate: fromDate ? new Date(fromDate) : undefined,
+                toDate: toDate ? new Date(toDate) : undefined,
                 sortBy,
                 sortOrder
             });

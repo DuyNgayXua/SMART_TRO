@@ -33,6 +33,11 @@ const ContractsManagement = () => {
   const [openActionMenu, setOpenActionMenu] = useState(null);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   
+  // Print contract states
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [selectedContractsToPrint, setSelectedContractsToPrint] = useState([]);
+  const [selectAll, setSelectAll] = useState(false);
+  
   // Edit contract states
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingContract, setEditingContract] = useState(null);
@@ -95,22 +100,7 @@ const ContractsManagement = () => {
           setPagination(p=>({ ...p, totalItems: pag.total, totalPages: pag.pages||1 }));
         }
         
-        // Fetch status counts for rental contracts
-        try {
-          const allParams = { ...params, status: undefined };
-          const allRes = await contractsAPI.searchContracts(allParams);
-          if (allRes.success) {
-            const allContracts = allRes.data?.items || allRes.data?.contracts || [];
-            const counts = {
-              all: allContracts.length,
-              active: allContracts.filter(c => c.status === 'active').length,
-              pending: allContracts.filter(c => c.status === 'pending').length,
-              expired: allContracts.filter(c => c.status === 'expired').length,
-              terminated: allContracts.filter(c => c.status === 'terminated').length
-            };
-            setStatusCounts(counts);
-          }
-        } catch (e) { console.error('Error fetching status counts:', e); }
+
         
       } else if (activeTab === 'deposit') {
         const params = { page: pagination.currentPage, limit: pagination.itemsPerPage, status: filters.status||undefined };
@@ -133,28 +123,51 @@ const ContractsManagement = () => {
           setPagination(p=>({ ...p, totalItems: pag.total, totalPages: pag.pages||1 }));
         }
         
-        // Fetch status counts for deposit contracts
-        try {
-          const allParams = { ...params, status: undefined };
-          const allRes = await depositContractsAPI.getDepositContracts(allParams);
-          if (allRes.success) {
-            const allContracts = allRes.data || [];
-            const counts = {
-              all: allContracts.length,
-              active: allContracts.filter(c => c.status === 'active').length,
-              pending: allContracts.filter(c => c.status === 'pending').length,
-              expired: allContracts.filter(c => c.status === 'expired').length,
-              terminated: allContracts.filter(c => c.status === 'terminated').length
-            };
-            setStatusCounts(counts);
-          }
-        } catch (e) { console.error('Error fetching deposit status counts:', e); }
+
       }
     } catch(e){ console.error(e); }
     finally { setLoading(false); }
   }, [activeTab, filters, pagination.currentPage, pagination.itemsPerPage]);
 
+  // Separate function to fetch status counts
+  const fetchStatusCounts = useCallback(async () => {
+    try {
+      if (activeTab === 'rental') {
+        const params = { search: filters.search || undefined };
+        const allRes = await contractsAPI.searchContracts(params);
+        if (allRes.success) {
+          const allContracts = allRes.data?.items || allRes.data?.contracts || [];
+          const counts = {
+            all: allContracts.length,
+            active: allContracts.filter(c => c.status === 'active').length,
+            pending: allContracts.filter(c => c.status === 'pending').length,
+            expired: allContracts.filter(c => c.status === 'expired').length,
+            terminated: allContracts.filter(c => c.status === 'terminated').length
+          };
+          setStatusCounts(counts);
+        }
+      } else if (activeTab === 'deposit') {
+        const params = { search: filters.search || undefined };
+        const allRes = await depositContractsAPI.getDepositContracts(params);
+        if (allRes.success) {
+          const allContracts = allRes.data || [];
+          const counts = {
+            all: allContracts.length,
+            active: allContracts.filter(c => c.status === 'active').length,
+            pending: allContracts.filter(c => c.status === 'pending').length,
+            expired: allContracts.filter(c => c.status === 'expired').length,
+            terminated: allContracts.filter(c => c.status === 'terminated').length
+          };
+          setStatusCounts(counts);
+        }
+      }
+    } catch (e) { 
+      console.error('Error fetching status counts:', e); 
+    }
+  }, [activeTab, filters.search]);
+
   useEffect(()=>{ fetchContracts(); }, [fetchContracts]);
+  useEffect(()=>{ fetchStatusCounts(); }, [fetchStatusCounts]);
   
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -241,6 +254,493 @@ const ContractsManagement = () => {
     });
   };
 
+  // Print contract functions
+  const handlePrintContract = () => {
+    setSelectedContractsToPrint([]);
+    setSelectAll(false);
+    setShowPrintModal(true);
+  };
+
+  const handleToggleSelectContract = (contractId) => {
+    setSelectedContractsToPrint(prev => {
+      if (prev.includes(contractId)) {
+        return prev.filter(id => id !== contractId);
+      } else {
+        return [...prev, contractId];
+      }
+    });
+  };
+
+  const handleSelectAllContracts = () => {
+    if (selectAll) {
+      setSelectedContractsToPrint([]);
+    } else {
+      setSelectedContractsToPrint(contracts.map(c => c.id));
+    }
+    setSelectAll(!selectAll);
+  };
+
+  const handleConfirmPrint = async () => {
+    if (selectedContractsToPrint.length === 0) {
+      alert('Vui lòng chọn ít nhất 1 hợp đồng để tải');
+      return;
+    }
+
+    // Fetch full details for selected contracts
+    const contractDetailPromises = selectedContractsToPrint.map(id => 
+      contractsAPI.getContractById(id)
+    );
+
+    try {
+      const responses = await Promise.all(contractDetailPromises);
+      const contractDetails = responses
+        .filter(res => res.success && res.data)
+        .map(res => res.data);
+
+      // Generate Word documents (one file per contract)
+      for (const contract of contractDetails) {
+        await generateWordDocument(contract);
+      }
+      
+      setShowPrintModal(false);
+      alert(`Đã tải xuống ${contractDetails.length} file hợp đồng`);
+    } catch (error) {
+      console.error('Error fetching contract details:', error);
+      alert('Có lỗi khi tải thông tin hợp đồng');
+    }
+  };
+
+  const generateWordDocument = async (contract) => {
+    if (!window.docx || !window.saveAs) {
+      alert('Thư viện tạo file Word chưa được tải. Vui lòng tải lại trang.');
+      return;
+    }
+
+    const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel } = window.docx;
+
+    try {
+      const tenantsList = (contract.tenants || [])
+        .map((t, idx) => `${idx + 1}. Họ và tên: ${t.fullName || ''}, CMND/CCCD: ${t.identificationNumber || ''}, ĐT: ${t.phone || ''}`)
+        .join('\n');
+
+      const vehiclesList = (contract.vehicles || [])
+        .map((v, idx) => `${idx + 1}. Loại xe: ${v.vehicleType || ''}, Biển số: ${v.licensePlate || ''}`)
+        .join('\n');
+
+      const contractDate = new Date(contract.startDate);
+      const endDate = new Date(contract.endDate);
+
+      const sectionChildren = [
+          // Header
+          new Paragraph({
+            text: "CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM",
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 100 },
+            style: 'Heading1'
+          }),
+          new Paragraph({
+            text: "Độc lập - Tự do - Hạnh phúc",
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: "***",
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 }
+          }),
+
+          // Title
+          new Paragraph({
+            text: "HỢP ĐỒNG THUÊ PHÒNG TRỌ",
+            alignment: AlignmentType.CENTER,
+            heading: HeadingLevel.HEADING_1,
+            spacing: { after: 200 }
+          }),
+          new Paragraph({
+            text: `Số: HD-${contract.room?.roomNumber || 'XX'}-${contractDate.getFullYear()}`,
+            alignment: AlignmentType.CENTER,
+            italics: true,
+            spacing: { after: 300 }
+          }),
+
+          // Opening
+          new Paragraph({
+            children: [
+              new TextRun({ text: "- Căn cứ Bộ luật Dân sự năm 2015;", bold: true })
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "- Căn cứ vào nhu cầu và khả năng của các bên tham gia hợp đồng;", bold: true })
+            ],
+            spacing: { after: 200 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ 
+                text: `Hôm nay, ngày ${contractDate.getDate()} tháng ${contractDate.getMonth() + 1} năm ${contractDate.getFullYear()}, chúng tôi gồm:`, 
+                bold: true 
+              })
+            ],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 300 }
+          }),
+
+          // Party A
+          new Paragraph({
+            text: "BÊN CHO THUÊ (Bên A):",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Họ và tên: ", bold: true }),
+              new TextRun(contract.landlord?.fullName || '[Tên chủ trọ]')
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "CMND/CCCD: ", bold: true }),
+              new TextRun(contract.landlord?.identificationNumber || '[CMND chủ trọ]')
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Số điện thoại: ", bold: true }),
+              new TextRun(contract.landlord?.phone || '[SĐT chủ trọ]')
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Địa chỉ thường trú: ", bold: true }),
+              new TextRun(contract.landlord?.address || '[Địa chỉ chủ trọ]')
+            ],
+            spacing: { after: 300 }
+          }),
+
+          // Party B
+          new Paragraph({
+            text: "BÊN THUÊ (Bên B):",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: tenantsList || '[Thông tin người thuê]',
+            spacing: { after: 300 }
+          }),
+
+          // Main terms
+          new Paragraph({
+            text: "HAI BÊN THỎA THUẬN KÝ KẾT HỢP ĐỒNG VỚI CÁC ĐIỀU KHOẢN SAU:",
+            heading: HeadingLevel.HEADING_2,
+            spacing: { after: 300 }
+          }),
+
+          // Article 1
+          new Paragraph({
+            text: "Điều 1: Đối tượng và nội dung của hợp đồng",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "1.1. ", bold: true }),
+              new TextRun("Bên A đồng ý cho Bên B thuê phòng trọ tại:")
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "Địa chỉ: ", bold: true }),
+              new TextRun(`Phòng số ${contract.room?.roomNumber || '[Số phòng]'}`)
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "1.2. ", bold: true }),
+              new TextRun(`Diện tích phòng: ${contract.room?.size || '[Diện tích]'} m²`)
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "1.3. ", bold: true }),
+              new TextRun(`Trang thiết bị kèm theo: ${contract.room?.amenities?.join(', ') || '[Danh sách trang thiết bị]'}`)
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "1.4. ", bold: true }),
+              new TextRun("Mục đích sử dụng: Để ở")
+            ],
+            spacing: { after: 300 }
+          }),
+
+          // Article 2
+          new Paragraph({
+            text: "Điều 2: Thời hạn hợp đồng",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "2.1. ", bold: true }),
+              new TextRun(`Thời hạn thuê: Từ ngày ${contractDate.toLocaleDateString('vi-VN')} đến ngày ${endDate.toLocaleDateString('vi-VN')}`)
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "2.2. ", bold: true }),
+              new TextRun("Khi hết hạn hợp đồng, nếu Bên B có nhu cầu thuê tiếp, hai bên sẽ tiến hành ký hợp đồng mới.")
+            ],
+            spacing: { after: 300 }
+          }),
+
+          // Article 3
+          new Paragraph({
+            text: "Điều 3: Giá thuê và phương thức thanh toán",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "3.1. ", bold: true }),
+              new TextRun(`Giá thuê phòng: ${formatNumber(contract.monthlyRent || 0)} VNĐ/tháng`)
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "3.2. ", bold: true }),
+              new TextRun(`Tiền đặt cọc: ${formatNumber(contract.deposit || 0)} VNĐ`)
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: "Số tiền đặt cọc sẽ được hoàn trả khi kết thúc hợp đồng nếu Bên B không vi phạm các điều khoản trong hợp đồng.",
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "3.3. ", bold: true }),
+              new TextRun("Các khoản phí khác:")
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: `- Tiền điện: ${formatNumber(contract.electricPrice || 0)} VNĐ/kWh`,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: `- Tiền nước: ${contract.waterChargeType === 'per_person' 
+              ? `${formatNumber(contract.waterPricePerPerson || 0)} VNĐ/người/tháng`
+              : `${formatNumber(contract.waterPrice || 0)} VNĐ/khối`
+            }`,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: `- Phí dịch vụ (rác, internet, v.v.): ${formatNumber(contract.servicePrice || 0)} VNĐ/tháng`,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "3.4. ", bold: true }),
+              new TextRun(`Phương thức thanh toán: Bên B thanh toán tiền thuê phòng ${contract.paymentCycle === 'monthly' ? 'hàng tháng' : 'theo chu kỳ'} vào đầu tháng.`)
+            ],
+            spacing: { after: 300 }
+          }),
+
+          // Article 4
+          new Paragraph({
+            text: "Điều 4: Nghĩa vụ của Bên A",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: "- Giao phòng cho Bên B đúng thời hạn và theo đúng hiện trạng như đã thỏa thuận;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Đảm bảo các trang thiết bị trong phòng hoạt động tốt;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Giữ gìn an ninh trật tự chung của khu vực;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Không được tùy tiện tăng giá thuê trong thời gian hợp đồng còn hiệu lực;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Không được vào phòng của Bên B khi không có sự đồng ý.",
+            spacing: { after: 300 }
+          }),
+
+          // Article 5
+          new Paragraph({
+            text: "Điều 5: Nghĩa vụ của Bên B",
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: "- Thanh toán đầy đủ và đúng hạn các khoản tiền theo thỏa thuận;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Giữ gìn vệ sinh chung, không gây ồn ào ảnh hưởng đến người xung quanh;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Chấp hành đúng các quy định về PCCC và an ninh trật tự;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Bảo quản tài sản trong phòng, nếu có hư hỏng do lỗi của Bên B thì phải bồi thường;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Không được tự ý sửa chữa, cải tạo phòng trọ khi chưa có sự đồng ý của Bên A;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Báo trước cho Bên A ít nhất 30 ngày nếu muốn chấm dứt hợp đồng;",
+            spacing: { after: 50 }
+          }),
+          new Paragraph({
+            text: "- Giao lại phòng cho Bên A trong tình trạng ban đầu (trừ hao mòn tự nhiên).",
+            spacing: { after: 300 }
+          }),
+        ];
+
+        // Add vehicle section if exists
+        if (vehiclesList) {
+          sectionChildren.push(
+            new Paragraph({
+              text: "Điều 6: Phương tiện gửi xe",
+              heading: HeadingLevel.HEADING_3,
+              spacing: { after: 100 }
+            }),
+            new Paragraph({
+              text: "Bên B đăng ký gửi các phương tiện sau:",
+              spacing: { after: 100 }
+            }),
+            new Paragraph({
+              text: vehiclesList,
+              spacing: { after: 300 }
+            })
+          );
+        }
+
+        // Termination clause
+        const articleNum = vehiclesList ? '7' : '6';
+        sectionChildren.push(
+          new Paragraph({
+            text: `Điều ${articleNum}: Điều khoản chấm dứt hợp đồng`,
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${articleNum}.1. `, bold: true }),
+              new TextRun("Hợp đồng chấm dứt khi hết thời hạn hoặc hai bên thỏa thuận chấm dứt trước thời hạn.")
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: `${articleNum}.2. `, bold: true }),
+              new TextRun("Một trong hai bên có quyền đơn phương chấm dứt hợp đồng nếu bên kia vi phạm nghiêm trọng các điều khoản đã thỏa thuận.")
+            ],
+            spacing: { after: 300 }
+          })
+        );
+
+        // Other terms
+        const finalArticleNum = vehiclesList ? '8' : '7';
+        sectionChildren.push(
+          new Paragraph({
+            text: `Điều ${finalArticleNum}: Điều khoản khác`,
+            heading: HeadingLevel.HEADING_3,
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            text: "Mọi tranh chấp phát sinh sẽ được hai bên giải quyết trên tinh thần thương lượng, hòa giải. Nếu không thỏa thuận được thì sẽ đưa ra Tòa án nhân dân có thẩm quyền để giải quyết.",
+            spacing: { after: 100 }
+          })
+        );
+
+        if (contract.notes) {
+          sectionChildren.push(
+            new Paragraph({
+              children: [
+                new TextRun({ text: "Ghi chú: ", bold: true }),
+                new TextRun(contract.notes)
+              ],
+              spacing: { after: 300 }
+            })
+          );
+        }
+
+        // Signatures
+        sectionChildren.push(
+          new Paragraph({
+            text: "",
+            spacing: { after: 500 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "BÊN CHO THUÊ", bold: true }),
+              new TextRun("\t\t\t\t"),
+              new TextRun({ text: "BÊN THUÊ", bold: true })
+            ],
+            spacing: { after: 100 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun({ text: "(Ký và ghi rõ họ tên)", italics: true }),
+              new TextRun("\t\t\t"),
+              new TextRun({ text: "(Ký và ghi rõ họ tên)", italics: true })
+            ],
+            spacing: { after: 400 }
+          }),
+          new Paragraph({
+            children: [
+              new TextRun(contract.landlord?.fullName || '[Tên chủ trọ]'),
+              new TextRun("\t\t\t\t"),
+              new TextRun((contract.tenants && contract.tenants[0]?.fullName) || '[Tên người thuê]')
+            ]
+          })
+        );
+
+      const doc = new Document({
+        sections: [{
+          properties: {
+            page: {
+              margin: { top: 1440, right: 1440, bottom: 1440, left: 1440 }
+            }
+          },
+          children: sectionChildren
+        }]
+      });
+
+      const blob = await window.docx.Packer.toBlob(doc);
+      const fileName = `Hop_Dong_${contract.room?.roomNumber || 'Contract'}.docx`;
+      
+      window.saveAs(blob, fileName);
+    } catch (error) {
+      console.error('Error generating Word document:', error);
+      alert('Có lỗi khi tạo file Word: ' + error.message);
+    }
+  };
+
   const openCreate = () => { setForm({ room:'', tenant:'', startDate:'', endDate:'', monthlyRent:'', deposit:'', electricPrice:'', waterPrice:'', servicePrice:'', rules:'', notes:'' }); setErrors({}); setShowCreateModal(true); };
   const closeCreate = () => setShowCreateModal(false);
 
@@ -271,13 +771,71 @@ const ContractsManagement = () => {
     finally { setCreating(false); }
   };
 
+  const getPaginationRange = () => {
+    const delta = 2;
+    const range = [];
+    const left = Math.max(2, pagination.currentPage - delta);
+    const right = Math.min(pagination.totalPages - 1, pagination.currentPage + delta);
+
+    // Always show first page
+    range.push(1);
+
+    // Add dots if needed before current range
+    if (left > 2) {
+      range.push('...');
+    }
+
+    // Add pages around current page
+    for (let i = left; i <= right; i++) {
+      range.push(i);
+    }
+
+    // Add dots if needed after current range
+    if (right < pagination.totalPages - 1) {
+      range.push('...');
+    }
+
+    // Always show last page if more than 1 page
+    if (pagination.totalPages > 1) {
+      range.push(pagination.totalPages);
+    }
+
+    // Remove duplicates while preserving order
+    return range.filter((v, i, a) => a.indexOf(v) === i);
+  };
+
   return (
     <div className="contracts-container">
       <SideBar />
       <div className="contracts-content">
+        {/* Header */}
         <div className="contracts-header">
           <h1 className="contracts-title">{t('contracts.title')}</h1>
-          <button className="add-contract-btn" onClick={openCreate}><i className="fas fa-file-contract" /> {t('contracts.addNew')}</button>
+          
+          {/* Search Bar */}
+          <div className="search-container">
+            <div className="search-input-wrapper">
+              <i className="fas fa-search search-icon"></i>
+              <input
+                type="text"
+                className="search-input"
+                placeholder={t('contracts.searchPlaceholder', 'Tìm kiếm hợp đồng...')}
+                value={filters.search}
+                onChange={e => {
+                  setFilters(f => ({...f, search: e.target.value}));
+                  setPagination(p => ({...p, currentPage: 1}));
+                }}
+              />
+              {filters.search && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => setFilters(f => ({...f, search: ''}))}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Contract Type Tabs */}
@@ -287,7 +845,7 @@ const ContractsManagement = () => {
             onClick={() => {
               setActiveTab('rental');
               setPagination(p => ({ ...p, currentPage: 1 }));
-              setFilters({ status: 'active', search: '' });
+              setFilters({ status: 'active', search: filters.search });
               setStatusCounts({ all: 0, active: 0, pending: 0, expired: 0, terminated: 0 });
             }}
           >
@@ -299,7 +857,7 @@ const ContractsManagement = () => {
             onClick={() => {
               setActiveTab('deposit');
               setPagination(p => ({ ...p, currentPage: 1 }));
-              setFilters({ status: 'active', search: '' });
+              setFilters({ status: 'active', search: filters.search });
               setStatusCounts({ all: 0, active: 0, pending: 0, expired: 0, terminated: 0 });
             }}
           >
@@ -308,48 +866,20 @@ const ContractsManagement = () => {
           </button>
         </div>
 
-        {/* Filters */}
-        <div className="contracts-filters">
-          <div className="filters-grid">
-            <div className="filter-group">
-              <label className="filter-label">{t('common.search')}</label>
-              <input 
-                className="filter-input" 
-                value={filters.search} 
-                onChange={e=>{ setFilters(f=>({...f,search:e.target.value})); setPagination(p=>({...p,currentPage:1})); }} 
-                placeholder={t('contracts.searchPlaceholder')} 
-              />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">{t('common.filter')}</label>
-              <select 
-                className="filter-select" 
-                value={filters.status} 
-                onChange={e=>{ setFilters(f=>({...f,status:e.target.value})); setPagination(p=>({...p,currentPage:1})); }}
-              >
-                <option value="active">{t('contracts.status.active')}</option>
-                <option value="pending">{t('contracts.status.pending')}</option>
-                <option value="expired">{t('contracts.status.expired')}</option>
-                <option value="terminated">{t('contracts.status.terminated')}</option>
-              </select>
-            </div>
-            <div className="filter-group">
-              <button className="search-btn" onClick={fetchContracts}>
-                <i className="fas fa-search" /> {t('common.search')}
-              </button>
-            </div>
-            <div className="filter-group">
-              <button className="reset-btn" onClick={()=>{ setFilters({ status:'', search:'' }); setPagination(p=>({...p,currentPage:1})); }}>
-                <i className="fas fa-redo" /> {t('common.reset')}
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Status Filter Tabs */}
-        <div className="contracts-status-tabs">
+        {/* Status Tabs */}
+        <div className="status-tabs">
           <button 
-            className={`contracts-status-tab ${filters.status === 'active' ? 'active' : ''}`}
+            className={`status-tab ${filters.status === '' || filters.status === undefined ? 'active' : ''}`}
+            onClick={() => {
+              setFilters(prev => ({ ...prev, status: '' }));
+              setPagination(prev => ({ ...prev, currentPage: 1 }));
+            }}
+          >
+            Tất cả
+            <span className="tab-count">{statusCounts.all}</span>
+          </button>
+          <button 
+            className={`status-tab ${filters.status === 'active' ? 'active' : ''}`}
             onClick={() => {
               setFilters(prev => ({ ...prev, status: 'active' }));
               setPagination(prev => ({ ...prev, currentPage: 1 }));
@@ -359,7 +889,7 @@ const ContractsManagement = () => {
             <span className="tab-count">{statusCounts.active}</span>
           </button>
           <button 
-            className={`contracts-status-tab ${filters.status === 'pending' ? 'active' : ''}`}
+            className={`status-tab ${filters.status === 'pending' ? 'active' : ''}`}
             onClick={() => {
               setFilters(prev => ({ ...prev, status: 'pending' }));
               setPagination(prev => ({ ...prev, currentPage: 1 }));
@@ -369,7 +899,7 @@ const ContractsManagement = () => {
             <span className="tab-count">{statusCounts.pending}</span>
           </button>
           <button 
-            className={`contracts-status-tab ${filters.status === 'expired' ? 'active' : ''}`}
+            className={`status-tab ${filters.status === 'expired' ? 'active' : ''}`}
             onClick={() => {
               setFilters(prev => ({ ...prev, status: 'expired' }));
               setPagination(prev => ({ ...prev, currentPage: 1 }));
@@ -379,7 +909,7 @@ const ContractsManagement = () => {
             <span className="tab-count">{statusCounts.expired}</span>
           </button>
           <button 
-            className={`contracts-status-tab ${filters.status === 'terminated' ? 'active' : ''}`}
+            className={`status-tab ${filters.status === 'terminated' ? 'active' : ''}`}
             onClick={() => {
               setFilters(prev => ({ ...prev, status: 'terminated' }));
               setPagination(prev => ({ ...prev, currentPage: 1 }));
@@ -387,6 +917,26 @@ const ContractsManagement = () => {
           >
             {t('contracts.status.terminated') || 'Đã chấm dứt'}
             <span className="tab-count">{statusCounts.terminated}</span>
+          </button>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="contracts-actions">
+          <button className="action-btn primary" onClick={openCreate}>
+            <i className="fas fa-file-contract"></i>
+            {t('contracts.addNew', 'Thêm hợp đồng mới')}
+          </button>
+          <button className="action-btn" onClick={handlePrintContract}>
+            <i className="fas fa-file-download"></i>
+            {t('contracts.downloadContract', 'Tải hợp đồng')}
+          </button>
+          <button className="action-btn" onClick={() => {}}>
+            <i className="fas fa-file-import"></i>
+            {t('contracts.importExcel', 'Import Excel')}
+          </button>
+          <button className="action-btn" onClick={() => {}}>
+            <i className="fas fa-file-excel"></i>
+            {t('contracts.exportExcel', 'Xuất Excel')}
           </button>
         </div>
 
@@ -531,9 +1081,63 @@ const ContractsManagement = () => {
 
         {(activeTab === 'rental' ? contracts : depositContracts).length>0 && (
           <div className="pagination">
-            <button className="pagination-btn" disabled={pagination.currentPage===1} onClick={()=>setPagination(p=>({...p,currentPage:p.currentPage-1}))}><i className="fas fa-chevron-left" /></button>
-            <span className="pagination-info">{t('rooms.pagination.page')} {pagination.currentPage} / {pagination.totalPages} ({pagination.totalItems})</span>
-            <button className="pagination-btn" disabled={pagination.currentPage===pagination.totalPages} onClick={()=>setPagination(p=>({...p,currentPage:p.currentPage+1}))}><i className="fas fa-chevron-right" /></button>
+            <div className="pagination-info">
+              <span>{t('rooms.pagination.showing')} {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} - {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} {t('rooms.pagination.of')} {pagination.totalItems} {t('rooms.pagination.results')}</span>
+            </div>
+
+            <div className="pagination-controls">
+              <button 
+                className="pagination-btn" 
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: 1 }))}
+                title={t('rooms.pagination.first')}
+              >
+                <i className="fas fa-angle-double-left"></i>
+              </button>
+
+              <button 
+                className="pagination-btn" 
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
+                title={t('rooms.pagination.previous')}
+              >
+                <i className="fas fa-chevron-left"></i>
+              </button>
+
+              <div className="pagination-numbers">
+                {getPaginationRange().map((pageNum, index) => (
+                  pageNum === '...' ? (
+                    <span key={`dots-${index}`} className="pagination-dots">...</span>
+                  ) : (
+                    <button
+                      key={pageNum}
+                      className={`pagination-number ${pagination.currentPage === pageNum ? 'active' : ''}`}
+                      onClick={() => setPagination(p => ({ ...p, currentPage: pageNum }))}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                ))}
+              </div>
+
+              <button 
+                className="pagination-btn" 
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
+                title={t('rooms.pagination.next')}
+              >
+                <i className="fas fa-chevron-right"></i>
+              </button>
+
+              <button 
+                className="pagination-btn" 
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: pagination.totalPages }))}
+                title={t('rooms.pagination.last')}
+              >
+                <i className="fas fa-angle-double-right"></i>
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -950,6 +1554,93 @@ const ContractsManagement = () => {
                 }}
               >
                 <i className="fas fa-check"></i> Cập nhật
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Print Contract Modal */}
+      {showPrintModal && (
+        <div className="modal-overlay" onClick={() => setShowPrintModal(false)}>
+          <div className="modal-content print-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2>
+                <i className="fas fa-file-download"></i> Chọn hợp đồng để tải xuống
+              </h2>
+              <button className="close-modal-btn" onClick={() => setShowPrintModal(false)}>
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <div className="modal-body">
+              <div className="print-select-all">
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={selectAll}
+                    onChange={handleSelectAllContracts}
+                  />
+                  <span>Chọn tất cả ({contracts.length} hợp đồng)</span>
+                </label>
+              </div>
+
+              <div className="print-contracts-list">
+                {contracts.map(contract => (
+                  <div key={contract.id} className="print-contract-item">
+                    <label>
+                      <input
+                        type="checkbox"
+                        checked={selectedContractsToPrint.includes(contract.id)}
+                        onChange={() => handleToggleSelectContract(contract.id)}
+                      />
+                      <div className="contract-info">
+                        <div className="contract-main">
+                          <span className="room-number">
+                            <i className="fas fa-door-open"></i> {contract.room}
+                          </span>
+                          <span className="tenant-name">
+                            <i className="fas fa-user"></i> 
+                            {contract.tenantCount > 1 
+                              ? `${contract.tenantCount} người thuê`
+                              : contract.tenant
+                            }
+                          </span>
+                        </div>
+                        <div className="contract-details">
+                          <span className="contract-date">
+                            <i className="fas fa-calendar"></i>
+                            {new Date(contract.startDate).toLocaleDateString('vi-VN')} - {new Date(contract.endDate).toLocaleDateString('vi-VN')}
+                          </span>
+                          <span className="contract-rent">
+                            <i className="fas fa-money-bill-wave"></i>
+                            {formatNumber(contract.monthlyRent)} VNĐ/tháng
+                          </span>
+                          <span className={`contract-status status-${contract.status}`}>
+                            {contract.status === 'active' && 'Hiệu lực'}
+                            {contract.status === 'pending' && 'Chờ xử lý'}
+                            {contract.status === 'expired' && 'Hết hạn'}
+                            {contract.status === 'terminated' && 'Đã chấm dứt'}
+                          </span>
+                        </div>
+                      </div>
+                    </label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn-secondary" onClick={() => setShowPrintModal(false)}>
+                <i className="fas fa-times"></i> Hủy
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={handleConfirmPrint}
+                disabled={selectedContractsToPrint.length === 0}
+              >
+                <i className="fas fa-file-download"></i> 
+                Tải xuống {selectedContractsToPrint.length > 0 ? `(${selectedContractsToPrint.length})` : ''}
               </button>
             </div>
           </div>

@@ -22,16 +22,13 @@ const RoomsManagement = () => {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [searchFilters, setSearchFilters] = useState({
-    search: '',
-    status: '',
-    priceMin: '',
-    priceMax: ''
+    search: ''
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 12
+    itemsPerPage: 7
   });
   const [statusCounts, setStatusCounts] = useState({ all:0, available:0, rented:0, reserved:0, expiring:0 });
   const [depositContracts, setDepositContracts] = useState([]);
@@ -321,8 +318,6 @@ const RoomsManagement = () => {
       const params = {
         page: pagination.currentPage,
         limit: pagination.itemsPerPage,
-        minPrice: searchFilters.priceMin || undefined,
-        maxPrice: searchFilters.priceMax || undefined,
         search: searchFilters.search || undefined,
         status: activeTab !== 'all' ? activeTab : undefined
       };
@@ -488,11 +483,9 @@ const RoomsManagement = () => {
 
   const resetFilters = () => {
     setSearchFilters({
-      search: '',
-      status: '',
-      priceMin: '',
-      priceMax: ''
+      search: ''
     });
+    setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
   const handleExportExcel = () => {
@@ -3452,7 +3445,7 @@ const RoomsManagement = () => {
         }
         
         // 3. Lấy tất cả khách thuê của phòng và xóa khỏi phòng
-        const tenantsRes = await tenantsAPI.getTenantsByRoom(selectedRoomForTerminate.id, { isActive: true });
+        const tenantsRes = await tenantsAPI.getTenantsByRoom(selectedRoomForTerminate.id, { status: 'active' });
         const tenants = tenantsRes.success ? (Array.isArray(tenantsRes.data) ? tenantsRes.data : []) : [];
         
         // 4. Cập nhật phòng: xóa tenants và chuyển status về available
@@ -4027,6 +4020,35 @@ const RoomsManagement = () => {
     });
   };
 
+  // Pagination helper function (like payments management)
+  const getPaginationRange = () => {
+    const { currentPage, totalPages } = pagination;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      }
+    }
+
+    range.forEach((i) => {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    });
+
+    return rangeWithDots;
+  };
+
   return (
     <>
     <div className="rooms-container">
@@ -4035,68 +4057,28 @@ const RoomsManagement = () => {
         {/* Header */}
         <div className="rooms-header">
           <h1 className="rooms-title">{t('rooms.title')}</h1>
-          <div className="header-actions">
-            <button className="billing-excel-btn" onClick={() => setShowBillingModal(true)}>
-              <i className="fas fa-file-invoice-dollar"></i>
-              {t('rooms.billingExcel', 'Tính tiền Excel')}
-            </button>
-            <button className="import-excel-btn" onClick={() => setShowImportModal(true)}>
-              <i className="fas fa-file-import"></i>
-              {t('rooms.importExcel', 'Import Excel')}
-            </button>
-            <button className="export-excel-btn" onClick={handleExportExcel}>
-              <i className="fas fa-file-excel"></i>
-              {t('rooms.exportExcel', 'Xuất Excel')}
-            </button>
-            <button className="add-room-btn" onClick={openCreateModal}>
-              <i className="fas fa-plus"></i>
-              {t('rooms.addNew')}
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="rooms-filters">
-          <div className="filters-grid">
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.search')}</label>
+          <div className="header-search">
+            <div className="search-box">
+              <i className="fas fa-search search-icon"></i>
               <input
                 type="text"
-                className="filter-input"
-                placeholder={t('rooms.searchPlaceholder')}
+                className="search-input"
+                placeholder="Tìm kiếm phòng theo số phòng, mô tả..."
                 value={searchFilters.search}
                 onChange={(e) => handleFilterChange('search', e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && fetchRooms()}
               />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.priceFrom')}</label>
-              <input
-                type="number"
-                className="filter-input"
-                placeholder="0"
-                value={searchFilters.priceMin}
-                onChange={(e) => handleFilterChange('priceMin', e.target.value)}
-              />
-            </div>
-            <div className="filter-group">
-              <label className="filter-label">{t('rooms.priceTo')}</label>
-              <input
-                type="number"
-                className="filter-input"
-                placeholder="10000000"
-                value={searchFilters.priceMax}
-                onChange={(e) => handleFilterChange('priceMax', e.target.value)}
-              />
-            </div>
-            <div className="filter-group">
-              <button className="search-btn" onClick={fetchRooms}>
-                <i className="fas fa-search"></i> {t('rooms.search')}
-              </button>
-            </div>
-            <div className="filter-group">
-              <button className="reset-btn" onClick={resetFilters}>
-                <i className="fas fa-redo"></i> {t('rooms.reset')}
-              </button>
+              {searchFilters.search && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => {
+                    setSearchFilters(prev => ({ ...prev, search: '' }));
+                    fetchRooms();
+                  }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -4107,12 +4089,35 @@ const RoomsManagement = () => {
             <button
               key={status}
               className={`status-tab ${activeTab === status ? 'active' : ''}`}
-              onClick={() => setActiveTab(status)}
+              onClick={() => {
+                setActiveTab(status);
+                setPagination(prev => ({ ...prev, currentPage: 1 }));
+              }}
             >
               {label}
               <span className="tab-count">{statusCounts[status]}</span>
             </button>
           ))}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="rooms-actions">
+          <button className="action-btn primary" onClick={openCreateModal}>
+            <i className="fas fa-plus"></i>
+            {t('rooms.addNew', 'Thêm phòng mới')}
+          </button>
+          <button className="action-btn" onClick={() => setShowBillingModal(true)}>
+            <i className="fas fa-file-invoice-dollar"></i>
+            {t('rooms.billingExcel', 'Tính tiền Excel')}
+          </button>
+          <button className="action-btn" onClick={() => setShowImportModal(true)}>
+            <i className="fas fa-file-import"></i>
+            {t('rooms.importExcel', 'Import Excel')}
+          </button>
+          <button className="action-btn" onClick={handleExportExcel}>
+            <i className="fas fa-file-excel"></i>
+            {t('rooms.exportExcel', 'Xuất Excel')}
+          </button>
         </div>
 
         {/* Rooms Grid */}
@@ -4412,28 +4417,82 @@ const RoomsManagement = () => {
         )}
 
         {/* Pagination */}
-        {rooms.length > 0 && (
+        {rooms.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
-            <button 
-              className="pagination-btn"
-              disabled={pagination.currentPage === 1}
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-            >
-              <i className="fas fa-chevron-left"></i>
-            </button>
-            
-            <span className="pagination-info">
-              {t('rooms.pagination.page')} {pagination.currentPage} / {pagination.totalPages} 
-              ({pagination.totalItems} {t('rooms.pagination.rooms')})
-            </span>
-            
-            <button 
-              className="pagination-btn"
-              disabled={pagination.currentPage === pagination.totalPages}
-              onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-            >
-              <i className="fas fa-chevron-right"></i>
-            </button>
+            {/* Pagination Info */}
+            <div className="pagination-info">
+              <span className="pagination-text">
+                {t('rooms.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} 
+                ({pagination.totalItems} {t('rooms.pagination.rooms', 'phòng')})
+              </span>
+            </div>
+
+            <div className="pagination-controls">
+              {/* First Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: 1 }))}
+                title={t('rooms.pagination.firstPage', 'Trang đầu')}
+              >
+                <i className="fas fa-angle-double-left" />
+              </button>
+
+              {/* Previous Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
+                title={t('rooms.pagination.previousPage', 'Trang trước')}
+              >
+                <i className="fas fa-chevron-left" />
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="pagination-numbers">
+                {getPaginationRange().map((page, index) => (
+                  page === '...' ? (
+                    <span key={index} className="pagination-dots">...</span>
+                  ) : (
+                    <button
+                      key={index}
+                      className={`pagination-number ${pagination.currentPage === page ? 'active' : ''}`}
+                      onClick={() => setPagination(p => ({ ...p, currentPage: page }))}
+                      title={`${t('rooms.pagination.page', 'Trang')} ${page}`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+              </div>
+              
+              {/* Next Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
+                title={t('rooms.pagination.nextPage', 'Trang sau')}
+              >
+                <i className="fas fa-chevron-right" />
+              </button>
+
+              {/* Last Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: pagination.totalPages }))}
+                title={t('rooms.pagination.lastPage', 'Trang cuối')}
+              >
+                <i className="fas fa-angle-double-right" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fallback pagination info nếu chỉ có 1 trang */}
+        {rooms.length > 0 && pagination.totalPages <= 1 && (
+          <div style={{textAlign: 'center', padding: '20px', color: '#666'}}>
+            {t('rooms.pagination.allShown', 'Tất cả')} {pagination.totalItems} {t('rooms.pagination.rooms', 'phòng')} {t('rooms.pagination.displayed', 'đã được hiển thị')}
           </div>
         )}
       </div>
@@ -7711,14 +7770,13 @@ const RoomsManagement = () => {
           setBillingData([]);
         }
       }}>
-        <div className="billing-modal-content" onClick={(e) => e.stopPropagation()}>
+        <div className="import-modal-content" onClick={(e) => e.stopPropagation()}>
           <div className="modal-header">
-            <h2>
-              <i className="fas fa-file-invoice-dollar"></i>
-              {t('rooms.billingExcel', 'Tính tiền bằng Excel')}
-            </h2>
+            <h3>
+              <i className="fas fa-file-invoice-dollar"></i> {t('rooms.billingExcel', 'Tính tiền bằng Excel')}
+            </h3>
             <button
-              className="close-btn"
+              className="modal-close-btn"
               onClick={() => {
                 setShowBillingModal(false);
                 setBillingFile(null);
@@ -7731,53 +7789,48 @@ const RoomsManagement = () => {
           </div>
 
           <div className="modal-body">
-            {/* Template Generation Section */}
-            <div className="billing-top-section">
-              <div className="section-icon">
-                <i className="fas fa-download"></i>
-              </div>
-              <div className="section-content">
-                <h3>{t('rooms.generateBillingTemplate', 'Tạo file tính tiền')}</h3>
-                <p className="billing-hint">
-                  <i className="fas fa-info-circle"></i>
-                  {t('rooms.billingTemplateHint', 'File sẽ chứa danh sách phòng đang thuê và chỉ số điện nước cũ. Bạn chỉ cần điền chỉ số mới.')}
-                </p>
-                <button
-                  className="template-download-btn"
-                  onClick={handleGenerateBillingTemplate}
-                  disabled={billingLoading}
-                >
-                  <i className={billingLoading ? "fas fa-spinner fa-spin" : "fas fa-file-excel"}></i>
-                  {billingLoading ? t('rooms.generating', 'Đang tạo...') : t('rooms.generateTemplate', 'Tạo file Excel')}
+            {/* Top Section with Template Button */}
+            <div className="import-top-section">
+              <div className="template-download-area">
+                <button className="template-download-btn" onClick={handleGenerateBillingTemplate} disabled={billingLoading}>
+                  <i className={billingLoading ? "fas fa-spinner fa-spin" : "fas fa-download"}></i>
+                  {billingLoading ? t('rooms.generating', 'Đang tạo...') : t('rooms.generateTemplate', 'Tải file mẫu')}
                 </button>
               </div>
+              <p className="import-hint">
+                <i className="fas fa-info-circle"></i>
+                {t('rooms.billingTemplateHint', 'File sẽ chứa danh sách phòng đang thuê và chỉ số điện nước cũ. Bạn chỉ cần điền chỉ số mới.')}
+              </p>
             </div>
 
-            {/* File Upload Section */}
-            <div className="billing-file-section">
+            {/* File Upload */}
+            <div className="import-section">
+              <label className="file-upload-label">
+                <i className="fas fa-file-excel"></i>
+                {t('rooms.selectBillingFile', 'Chọn file Excel')}
+              </label>
+              <input
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleBillingFileSelect}
+                className="file-input"
+                id="billing-file-input"
+                disabled={billingLoading}
+              />
               <label htmlFor="billing-file-input" className="file-input-btn">
-                <i className="fas fa-cloud-upload-alt"></i>
-                <span>{billingFile ? billingFile.name : t('rooms.selectBillingFile', 'Chọn file đã điền chỉ số mới')}</span>
-                <input
-                  id="billing-file-input"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  onChange={handleBillingFileSelect}
-                  style={{ display: 'none' }}
-                  disabled={billingLoading}
-                />
+                <i className="fas fa-upload"></i>
+                {billingFile ? billingFile.name : t('rooms.chooseFile', 'Chọn file...')}
               </label>
             </div>
 
-            {/* Data Preview Section */}
+            {/* Data Preview Grid */}
             {billingData.length > 0 && (
-              <>
-                <div className="section-title">
+              <div className="import-section">
+                <h4 className="preview-title">
                   <i className="fas fa-table"></i>
-                  {t('rooms.billingDataPreview', 'Xem trước hóa đơn')}
-                </div>
-
-                <div className="billing-data-grid">
+                  {t('rooms.billingDataPreview', 'Xem trước hóa đơn')} ({billingData.length} phòng)
+                </h4>
+                <div className="import-data-grid">
                   <table className="billing-table">
                     <thead>
                       <tr>
@@ -7896,52 +7949,30 @@ const RoomsManagement = () => {
                     </tbody>
                   </table>
                 </div>
-
-                {/* Summary Statistics */}
-                <div className="billing-summary">
+                
+                {/* Summary Stats */}
+                <div className="import-summary">
                   <div className="summary-item summary-total">
                     <i className="fas fa-list"></i>
-                    <div>
-                      <div className="summary-label">{t('rooms.totalRecords', 'Tổng số')}</div>
-                      <div className="summary-value">{billingData.length}</div>
-                    </div>
+                    <span>Tổng: <strong>{billingData.length}</strong> phòng</span>
                   </div>
                   <div className="summary-item summary-valid">
                     <i className="fas fa-check-circle"></i>
-                    <div>
-                      <div className="summary-label">{t('rooms.validRecords', 'Hợp lệ')}</div>
-                      <div className="summary-value">{billingData.filter(r => r.isValid).length}</div>
-                    </div>
+                    <span>Hợp lệ: <strong>{billingData.filter(r => r.isValid).length}</strong> phòng</span>
                   </div>
                   <div className="summary-item summary-invalid">
-                    <i className="fas fa-exclamation-triangle"></i>
-                    <div>
-                      <div className="summary-label">{t('rooms.invalidRecords', 'Không hợp lệ')}</div>
-                      <div className="summary-value">{billingData.filter(r => !r.isValid).length}</div>
-                    </div>
-                  </div>
-                  <div className="summary-item summary-amount">
-                    <i className="fas fa-money-bill-wave"></i>
-                    <div>
-                      <div className="summary-label">{t('rooms.totalAmount', 'Tổng tiền')}</div>
-                      <div className="summary-value">
-                        {billingData
-                          .filter(r => r.isValid)
-                          .reduce((sum, r) => sum + r.totalAmount, 0)
-                          .toLocaleString('vi-VN')} đ
-                      </div>
-                    </div>
+                    <i className="fas fa-exclamation-circle"></i>
+                    <span>Lỗi: <strong>{billingData.filter(r => !r.isValid).length}</strong> phòng</span>
                   </div>
                 </div>
 
-                {/* Warning Message */}
                 {billingData.some(r => !r.isValid) && (
-                  <div className="billing-warning">
-                    <i className="fas fa-exclamation-circle"></i>
+                  <p className="import-warning">
+                    <i className="fas fa-exclamation-triangle"></i>
                     {t('rooms.invalidBillingWarning', 'Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể tạo hóa đơn.')}
-                  </div>
+                  </p>
                 )}
-              </>
+              </div>
             )}
           </div>
 
@@ -7959,7 +7990,7 @@ const RoomsManagement = () => {
               {t('common.cancel', 'Hủy')}
             </button>
             <button
-              className="btn-create-invoices"
+              className="btn-import"
               onClick={handleCreateInvoices}
               disabled={billingLoading || billingData.length === 0 || !billingData.some(r => r.isValid)}
             >

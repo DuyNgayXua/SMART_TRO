@@ -21,8 +21,7 @@ const AmenitiesManagement = () => {
     totalItems: 0,
     itemsPerPage: 20
   });
-  const [categories, setCategories] = useState([]);
-  const [categoryCounts, setCategoryCounts] = useState({ all: 0 });
+  const [categoryCounts, setCategoryCounts] = useState({ all: 0, furniture: 0, appliance: 0, utility: 0, service: 0, other: 0 });
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -133,11 +132,6 @@ const AmenitiesManagement = () => {
           totalItems: response.data.pagination.total,
           totalPages: response.data.pagination.pages
         }));
-        
-        // Calculate category counts
-        const counts = { all: response.data.pagination.total };
-        // This is simplified - ideally we'd get counts from backend
-        setCategoryCounts(counts);
       }
     } catch (error) {
       console.error('Error loading amenities:', error);
@@ -146,24 +140,39 @@ const AmenitiesManagement = () => {
     }
   }, [activeCategory, searchFilters, pagination.currentPage, pagination.itemsPerPage]);
 
-  const loadCategories = useCallback(async () => {
+  // Separate function to fetch category counts
+  const fetchCategoryCounts = useCallback(async () => {
     try {
-      const response = await amenitiesAPI.getCategories();
+      const params = {
+        search: searchFilters.search || undefined,
+        isActive: searchFilters.isActive !== '' ? searchFilters.isActive === 'true' : undefined
+      };
+      
+      const response = await amenitiesAPI.getAmenities(params);
       if (response.success) {
-        setCategories(response.data);
+        const allAmenities = response.data.amenities || [];
+        const counts = {
+          all: allAmenities.length,
+          furniture: allAmenities.filter(a => a.category === 'furniture').length,
+          appliance: allAmenities.filter(a => a.category === 'appliance').length,
+          utility: allAmenities.filter(a => a.category === 'utility').length,
+          service: allAmenities.filter(a => a.category === 'service').length,
+          other: allAmenities.filter(a => a.category === 'other').length
+        };
+        setCategoryCounts(counts);
       }
     } catch (error) {
-      console.error('Error loading categories:', error);
+      console.error('Error loading category counts:', error);
     }
-  }, []);
+  }, [searchFilters.search, searchFilters.isActive]);
 
   useEffect(() => {
     fetchAmenities();
   }, [fetchAmenities]);
 
   useEffect(() => {
-    loadCategories();
-  }, [loadCategories]);
+    fetchCategoryCounts();
+  }, [fetchCategoryCounts]);
 
   // Handle click outside to close icon pickers
   useEffect(() => {
@@ -217,14 +226,7 @@ const AmenitiesManagement = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  const resetFilters = () => {
-    setSearchFilters({
-      search: '',
-      category: '',
-      isActive: ''
-    });
-    setActiveCategory('all');
-  };
+
 
   const handleFormChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -305,6 +307,7 @@ const AmenitiesManagement = () => {
       if (response.success) {
         closeCreateModal();
         fetchAmenities();
+        fetchCategoryCounts();
       } else {
         console.error(response.message);
       }
@@ -326,6 +329,7 @@ const AmenitiesManagement = () => {
       if (response.success) {
         closeEditModal();
         fetchAmenities();
+        fetchCategoryCounts();
       } else {
         console.error(response.message);
       }
@@ -336,11 +340,86 @@ const AmenitiesManagement = () => {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      if (!window.XLSX) {
+        alert('Thư viện Excel chưa được tải');
+        return;
+      }
+
+      // Fetch all amenities without pagination
+      const response = await amenitiesAPI.getAmenities({ limit: 10000 });
+      
+      if (!response.success || !response.data.amenities || response.data.amenities.length === 0) {
+        alert('Không có dữ liệu để xuất');
+        return;
+      }
+
+      const allAmenities = response.data.amenities;
+
+      // Prepare data for export
+      const exportData = allAmenities.map((amenity, index) => {
+        const categoryMap = {
+          furniture: 'Nội thất',
+          appliance: 'Thiết bị',
+          utility: 'Tiện ích',
+          service: 'Dịch vụ',
+          other: 'Khác'
+        };
+
+        return {
+          'STT': index + 1,
+          'Tên tiện ích': amenity.name || '-',
+          'Key': amenity.key || '-',
+          'Danh mục': categoryMap[amenity.category] || amenity.category || '-',
+          'Icon': amenity.icon || '-',
+          'Mô tả': amenity.description || '-',
+          'Trạng thái': amenity.isActive ? 'Đang hoạt động' : 'Không hoạt động',
+          'Thứ tự hiển thị': amenity.displayOrder || 0
+        };
+      });
+
+      // Create worksheet
+      const ws = window.XLSX.utils.json_to_sheet(exportData);
+
+      // Set column widths
+      const colWidths = [
+        { wch: 5 },  // STT
+        { wch: 25 }, // Tên tiện ích
+        { wch: 20 }, // Key
+        { wch: 15 }, // Danh mục
+        { wch: 20 }, // Icon
+        { wch: 40 }, // Mô tả
+        { wch: 18 }, // Trạng thái
+        { wch: 15 }  // Thứ tự hiển thị
+      ];
+      ws['!cols'] = colWidths;
+
+      // Create workbook
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Danh sách tiện ích');
+
+      // Generate filename with current date
+      const today = new Date();
+      const dateStr = `${today.getDate()}-${today.getMonth() + 1}-${today.getFullYear()}`;
+      const filename = `Danh_sach_tien_ich_${dateStr}.xlsx`;
+
+      // Save file
+      window.XLSX.writeFile(wb, filename);
+
+      alert(t('amenities.exportSuccess', 'Xuất Excel thành công!'));
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      alert(t('amenities.exportError', 'Lỗi khi xuất Excel: ') + error.message);
+    }
+  };
+
   const handleDelete = async (amenityId) => {
     if (window.confirm(t('amenities.confirmDelete'))) {
       try {
         await amenitiesAPI.deleteAmenity(amenityId);
         fetchAmenities();
+        fetchCategoryCounts();
       } catch (error) {
         console.error('Error deleting amenity:', error);
       }
@@ -355,6 +434,35 @@ const AmenitiesManagement = () => {
     return `status-badge ${isActive ? 'status-active' : 'status-inactive'}`;
   };
 
+  // Pagination helper function (like payments management)
+  const getPaginationRange = () => {
+    const { currentPage, totalPages } = pagination;
+    const delta = 2;
+    const range = [];
+    const rangeWithDots = [];
+    let l;
+
+    for (let i = 1; i <= totalPages; i++) {
+      if (i === 1 || i === totalPages || (i >= currentPage - delta && i <= currentPage + delta)) {
+        range.push(i);
+      }
+    }
+
+    range.forEach((i) => {
+      if (l) {
+        if (i - l === 2) {
+          rangeWithDots.push(l + 1);
+        } else if (i - l !== 1) {
+          rangeWithDots.push('...');
+        }
+      }
+      rangeWithDots.push(i);
+      l = i;
+    });
+
+    return rangeWithDots;
+  };
+
   return (
     <>
       <div className="amenities-container">
@@ -363,77 +471,65 @@ const AmenitiesManagement = () => {
           {/* Header */}
           <div className="amenities-header">
             <h1 className="amenities-title">{t('amenities.title')}</h1>
-            <button className="add-amenity-btn" onClick={openCreateModal}>
-              <i className="fas fa-plus"></i>
-              {t('amenities.addNew')}
-            </button>
-          </div>
-
-          {/* Filters */}
-          <div className="amenities-filters">
-            <div className="filters-grid">
-              <div className="filter-group">
-                <label className="filter-label">{t('amenities.search')}</label>
+            
+            {/* Search Bar */}
+            <div className="search-container">
+              <div className="search-input-wrapper">
+                <i className="fas fa-search search-icon"></i>
                 <input
                   type="text"
-                  className="filter-input"
-                  placeholder={t('amenities.searchPlaceholder')}
+                  className="search-input"
+                  placeholder={t('amenities.searchPlaceholder', 'Tìm kiếm tiện ích...')}
                   value={searchFilters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                 />
-              </div>
-              <div className="filter-group">
-                <label className="filter-label">{t('amenities.category')}</label>
-                <select
-                  className="filter-select"
-                  value={searchFilters.category}
-                  onChange={(e) => handleFilterChange('category', e.target.value)}
-                >
-                  <option value="">{t('amenities.allCategories')}</option>
-                  <option value="furniture">{t('amenities.categories.furniture')}</option>
-                  <option value="appliance">{t('amenities.categories.appliance')}</option>
-                  <option value="utility">{t('amenities.categories.utility')}</option>
-                  <option value="service">{t('amenities.categories.service')}</option>
-                  <option value="other">{t('amenities.categories.other')}</option>
-                </select>
-              </div>
-              <div className="filter-group">
-                <label className="filter-label">{t('amenities.status')}</label>
-                <select
-                  className="filter-select"
-                  value={searchFilters.isActive}
-                  onChange={(e) => handleFilterChange('isActive', e.target.value)}
-                >
-                  <option value="">{t('amenities.allStatuses')}</option>
-                  <option value="true">{t('amenities.active')}</option>
-                  <option value="false">{t('amenities.inactive')}</option>
-                </select>
-              </div>
-              <div className="filter-group">
-                <button className="search-btn" onClick={fetchAmenities}>
-                  <i className="fas fa-search"></i> {t('amenities.search')}
-                </button>
-              </div>
-              <div className="filter-group">
-                <button className="reset-btn" onClick={resetFilters}>
-                  <i className="fas fa-redo"></i> {t('amenities.reset')}
-                </button>
+                {searchFilters.search && (
+                  <button 
+                    className="clear-search-btn"
+                    onClick={() => handleFilterChange('search', '')}
+                  >
+                    <i className="fas fa-times"></i>
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Category Tabs */}
-          <div className="category-tabs">
+          {/* Status Tabs */}
+          <div className="status-tabs">
             {Object.entries(categoryLabels).map(([category, label]) => (
               <button
                 key={category}
-                className={`category-tab ${activeCategory === category ? 'active' : ''}`}
-                onClick={() => setActiveCategory(category)}
+                className={`status-tab ${activeCategory === category ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveCategory(category);
+                  setPagination(prev => ({ ...prev, currentPage: 1 }));
+                }}
               >
                 {label}
                 <span className="tab-count">{categoryCounts[category] || 0}</span>
               </button>
             ))}
+          </div>
+
+          {/* Action Buttons */}
+          <div className="amenities-actions">
+            <button className="action-btn primary" onClick={openCreateModal}>
+              <i className="fas fa-plus"></i>
+              {t('amenities.addNew', 'Thêm tiện ích mới')}
+            </button>
+            <button className="action-btn" onClick={handleExportExcel}>
+              <i className="fas fa-file-excel"></i>
+              {t('amenities.exportExcel', 'Xuất Excel')}
+            </button>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>
           </div>
 
           {/* Amenities Table */}
@@ -565,28 +661,82 @@ const AmenitiesManagement = () => {
           )}
 
           {/* Pagination */}
-          {amenities.length > 0 && (
+          {amenities.length > 0 && pagination.totalPages > 1 && (
             <div className="pagination">
-              <button 
-                className="pagination-btn"
-                disabled={pagination.currentPage === 1}
-                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage - 1 }))}
-              >
-                <i className="fas fa-chevron-left"></i>
-              </button>
-              
-              <span className="pagination-info">
-                {t('amenities.pagination.page')} {pagination.currentPage} / {pagination.totalPages} 
-                ({pagination.totalItems} {t('amenities.pagination.items')})
-              </span>
-              
-              <button 
-                className="pagination-btn"
-                disabled={pagination.currentPage === pagination.totalPages}
-                onClick={() => setPagination(prev => ({ ...prev, currentPage: prev.currentPage + 1 }))}
-              >
-                <i className="fas fa-chevron-right"></i>
-              </button>
+              {/* Pagination Info */}
+              <div className="pagination-info">
+                <span className="pagination-text">
+                  {t('amenities.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} 
+                  ({pagination.totalItems} {t('amenities.pagination.items', 'tiện ích')})
+                </span>
+              </div>
+
+              <div className="pagination-controls">
+                {/* First Page Button */}
+                <button
+                  className="pagination-btn"
+                  disabled={pagination.currentPage === 1}
+                  onClick={() => setPagination(p => ({ ...p, currentPage: 1 }))}
+                  title={t('amenities.pagination.firstPage', 'Trang đầu')}
+                >
+                  <i className="fas fa-angle-double-left" />
+                </button>
+
+                {/* Previous Page Button */}
+                <button
+                  className="pagination-btn"
+                  disabled={pagination.currentPage === 1}
+                  onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
+                  title={t('amenities.pagination.previousPage', 'Trang trước')}
+                >
+                  <i className="fas fa-chevron-left" />
+                </button>
+                
+                {/* Page Numbers */}
+                <div className="pagination-numbers">
+                  {getPaginationRange().map((page, index) => (
+                    page === '...' ? (
+                      <span key={index} className="pagination-dots">...</span>
+                    ) : (
+                      <button
+                        key={index}
+                        className={`pagination-number ${pagination.currentPage === page ? 'active' : ''}`}
+                        onClick={() => setPagination(p => ({ ...p, currentPage: page }))}
+                        title={`${t('amenities.pagination.page', 'Trang')} ${page}`}
+                      >
+                        {page}
+                      </button>
+                    )
+                  ))}
+                </div>
+                
+                {/* Next Page Button */}
+                <button
+                  className="pagination-btn"
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
+                  title={t('amenities.pagination.nextPage', 'Trang sau')}
+                >
+                  <i className="fas fa-chevron-right" />
+                </button>
+
+                {/* Last Page Button */}
+                <button
+                  className="pagination-btn"
+                  disabled={pagination.currentPage === pagination.totalPages}
+                  onClick={() => setPagination(p => ({ ...p, currentPage: pagination.totalPages }))}
+                  title={t('amenities.pagination.lastPage', 'Trang cuối')}
+                >
+                  <i className="fas fa-angle-double-right" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Fallback pagination info nếu chỉ có 1 trang */}
+          {amenities.length > 0 && pagination.totalPages <= 1 && (
+            <div style={{textAlign: 'center', padding: '20px', color: '#666'}}>
+              {t('amenities.pagination.allShown', 'Tất cả')} {pagination.totalItems} {t('amenities.pagination.items', 'tiện ích')} {t('amenities.pagination.displayed', 'đã được hiển thị')}
             </div>
           )}
         </div>

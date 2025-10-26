@@ -95,12 +95,36 @@ class TenantController {
         currentTenants.push(tenant._id);
       }
       
-          await Room.findByIdAndUpdate(room, { 
-            status: 'rented', 
-            tenants: currentTenants, // New array field
-            leaseStart, 
-            leaseEnd 
-          });      res.status(201).json({ success: true, data: tenant });
+      await Room.findByIdAndUpdate(room, { 
+        status: 'rented', 
+        tenants: currentTenants, // New array field
+        leaseStart, 
+        leaseEnd 
+      });
+
+      // Tìm hợp đồng đang active của phòng này
+      const activeContract = await Contract.findOne({
+        room: room,
+        status: { $in: ['active', 'pending'] }
+      }).sort({ createdAt: -1 }); // Lấy hợp đồng mới nhất
+
+      if (activeContract) {
+        // Thêm tenant vào hợp đồng hiện tại
+        const contractTenants = activeContract.tenants || [];
+        if (!contractTenants.includes(tenant._id)) {
+          contractTenants.push(tenant._id);
+          await Contract.findByIdAndUpdate(activeContract._id, {
+            tenants: contractTenants
+          });
+          console.log(`Added tenant ${tenant._id} to contract ${activeContract._id}`);
+        }
+
+        // Update tenant's contract reference
+        tenant.contract = activeContract._id;
+        await tenant.save();
+      }
+
+      res.status(201).json({ success: true, data: tenant });
     } catch (e) {
       if (e.code === 11000) {
         return res.status(409).json({ 
@@ -191,7 +215,7 @@ class TenantController {
             tenants: currentTenants // New array field
           });
         } else if (newStatus === 'ended' && tenant.status === 'active') {
-          // Kết thúc thuê - xóa tenant khỏi phòng
+          // Kết thúc thuê - xóa tenant khỏi phòng và database hoàn toàn
           const currentRoom = await Room.findById(tenant.room);
           const currentTenants = (currentRoom.tenants || []).filter(id => !id.equals(tenant._id));
           
@@ -199,7 +223,10 @@ class TenantController {
             status: currentTenants.length > 0 ? 'rented' : 'available', // Nếu còn tenant khác thì vẫn rented
             tenants: currentTenants // Updated array
           });
-          updateData.moveOutDate = new Date();
+          
+          // Xóa hoàn toàn tenant thay vì chỉ update status
+          await tenantRepository.forceDelete(req.params.id);
+          return res.json({ success: true, data: { message: 'Tenant deleted successfully', tenant } });
         }
         
         updateData.status = newStatus;
@@ -246,12 +273,13 @@ class TenantController {
     try { 
       const { endDate = new Date() } = req.body;
       
-      const tenant = await tenantRepository.endLease(req.params.id, endDate); 
+      // Lấy thông tin tenant trước khi xóa
+      const tenant = await tenantRepository.findById(req.params.id);
       if (!tenant) {
         return res.status(404).json({ success: false, message: 'Tenant not found' });
       }
 
-      // Cập nhật trạng thái phòng - xóa tenant khỏi mảng tenants
+      // Xóa tenant khỏi mảng tenants của phòng
       const currentRoom = await Room.findById(tenant.room);
       const currentTenants = (currentRoom.tenants || []).filter(id => !id.equals(tenant._id));
       
@@ -260,7 +288,10 @@ class TenantController {
         tenants: currentTenants // Updated array
       });
 
-      res.json({ success: true, data: tenant }); 
+      // Xóa hoàn toàn tenant khỏi database
+      await tenantRepository.forceDelete(req.params.id);
+
+      res.json({ success: true, data: { message: 'Tenant deleted successfully', tenant } }); 
     } catch (e) { 
       console.error('End lease error:', e);
       res.status(500).json({ success: false, message: e.message }); 
@@ -269,11 +300,32 @@ class TenantController {
 
   async archive(req, res) {
     try { 
-      const tenant = await tenantRepository.softDelete(req.params.id); 
+      const tenant = await tenantRepository.findById(req.params.id);
       if (!tenant) {
         return res.status(404).json({ success: false, message: 'Tenant not found' });
       }
-      res.json({ success: true, data: tenant }); 
+
+      // Remove tenant from room's tenants array
+      if (tenant.room) {
+        const room = await Room.findById(tenant.room);
+        if (room && room.tenants) {
+          room.tenants = room.tenants.filter(t => t.toString() !== tenant._id.toString());
+          await room.save();
+        }
+      }
+
+      // Remove tenant from contract's tenants array
+      if (tenant.contract) {
+        const contract = await Contract.findById(tenant.contract);
+        if (contract && contract.tenants) {
+          contract.tenants = contract.tenants.filter(t => t.toString() !== tenant._id.toString());
+          await contract.save();
+        }
+      }
+
+      // Now archive the tenant
+      const archivedTenant = await tenantRepository.softDelete(req.params.id);
+      res.json({ success: true, data: archivedTenant }); 
     } catch (e) { 
       console.error('Archive tenant error:', e);
       res.status(500).json({ success: false, message: e.message }); 
@@ -282,11 +334,32 @@ class TenantController {
 
   async forceDelete(req, res) {
     try { 
-      const tenant = await tenantRepository.forceDelete(req.params.id); 
+      const tenant = await tenantRepository.findById(req.params.id);
       if (!tenant) {
         return res.status(404).json({ success: false, message: 'Tenant not found' });
       }
-      res.json({ success: true, data: tenant }); 
+
+      // Remove tenant from room's tenants array
+      if (tenant.room) {
+        const room = await Room.findById(tenant.room);
+        if (room && room.tenants) {
+          room.tenants = room.tenants.filter(t => t.toString() !== tenant._id.toString());
+          await room.save();
+        }
+      }
+
+      // Remove tenant from contract's tenants array
+      if (tenant.contract) {
+        const contract = await Contract.findById(tenant.contract);
+        if (contract && contract.tenants) {
+          contract.tenants = contract.tenants.filter(t => t.toString() !== tenant._id.toString());
+          await contract.save();
+        }
+      }
+
+      // Now force delete the tenant
+      const deletedTenant = await tenantRepository.forceDelete(req.params.id);
+      res.json({ success: true, data: deletedTenant }); 
     } catch (e) { 
       console.error('Force delete tenant error:', e);
       res.status(500).json({ success: false, message: e.message }); 

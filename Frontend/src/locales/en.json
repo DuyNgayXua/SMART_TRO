@@ -170,7 +170,14 @@
     },
     "pagination": {
       "page": "Page",
-      "rooms": "rooms"
+      "rooms": "rooms",
+      "showing": "Showing",
+      "of": "of",
+      "results": "results",
+      "first": "First page",
+      "previous": "Previous page",
+      "next": "Next page",
+      "last": "Last page"
     },
     "loadingList": "Loading room list...",
     "modal": {
@@ -433,6 +440,21 @@
   "tenants": {
     "title": "Tenant Management",
     "addNew": "Add Tenant",
+    "importExcel": "Import Excel",
+    "exportExcel": "Export Excel",
+    "exportSuccess": "Excel exported successfully!",
+    "exportError": "Error exporting Excel: ",
+    "downloadTemplate": "Download Template",
+    "templateHint": "Download template to see rooms with available slots and data format required for import",
+    "selectFile": "Select Excel File",
+    "chooseFile": "Choose file...",
+    "dataPreview": "Data Preview",
+    "import": "Import",
+    "importing": "Importing...",
+    "totalRecords": "Total",
+    "validRecords": "Valid",
+    "invalidRecords": "Invalid",
+    "invalidWarning": "Some records are invalid. Please fix the data directly in the table to import.",
     "searchPlaceholder": "Name, email, phone...",
     "noTenants": "No tenants",
     "noTenantsDescription": "Try changing filters or add new tenant.",
@@ -925,6 +947,10 @@
   "amenities": {
     "title": "Amenities Management",
     "addNew": "Add Amenity",
+    "importExcel": "Import Excel",
+    "exportExcel": "Export Excel",
+    "exportSuccess": "Excel exported successfully!",
+    "exportError": "Error exporting Excel: ",
     "search": "Search",
     "searchPlaceholder": "Search by name, key or description...",
     "category": "Category",

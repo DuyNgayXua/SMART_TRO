@@ -171,7 +171,14 @@
     },
     "pagination": {
       "page": "Trang",
-      "rooms": "phòng"
+      "rooms": "phòng",
+      "showing": "Hiển thị",
+      "of": "trong tổng số",
+      "results": "kết quả",
+      "first": "Trang đầu",
+      "previous": "Trang trước",
+      "next": "Trang sau",
+      "last": "Trang cuối"
     },
     "loadingList": "Đang tải danh sách phòng...",
     "modal": {
@@ -455,6 +462,21 @@
   "tenants": {
     "title": "Quản lý khách thuê",
     "addNew": "Thêm khách thuê",
+    "importExcel": "Import Excel",
+    "exportExcel": "Xuất Excel",
+    "exportSuccess": "Xuất Excel thành công!",
+    "exportError": "Lỗi khi xuất Excel: ",
+    "downloadTemplate": "Tải file mẫu",
+    "templateHint": "Tải file mẫu để xem danh sách phòng còn slot và định dạng dữ liệu cần import",
+    "selectFile": "Chọn file Excel",
+    "chooseFile": "Chọn file...",
+    "dataPreview": "Xem trước dữ liệu",
+    "import": "Import",
+    "importing": "Đang import...",
+    "totalRecords": "Tổng số",
+    "validRecords": "Hợp lệ",
+    "invalidRecords": "Không hợp lệ",
+    "invalidWarning": "Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.",
     "searchPlaceholder": "Tên, email, điện thoại...",
     "noTenants": "Không có khách thuê",
     "noTenantsDescription": "Hãy thay đổi bộ lọc hoặc thêm khách thuê mới.",
@@ -949,6 +971,10 @@
   "amenities": {
     "title": "Quản lý Tiện ích",
     "addNew": "Thêm tiện ích",
+    "importExcel": "Import Excel",
+    "exportExcel": "Xuất Excel",
+    "exportSuccess": "Xuất Excel thành công!",
+    "exportError": "Lỗi khi xuất Excel: ",
     "search": "Tìm kiếm",
     "searchPlaceholder": "Tìm tên, key hoặc mô tả tiện ích...",
     "category": "Danh mục",

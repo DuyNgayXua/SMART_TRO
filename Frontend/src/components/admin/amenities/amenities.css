@@ -1,4 +1,17 @@
 /* Amenities Management Styles */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --bg-tertiary: #f1f5f9;
+  --bg-card: #ffffff;
+  --text-primary: #1e293b;
+  --text-secondary: #64748b;
+  --border-primary: #e2e8f0;
+  --border-secondary: #cbd5e1;
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --transition: all 0.3s ease;
+}
+
 .amenities-container {
   display: flex;
   min-height: 100vh;
@@ -33,9 +46,167 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 32px;
+  margin-bottom: 24px;
   flex-wrap: wrap;
   gap: 16px;
+}
+
+/* Search Container */
+.search-container {
+  flex: 1;
+  max-width: 500px;
+  margin: 0 24px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 16px;
+  color: #64748b;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 12px 16px 12px 48px;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 400;
+  background: white;
+  transition: all 0.3s ease;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+.search-input::placeholder {
+  color: #94a3b8;
+}
+
+.clear-search-btn {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.clear-search-btn:hover {
+  color: #64748b;
+  background: #f1f5f9;
+}
+
+/* Status Tabs */
+.status-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 24px;
+  background: #f8fafc;
+  padding: 6px;
+  border-radius: 16px;
+  border: 1px solid #e2e8f0;
+  overflow-x: auto;
+}
+
+.status-tab {
+  background: transparent;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.status-tab:hover {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.status-tab.active {
+  background: white;
+  color: #1e293b;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.tab-count {
+  background: #e2e8f0;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 12px;
+  min-width: 20px;
+  text-align: center;
+}
+
+.status-tab.active .tab-count {
+  background: #667eea;
+  color: white;
+}
+
+/* Action Buttons */
+.amenities-actions {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  background: white;
+  color: #64748b;
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+
+.action-btn:hover {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+  transform: translateY(-1px);
+}
+
+.action-btn.primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.action-btn.primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
 }
 
 .amenities-title {
@@ -48,36 +219,11 @@
   color: transparent;
 }
 
-.add-amenity-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
-}
 
-.add-amenity-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.6);
-}
 
-/* Filters */
+/* Filters - Hidden in new design */
 .amenities-filters {
-  background: var(--bg-card);
-  border-radius: 16px;
-  padding: 24px;
-  margin-bottom: 24px;
-  box-shadow: var(--shadow-md);
-  border: 1px solid var(--border-primary);
-  transition: var(--transition);
+  display: none;
 }
 
 .filters-grid {
@@ -145,49 +291,9 @@
   background: var(--bg-secondary);
 }
 
-/* Category Tabs */
+/* Old Category Tabs - Hidden */
 .category-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 24px;
-  overflow-x: auto;
-}
-
-.category-tab {
-  padding: 10px 20px;
-  border-radius: 25px;
-  border: 2px solid #e2e8f0;
-  background: white;
-  color: #6b7280;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.category-tab.active {
-  background: #667eea;
-  color: white;
-  border-color: #667eea;
-}
-
-.category-tab:hover:not(.active) {
-  background: var(--bg-tertiary);
-  border-color: var(--border-secondary);
-}
-
-.tab-count {
-  background: rgba(255, 255, 255, 0.2);
-  padding: 2px 8px;
-  border-radius: 12px;
-  font-size: 12px;
-}
-
-.category-tab.active .tab-count {
-  background: rgba(255, 255, 255, 0.3);
+  display: none !important;
 }
 
 /* Amenities Table */
@@ -641,30 +747,46 @@
   color: #6b7280;
 }
 
-/* Pagination */
+/* Pagination - Payment Style */
 .pagination {
+  margin-top: 32px;
   display: flex;
-  justify-content: center;
+  flex-direction: column;
   align-items: center;
   gap: 16px;
-  margin-top: 24px;
-  padding: 20px;
+}
+
+.pagination-info {
+  text-align: center;
+}
+
+.pagination-text {
+  font-size: 14px;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 }
 
 .pagination-btn {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: white;
-  border: 2px solid #e2e8f0;
-  color: #6b7280;
-  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
   cursor: pointer;
-  transition: all 0.2s;
-  font-weight: 600;
-}
-
-.pagination-btn:hover:not(:disabled) {
-  background: #f8fafc;
-  border-color: #cbd5e0;
+  color: #6b7280;
+  font-size: 14px;
+  transition: all 0.2s ease;
 }
 
 .pagination-btn:disabled {
@@ -672,10 +794,55 @@
   cursor: not-allowed;
 }
 
-.pagination-info {
-  font-size: 14px;
+.pagination-btn:not(:disabled):hover {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+}
+
+.pagination-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pagination-number {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  cursor: pointer;
   color: #6b7280;
+  font-size: 14px;
   font-weight: 500;
+  transition: all 0.2s ease;
+}
+
+.pagination-number:hover {
+  background: #f8fafc;
+  border-color: #667eea;
+  color: #667eea;
+}
+
+.pagination-number.active {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
+  font-weight: 600;
+}
+
+.pagination-dots {
+  padding: 0 8px;
+  color: #9ca3af;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
 }
 
 /* Responsive Design */
@@ -699,6 +866,30 @@
   
   .amenities-table {
     min-width: 800px;
+  }
+  
+  .pagination-info {
+    font-size: 13px;
+  }
+  
+  .pagination-controls {
+    gap: 4px;
+  }
+  
+  .pagination-btn {
+    width: 36px;
+    height: 36px;
+    font-size: 12px;
+  }
+  
+  .pagination-number {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+  
+  .pagination-numbers {
+    gap: 2px;
   }
   
   .category-tabs {
@@ -958,4 +1149,11 @@ body.modal-open {
     padding: 6px 8px;
     font-size: 12px;
   }
+}
+
+.date-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
 }

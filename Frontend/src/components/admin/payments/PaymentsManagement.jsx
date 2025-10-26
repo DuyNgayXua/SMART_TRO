@@ -13,17 +13,22 @@ const PaymentsManagement = () => {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
+  // Tính toán ngày đầu tháng và cuối tháng hiện tại
+  const currentDate = new Date();
+  const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+  const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+  
   const [searchFilters, setSearchFilters] = useState({
     search: '',
     status: '',
-    month: (new Date().getMonth() + 1).toString(), // Tháng hiện tại (1-12)
-    year: new Date().getFullYear().toString()
+    fromDate: startOfMonth.toISOString().split('T')[0], // Format: YYYY-MM-DD
+    toDate: endOfMonth.toISOString().split('T')[0]      // Format: YYYY-MM-DD
   });
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
     totalItems: 0,
-    itemsPerPage: 12
+    itemsPerPage: 8  // Số hóa đơn hiển thị mỗi trang
   });
   const [statusCounts, setStatusCounts] = useState({ 
     all: 0, 
@@ -79,8 +84,8 @@ const PaymentsManagement = () => {
         limit: pagination.itemsPerPage,
         search: searchFilters.search || undefined,
         status: activeTab !== 'all' ? activeTab : undefined,
-        month: searchFilters.month || undefined,
-        year: searchFilters.year || undefined
+        fromDate: searchFilters.fromDate || undefined,
+        toDate: searchFilters.toDate || undefined
       };
 
       const response = await invoicesAPI.getInvoices(params);
@@ -109,6 +114,13 @@ const PaymentsManagement = () => {
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
+
+  // Tự động load khi thay đổi ngày
+  useEffect(() => {
+    if (searchFilters.fromDate || searchFilters.toDate) {
+      fetchInvoices();
+    }
+  }, [searchFilters.fromDate, searchFilters.toDate, fetchInvoices]);
 
   const openDetail = async (invoice) => {
     setShowDetailModal(true);
@@ -1203,102 +1215,90 @@ const PaymentsManagement = () => {
     }
   };
 
-  // Generate month options
-  const monthOptions = Array.from({ length: 12 }, (_, i) => ({
-    value: (i + 1).toString(),
-    label: t('common.monthNumber', { number: i + 1, defaultValue: `Tháng ${i + 1}` })
-  }));
+  // Hàm tính toán các trang hiển thị
+  const getPaginationRange = () => {
+    const { currentPage, totalPages } = pagination;
+    const range = [];
+    const showPages = 7; // Số trang hiển thị tối đa
+    
+    if (totalPages <= showPages) {
+      // Nếu tổng số trang <= showPages, hiển thị tất cả
+      for (let i = 1; i <= totalPages; i++) {
+        range.push(i);
+      }
+    } else {
+      // Logic với dots để hiển thị thông minh
+      if (currentPage <= 3) {
+        // Đầu: 1 2 3 4 5 ... totalPages
+        for (let i = 1; i <= Math.min(5, totalPages); i++) {
+          range.push(i);
+        }
+        if (totalPages > 5) {
+          range.push('...');
+          range.push(totalPages);
+        }
+      } else if (currentPage >= totalPages - 2) {
+        // Cuối: 1 ... (totalPages-4) (totalPages-3) (totalPages-2) (totalPages-1) totalPages
+        range.push(1);
+        if (totalPages > 5) {
+          range.push('...');
+        }
+        for (let i = Math.max(totalPages - 4, 2); i <= totalPages; i++) {
+          range.push(i);
+        }
+      } else {
+        // Giữa: 1 ... (currentPage-1) currentPage (currentPage+1) ... totalPages
+        range.push(1);
+        range.push('...');
+        range.push(currentPage - 1, currentPage, currentPage + 1);
+        range.push('...');
+        range.push(totalPages);
+      }
+    }
+    
+    return range;
+  };
 
-  // Generate year options (current year and 2 years back)
-  const currentYear = new Date().getFullYear();
-  const yearOptions = Array.from({ length: 3 }, (_, i) => ({
-    value: (currentYear - i).toString(),
-    label: (currentYear - i).toString()
-  }));
+
 
   return (
     <div className="payments-container">
       <SideBar />
       <div className="payments-content">
+        {/* Header */}
         <div className="payments-header">
           <h1 className="payments-title">{t('payments.title', 'Quản lý thanh toán')}</h1>
-          <div className="header-actions">
-            <button 
-              className="btn-batch-export-trigger"
-              onClick={openBatchExportModal}
-            >
-              <i className="fas fa-file-export"></i>
-              {t('payments.batchExport', 'Xuất hóa đơn hàng loạt')}
-            </button>
-          </div>
-        </div>
-
-        {/* Filters */}
-        <div className="payments-filters">
-          <div className="filters-grid">
-            <div className="filter-group">
-              <label className="filter-label">{t('common.search', 'Tìm kiếm')}</label>
+          
+          {/* Search Bar */}
+          <div className="search-container">
+            <div className="search-input-wrapper">
+              <i className="fas fa-search search-icon"></i>
               <input
-                className="filter-input"
+                type="text"
+                className="search-input"
+                placeholder={t('payments.searchPlaceholder', 'Tìm theo phòng, khách thuê...')}
                 value={searchFilters.search}
                 onChange={e => {
                   setSearchFilters(f => ({ ...f, search: e.target.value }));
                   setPagination(p => ({ ...p, currentPage: 1 }));
                 }}
-                placeholder={t('payments.searchPlaceholder', 'Tìm theo phòng, khách thuê...')}
               />
-            </div>
-            
-            <div className="filter-group">
-              <label className="filter-label">{t('payments.month', 'Tháng')}</label>
-              <select
-                className="filter-select"
-                value={searchFilters.month}
-                onChange={e => {
-                  setSearchFilters(f => ({ ...f, month: e.target.value }));
-                  setPagination(p => ({ ...p, currentPage: 1 }));
-                }}
-              >
-                <option value="">{t('common.all', 'Tất cả')}</option>
-                {monthOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
+              {searchFilters.search && (
+                <button 
+                  className="clear-search-btn"
+                  onClick={() => {
+                    setSearchFilters(f => ({ ...f, search: '' }));
+                    setPagination(p => ({ ...p, currentPage: 1 }));
+                  }}
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              )}
             </div>
 
-            <div className="filter-group">
-              <label className="filter-label">{t('payments.year', 'Năm')}</label>
-              <select
-                className="filter-select"
-                value={searchFilters.year}
-                onChange={e => {
-                  setSearchFilters(f => ({ ...f, year: e.target.value }));
-                  setPagination(p => ({ ...p, currentPage: 1 }));
-                }}
-              >
-                {yearOptions.map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
 
-            <div className="filter-group">
-              <button className="search-btn" onClick={fetchInvoices}>
-                <i className="fas fa-search" /> {t('common.search', 'Tìm kiếm')}
-              </button>
-            </div>
-            
-            <div className="filter-group">
-              <button
-                className="reset-btn"
-                onClick={() => {
-                  setSearchFilters({ search: '', status: '', month: '', year: currentYear.toString() });
-                  setPagination(p => ({ ...p, currentPage: 1 }));
-                }}
-              >
-                <i className="fas fa-redo" /> {t('common.reset', 'Đặt lại')}
-              </button>
-            </div>
+
+
           </div>
         </div>
 
@@ -1317,6 +1317,47 @@ const PaymentsManagement = () => {
               <span className="tab-count">{statusCounts[status]}</span>
             </button>
           ))}
+        </div>
+
+        {/* Action Buttons with Date Range */}
+        <div className="payments-actions">
+          {/* Date Range Filters */}
+          <div className="date-filter-group">
+            <label className="date-label">Từ ngày:</label>
+            <input
+              type="date"
+              className="filter-date"
+              value={searchFilters.fromDate || ''}
+              onChange={e => {
+                setSearchFilters(f => ({ ...f, fromDate: e.target.value }));
+                setPagination(p => ({ ...p, currentPage: 1 }));
+              }}
+            />
+          </div>
+
+          <div className="date-filter-group">
+            <label className="date-label">Đến ngày:</label>
+            <input
+              type="date"
+              className="filter-date"
+              value={searchFilters.toDate || ''}
+              onChange={e => {
+                setSearchFilters(f => ({ ...f, toDate: e.target.value }));
+                setPagination(p => ({ ...p, currentPage: 1 }));
+              }}
+            />
+          </div>
+
+          <button className="action-btn primary" onClick={openBatchExportModal}>
+            <i className="fas fa-file-export"></i>
+            {t('payments.batchExport', 'Xuất hóa đơn hàng loạt')}
+          </button>
+          <div className="date-filter-group">
+          </div>
+          <div className="date-filter-group">
+          </div>
+          <div className="date-filter-group">
+          </div>
         </div>
 
         {/* Invoices Grid */}
@@ -1411,25 +1452,82 @@ const PaymentsManagement = () => {
         )}
 
         {/* Pagination */}
-        {invoices.length > 0 && (
+        {invoices.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
-            <button
-              className="pagination-btn"
-              disabled={pagination.currentPage === 1}
-              onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
-            >
-              <i className="fas fa-chevron-left" />
-            </button>
-            <span className="pagination-info">
-              {t('rooms.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} ({pagination.totalItems})
-            </span>
-            <button
-              className="pagination-btn"
-              disabled={pagination.currentPage === pagination.totalPages}
-              onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
-            >
-              <i className="fas fa-chevron-right" />
-            </button>
+            {/* Pagination Info */}
+            <div className="pagination-info">
+              <span className="pagination-text">
+                Trang {pagination.currentPage} / {pagination.totalPages} 
+                ({pagination.totalItems} hóa đơn)
+              </span>
+            </div>
+
+            <div className="pagination-controls">
+              {/* First Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: 1 }))}
+                title="Trang đầu"
+              >
+                <i className="fas fa-angle-double-left" />
+              </button>
+
+              {/* Previous Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === 1}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage - 1 }))}
+                title="Trang trước"
+              >
+                <i className="fas fa-chevron-left" />
+              </button>
+              
+              {/* Page Numbers */}
+              <div className="pagination-numbers">
+                {getPaginationRange().map((page, index) => (
+                  page === '...' ? (
+                    <span key={index} className="pagination-dots">...</span>
+                  ) : (
+                    <button
+                      key={index}
+                      className={`pagination-number ${pagination.currentPage === page ? 'active' : ''}`}
+                      onClick={() => setPagination(p => ({ ...p, currentPage: page }))}
+                      title={`Trang ${page}`}
+                    >
+                      {page}
+                    </button>
+                  )
+                ))}
+              </div>
+              
+              {/* Next Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: p.currentPage + 1 }))}
+                title="Trang sau"
+              >
+                <i className="fas fa-chevron-right" />
+              </button>
+
+              {/* Last Page Button */}
+              <button
+                className="pagination-btn"
+                disabled={pagination.currentPage === pagination.totalPages}
+                onClick={() => setPagination(p => ({ ...p, currentPage: pagination.totalPages }))}
+                title="Trang cuối"
+              >
+                <i className="fas fa-angle-double-right" />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Fallback pagination nếu không có điều kiện trên */}
+        {invoices.length > 0 && pagination.totalPages <= 1 && (
+          <div style={{textAlign: 'center', padding: '20px', color: '#666'}}>
+            Tất cả {pagination.totalItems} hóa đơn đã được hiển thị
           </div>
         )}
       </div>

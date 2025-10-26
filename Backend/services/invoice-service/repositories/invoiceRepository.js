@@ -28,7 +28,7 @@ class InvoiceRepository {
         }
     }
 
-    async list({ page = 1, limit = 10, landlord, room, tenant, contract, status, month, year, sortBy = 'issueDate', sortOrder = 'desc' }) {
+    async list({ page = 1, limit = 10, landlord, room, tenant, contract, status, month, year, fromDate, toDate, sortBy = 'issueDate', sortOrder = 'desc' }) {
         try {
             const query = {};
             
@@ -45,8 +45,21 @@ class InvoiceRepository {
                 }
             }
 
-            // Filter by month and year
-            if (month || year) {
+            // Filter by date range (fromDate and toDate take priority over month/year)
+            if (fromDate || toDate) {
+                const dateQuery = {};
+                if (fromDate) {
+                    dateQuery.$gte = new Date(fromDate);
+                }
+                if (toDate) {
+                    // Set time to end of day for toDate
+                    const endDate = new Date(toDate);
+                    endDate.setHours(23, 59, 59, 999);
+                    dateQuery.$lte = endDate;
+                }
+                query.issueDate = dateQuery;
+            } else if (month || year) {
+                // Fallback to month and year filter if fromDate/toDate not provided
                 const dateQuery = {};
                 if (year) {
                     const startOfYear = new Date(year, 0, 1);

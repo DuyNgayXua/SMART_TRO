@@ -9,16 +9,18 @@ class ContractRepository {
 
   async findById(id) {
     return Contract.findById(id)
-      .populate('room', 'roomNumber status')
-      .populate('tenants', 'fullName phone email')
-      .populate('landlord', 'fullName email');
+      .populate('room', 'roomNumber status size amenities')
+      .populate('tenants', 'fullName phone email identificationNumber address')
+      .populate('landlord', 'fullName email phone identificationNumber address')
+      .populate('vehicles.owner', 'fullName');
   }
 
   async update(id, data) {
     return Contract.findByIdAndUpdate(id, data, { new: true })
-      .populate('room', 'roomNumber status')
-      .populate('tenants', 'fullName phone email')
-      .populate('landlord', 'fullName email');
+      .populate('room', 'roomNumber status size amenities')
+      .populate('tenants', 'fullName phone email identificationNumber address')
+      .populate('landlord', 'fullName email phone identificationNumber address')
+      .populate('vehicles.owner', 'fullName');
   }
 
   async delete(id) {
