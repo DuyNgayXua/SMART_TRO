@@ -139,47 +139,62 @@ const Pricing = () => {
 
   return (
     <section className="price-section">
-      <div className="container">
-        <Heading title="Bảng giá gói tin đăng" subtitle="Áp dụng từ 01/08/2025" />
+      <div className="container-pricing">
+        <Heading title="Bảng giá gói tin đăng" subtitle="" />
+        <h2>Áp dụng từ 01/08/2025</h2>
 
         <div className="price-grid">
           {plans.map((plan, i) => (
-            <div className="price-card" key={i} style={{ borderTop: `5px solid ${plan.color}` }}>
-              <h3 className="plan-name" style={{ color: plan.color }}>
-                {plan.displayName}
-              </h3>
-
-              <p className="plan-desc">{plan.description}</p>
-
-              <div className="plan-price">
-                {plan.price === 0 ? (
-                  <span className="price-free">Miễn phí</span>
-                ) : (
-                  <>
-                    <span className="price-value">{plan.price.toLocaleString()}đ</span>
-                    <span className="price-duration">/{plan.duration}</span>
-                  </>
-                )}
-              </div>
-
-              <ul className="plan-limits">
-                {plan.postLimits.map((limit, idx) => (
-                  <li key={idx} style={{ color: limit.color }}>
-                    <strong>{limit.type}:</strong> {limit.count} tin
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                className="btn-register"
+            <div
+              className="price-card"
+              key={i}
+              style={{ border: `2px solid ${plan.color}`, borderRadius: '12px', overflow: 'hidden' }}
+            >
+              <div
+                className="plan-header"
                 style={{
                   backgroundColor: plan.color,
-                  boxShadow: `0 3px 8px ${plan.color}40`,
+                  color: '#fff',
+                  padding: '16px',
+                  textAlign: 'center'
                 }}
               >
-                SIÊU SALE
-              </button>
+                <h3 className="plan-name">{plan.displayName}</h3>
+                <p className="plan-desc">{plan.description}</p>
+              </div>
+
+              <div className="plan-body" style={{ padding: '20px' }}>
+                <div className="plan-price">
+                  {plan.price === 0 ? (
+                    <span className="price-free">Miễn phí</span>
+                  ) : (
+                    <>
+                      <span className="price-value-pricing">{plan.price.toLocaleString()}đ</span>
+                      <span className="price-duration">/{plan.duration}</span>
+                    </>
+                  )}
+                </div>
+
+                <ul className="plan-limits">
+                  {plan.postLimits.map((limit, idx) => (
+                    <li key={idx} style={{ color: limit.color }}>
+                      <strong>{limit.type}:</strong> {limit.count} tin
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  className="btn-register"
+                  style={{
+                    backgroundColor: plan.color,
+                    boxShadow: `0 3px 8px ${plan.color}40`,
+                  }}
+                >
+                  SIÊU SALE
+                </button>
+              </div>
             </div>
+
           ))}
         </div>
 
@@ -209,12 +224,12 @@ const Pricing = () => {
 
       {/* Scroll to Top Button */}
       {showScrollTop && (
-        <button 
-          className="go-to-top-btn" 
+        <button
+          className="go-to-top-btn"
           onClick={scrollToTop}
           aria-label="Scroll to top"
         >
-          <FaArrowUp  size={20} className="text-black" />
+          <FaArrowUp size={20} className="text-black" />
         </button>
       )}
     </section>

@@ -1095,7 +1095,7 @@ const NewProperty = () => {
             });
           }
         } else {
-          console.log('⚠️ No rejectedFiles in response or rejectedFiles is undefined/null');
+          console.log('No rejectedFiles in response or rejectedFiles is undefined/null');
           
           // Hiển thị thông báo thành công với thông tin số lượt còn lại từ server
           const selectedPostType = availablePostTypes.find(type => type.postType._id === formData.postType);
@@ -1116,21 +1116,10 @@ const NewProperty = () => {
 
         setShowModal(false);
 
-        // Logic redirect dựa trên postOrder
-        const needsPayment = result.data?.needsPayment || false;
-        const propertyId = result.data?.id;
-
-        console.log('Post created - postOrder:', result.data?.postOrder, 'needsPayment:', needsPayment);
-
         // Delay để toast hiển thị trước khi redirect
         setTimeout(() => {
-          if (needsPayment && propertyId) {
-            // Từ bài thứ 4 trở đi: redirect đến trang thanh toán
-            navigate('/profile/my-posts?showUpgradeModal=true');
-          } else {
-            // 3 bài đầu miễn phí: redirect về MyProperties
-            navigate('/profile/my-posts');
-          }
+          // Redirect về MyProperties
+          navigate('/profile/my-posts');
         }, 2000);
 
         // Không reset form nếu có files bị từ chối để user có thể chỉnh sửa
@@ -1899,7 +1888,7 @@ const NewProperty = () => {
                           <span>Kinh độ: <strong>{formData.coordinates?.lng?.toFixed(6) || 'N/A'}</strong></span>
                         </div>
                         <div className="coordinate-item">
-                          <i className={`fa ${isManuallySet ? 'fa-hand-paper-o' : 'fa-magic'}`} style={{ color: isManuallySet ? '#28a745' : '#007bff' }}></i>
+                          <i className={`fa ${isManuallySet ? 'fa-hand' : 'fa-magic'}`} style={{ color: isManuallySet ? '#007bff' : '#007bff' }}></i>
                           <span>Trạng thái: <strong style={{ color: isManuallySet ? '#28a745' : '#007bff' }}>
                             {isManuallySet ? 'Đã chỉnh thủ công' : 'Tự động geocoding'}
                           </strong></span>

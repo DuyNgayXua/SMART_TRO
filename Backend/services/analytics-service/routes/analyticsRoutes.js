@@ -1,27 +1,24 @@
 import express from 'express';
 import {
-  getPriceTrends,
-  getPriceRanges,
-  getRegionComparison,
+  getPriceTrendOverTime,
+  getPriceRangeDistribution,
   getNewsSentiment,
-  getMarketInsights
+  getPriceSummary
 } from '../controllers/analyticsController.js';
 
 const router = express.Router();
 
 // Price trends by region and time
-router.get('/price-trends', getPriceTrends);
+router.get('/price-trends', getPriceTrendOverTime);
 
 // Price ranges distribution
-router.get('/price-ranges', getPriceRanges);
-
-// Region comparison data
-router.get('/region-comparison', getRegionComparison);
+router.get('/price-ranges', getPriceRangeDistribution);
 
 // News sentiment analysis
 router.get('/news-sentiment', getNewsSentiment);
 
-// Market insights
-router.get('/market-insights', getMarketInsights);
+
+// Metric Cards - Price Summary
+router.get('/price-summary', getPriceSummary);
 
 export default router;

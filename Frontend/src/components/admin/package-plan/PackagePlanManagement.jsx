@@ -647,7 +647,14 @@ const PackagePlanManagement = () => {
                     <div className="admin-grid">
                         {currentItems.length > 0 ? (
                             currentItems.map((packagePlan) => (
-                                <div key={packagePlan._id} className="package-plan-card">
+                                <div
+                                    key={packagePlan._id}
+                                    className="package-plan-card"
+                                    style={{
+                                        backgroundColor: getPackageTypeInfo(packagePlan.type || 'custom').color,
+                                        borderColor: getPackageTypeInfo(packagePlan.type || 'custom').color,
+                                    }}
+                                >
                                     <div className={`package-plan-header ${packagePlan.type || 'custom'}`}>
                                         <div className="package-type-badge"
                                             style={{ backgroundColor: getPackageTypeInfo(packagePlan.type || 'custom').color }}>
@@ -790,7 +797,7 @@ const PackagePlanManagement = () => {
                                         <div className="modal-actions">
                                             <button
 
-                                                className="btn btn-secondary"
+                                                className="btn btn-secondary-package-plan"
                                                 onClick={closeModal}
                                             >
                                                 Hủy
@@ -814,14 +821,14 @@ const PackagePlanManagement = () => {
                                                 <div className="col-md-6 mb-3">
                                                     <label className="form-label">
                                                         Loại gói tin
-                                                  
+
                                                     </label>
                                                     <select
                                                         name="type"
                                                         value={formData.type}
                                                         onChange={handleInputChange}
                                                         className="form-select"
-                                                        
+
                                                     >
                                                         {packageTypeOptions.map(option => (
                                                             <option key={option.value} value={option.value}>
@@ -992,7 +999,7 @@ const PackagePlanManagement = () => {
                                         <div className="modal-footer">
                                             <button
                                                 type="button"
-                                                className="btn btn-secondary"
+                                                className="btn btn-secondary-package-plan"
                                                 onClick={closeModal}
                                             >
                                                 Hủy

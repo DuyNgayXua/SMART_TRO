@@ -1470,18 +1470,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     }}>
                       <span style={{ fontWeight: '500' }}>{filter.label}</span>
                       <button 
-                        style={{
-                          background: 'rgba(255,255,255,0.2)',
-                          border: 'none',
-                          borderRadius: '50%',
-                          width: '18px',
-                          height: '18px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          cursor: 'pointer',
-                          fontSize: '10px'
-                        }}
+                      className="remove-filter-btn"
+                       
                         onClick={() => removeFilter(filter.type)}
                         title="Xóa bộ lọc này"
                       >

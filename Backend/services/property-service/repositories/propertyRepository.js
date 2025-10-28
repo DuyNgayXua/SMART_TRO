@@ -337,12 +337,12 @@ class PropertyRepository {
         }
     }
 
-    // Đếm số bài đăng của user (để tính postOrder)
+    // Count user properties (kept for other purposes)
     async countUserProperties(userId) {
         try {
             return await Property.countDocuments({ 
                 owner: userId
-                // Tính tất cả bài đăng (kể cả đã xóa) để tránh lợi dụng
+                // Count all posts (including deleted) for statistics
             });
         } catch (error) {
             throw new Error(`Error counting user properties: ${error.message}`);

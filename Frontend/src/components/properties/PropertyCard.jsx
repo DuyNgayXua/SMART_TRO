@@ -272,7 +272,7 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                     <div className="title-section">
                           {getPostTypeBadge()}
                         <h3 
-                            className="property-title" 
+                            className="property-title-card" 
                             title={property.title}
                             style={getPostTypeStyle()}
                         >
@@ -280,7 +280,7 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                         </h3>
                       
                     </div>
-                    <div className="property-price">
+                    <div className="property-price-card">
                         {property.promotionPrice && property.promotionPrice > 0 ? (
                             <>
                                 {/* Giá gốc bị gạch ngang */}

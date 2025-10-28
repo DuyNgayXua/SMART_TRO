@@ -118,7 +118,6 @@ class PackageExpiryService {
             currentProperty.packageInfo.status = 'expired';
             // Giữ nguyên expiryDate gốc vì nó đã chính xác thời điểm hết hạn
             currentProperty.packageInfo.expiredAt = now; // Timestamp khi phát hiện hết hạn
-            currentProperty.isPaid = false; // Reset trạng thái thanh toán
 
             await currentProperty.save();
 

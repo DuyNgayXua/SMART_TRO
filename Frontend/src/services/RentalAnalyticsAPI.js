@@ -8,9 +8,12 @@ class RentalAnalyticsAPI {
     try {
       const params = {};
       
-      // Add location parameters if provided
+      // Add location parameters if provided - backend expects province, district, category, areaRange
       if (locationParam?.province) {
-        params.region = locationParam.province;
+        params.province = locationParam.province;
+      }
+      if (locationParam?.district) {
+        params.district = locationParam.district;
       }
       if (locationParam?.category) {
         params.category = locationParam.category;
@@ -34,9 +37,12 @@ class RentalAnalyticsAPI {
     try {
       const params = {};
       
-      // Add location parameters if provided
+      // Add location parameters if provided - backend expects province, district, category, areaRange
       if (locationParam?.province) {
-        params.region = locationParam.province;
+        params.province = locationParam.province;
+      }
+      if (locationParam?.district) {
+        params.district = locationParam.district;
       }
       if (locationParam?.category) {
         params.category = locationParam.category;
@@ -55,19 +61,9 @@ class RentalAnalyticsAPI {
     }
   }
 
-  // Get region comparison data
-  static async getRegionComparison() {
-    try {
-      const response = await axios.get(`${API_BASE_URL}/analytics/region-comparison`);
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching region comparison:', error);
-      throw error;
-    }
-  }
 
   // Get news sentiment analysis (placeholder for Serp API integration)
-  static async getNewsSentiment(keywords = 'thuê phòng trọ') {
+  static async getNewsSentiment(keywords) {
     try {
       const response = await axios.get(`${API_BASE_URL}/analytics/news-sentiment`, {
         params: { keywords }
@@ -79,14 +75,17 @@ class RentalAnalyticsAPI {
     }
   }
 
-  // Get market insights
-  static async getMarketInsights(locationParam = null) {
+  // Get price summary for metric cards
+  static async getPriceSummary(locationParam = null) {
     try {
       const params = {};
       
       // Add location parameters if provided
       if (locationParam?.province) {
-        params.region = locationParam.province;
+        params.province = locationParam.province;  // Sửa từ params.region thành params.province
+      }
+      if (locationParam?.district) {
+        params.district = locationParam.district;
       }
       if (locationParam?.category) {
         params.category = locationParam.category;
@@ -95,12 +94,12 @@ class RentalAnalyticsAPI {
         params.areaRange = locationParam.areaRange;
       }
       
-      const response = await axios.get(`${API_BASE_URL}/analytics/market-insights`, {
+      const response = await axios.get(`${API_BASE_URL}/analytics/price-summary`, {
         params
       });
       return response.data;
     } catch (error) {
-      console.error('Error fetching market insights:', error);
+      console.error('Error fetching price summary:', error);
       throw error;
     }
   }

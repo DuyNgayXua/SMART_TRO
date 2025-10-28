@@ -138,8 +138,6 @@ const myPropertiesController = {
         description: property.description,
         approvalStatus: property.approvalStatus,
         status: property.status,
-        postOrder: property.postOrder, // Thứ tự bài đăng
-        isPaid: property.isPaid, // Đã thanh toán hay chưa
         rejectionReason: property.rejectionReason, // Thêm lý do từ chối
         location: {
           provinceName: provinceMap.get(String(property.province)) || "",
@@ -2110,8 +2108,7 @@ const myPropertiesController = {
       const activePackageProperties = await Property.find({
         owner: userId,
         'packageInfo.status': { $in: ['active', 'pending'] },
-        'packageInfo.isActive': true,
-        isPaid: true
+        'packageInfo.isActive': true
       }).sort({ 'packageInfo.expiryDate': -1 }).lean();
 
       // Nếu user có gói đang hoạt động từ Property

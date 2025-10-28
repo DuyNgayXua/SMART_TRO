@@ -30,12 +30,23 @@ const RentalPriceAnalytics = () => {
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [propertyCategory, setPropertyCategory] = useState('');
   const [areaRange, setAreaRange] = useState('');
-  const [newsKeyword, setNewsKeyword] = useState('thuê phòng trọ');
+  const [newsKeyword, setNewsKeyword] = useState('Giá thuê trọ hôm nay ở quận Gò Vấp');
   const [priceData, setPriceData] = useState([]);
   const [newsData, setNewsData] = useState([]);
-  const [sentimentData, setSentimentData] = useState([]);
-  const [priceRangeData, setPriceRangeData] = useState([]);
+  const [sentimentData, setSentimentData] = useState([
+    { name: 'Tích cực', value: 45, color: '#10B981' },
+    { name: 'Trung tính', value: 35, color: '#F59E0B' },
+    { name: 'Tiêu cực', value: 20, color: '#EF4444' }
+  ]);
+  const [priceRangeData, setPriceRangeData] = useState([
+    { range: '2-3 triệu', count: 35, percentage: 35 },
+    { range: '3-4 triệu', count: 28, percentage: 28 },
+    { range: '4-5 triệu', count: 20, percentage: 20 },
+    { range: '5-7 triệu', count: 12, percentage: 12 },
+    { range: 'Trên 7 triệu', count: 5, percentage: 5 }
+  ]);
   const [regionComparison, setRegionComparison] = useState([]);
+  const [priceSummary, setPriceSummary] = useState(null);
 
   // Location data states
   const [provinces, setProvinces] = useState([]);
@@ -57,15 +68,17 @@ const RentalPriceAnalytics = () => {
     }
   }, [selectedProvince]);
 
-  // Load analytics data when filters change
+  // Load analytics data when filters change (excluding newsKeyword)
   useEffect(() => {
     loadAnalyticsData();
-  }, [selectedProvince, selectedDistrict, propertyCategory, areaRange, newsKeyword]);
+  }, [selectedProvince, selectedDistrict, propertyCategory, areaRange]);
 
   // Load provinces on component mount
   useEffect(() => {
     loadProvinces();
   }, []);
+
+
 
   // Load provinces from API
   const loadProvinces = async () => {
@@ -123,8 +136,9 @@ const RentalPriceAnalytics = () => {
         const province = provinces.find(p => p.code.toString() === selectedProvince);
         if (province) {
           locationParam = {
-            province: province.name,
-            district: selectedDistrict ? districts.find(d => d.code.toString() === selectedDistrict)?.name : null,
+            // Gửi code thay vì name vì backend mong đợi code
+            province: province.code.toString(),  // Gửi "79" thay vì "Thành phố Hồ Chí Minh"
+            district: selectedDistrict ? selectedDistrict.toString() : null,  // Gửi code district
             category: propertyCategory,
             areaRange: areaRange
           };
@@ -137,12 +151,11 @@ const RentalPriceAnalytics = () => {
         };
       }
 
-      // Load analytics data with location filtering
+      // Load analytics data with location filtering (exclude news analysis)
       await Promise.all([
         loadPriceTrends(locationParam),
-        loadNewsAnalysis(newsKeyword),
         loadPriceRanges(locationParam),
-        loadRegionComparison()
+        loadPriceSummary(locationParam)
       ]);
     } catch (error) {
       console.error('Error loading analytics data:', error);
@@ -154,17 +167,38 @@ const RentalPriceAnalytics = () => {
   const loadPriceTrends = async (locationParam = null) => {
     try {
       const response = await RentalAnalyticsAPI.getPriceTrends(locationParam);
-      if (response.success) {
-        setPriceData(response.data);
+      if (response.success && response.data) {
+        // Transform backend data format to match frontend chart
+        // Backend returns: [{month: "1/2025", avgPrice: 4500000, count: 15}, ...]
+        // Frontend expects: [{month: "T1/2025", price: 4500000, count: 15, change: X}, ...]
+        const transformedData = response.data.map((item, index) => {
+          // Calculate month-over-month change
+          let change = 0;
+          if (index > 0 && response.data[index - 1]) {
+            const currentPrice = item.avgPrice;
+            const previousPrice = response.data[index - 1].avgPrice;
+            change = previousPrice > 0 ? ((currentPrice - previousPrice) / previousPrice * 100) : 0;
+          }
+
+          return {
+            month: `T${item.month}`, // Convert "1/2025" to "T1/2025"
+            price: item.avgPrice,
+            count: item.count,
+            change: parseFloat(change.toFixed(1))
+          };
+        });
+        console.log('Transformed Price Data:', transformedData);
+
+        setPriceData(transformedData);
       } else {
         // Fallback to mock data if API fails
         const mockData = [
-          { month: 'T8/2024', hcm: 4200000, hn: 3800000, dn: 3200000, change: 2.5 },
-          { month: 'T9/2024', hcm: 4350000, hn: 3950000, dn: 3300000, change: 3.6 },
-          { month: 'T10/2024', hcm: 4500000, hn: 4100000, dn: 3450000, change: 3.4 },
-          { month: 'T11/2024', hcm: 4650000, hn: 4200000, dn: 3600000, change: 3.3 },
-          { month: 'T12/2024', hcm: 4800000, hn: 4350000, dn: 3750000, change: 3.2 },
-          { month: 'T1/2025', hcm: 4950000, hn: 4500000, dn: 3900000, change: 3.1 }
+          { month: 'T8/2024', price: 4200000, count: 25, change: 2.5 },
+          { month: 'T9/2024', price: 4350000, count: 28, change: 3.6 },
+          { month: 'T10/2024', price: 4500000, count: 32, change: 3.4 },
+          { month: 'T11/2024', price: 4650000, count: 30, change: 3.3 },
+          { month: 'T12/2024', price: 4800000, count: 35, change: 3.2 },
+          { month: 'T1/2025', price: 4950000, count: 38, change: 3.1 }
         ];
         setPriceData(mockData);
       }
@@ -172,20 +206,21 @@ const RentalPriceAnalytics = () => {
       console.error('Error loading price trends:', error);
       // Use mock data as fallback
       const mockData = [
-        { month: 'T8/2024', hcm: 4200000, hn: 3800000, dn: 3200000, change: 2.5 },
-        { month: 'T9/2024', hcm: 4350000, hn: 3950000, dn: 3300000, change: 3.6 },
-        { month: 'T10/2024', hcm: 4500000, hn: 4100000, dn: 3450000, change: 3.4 },
-        { month: 'T11/2024', hcm: 4650000, hn: 4200000, dn: 3600000, change: 3.3 },
-        { month: 'T12/2024', hcm: 4800000, hn: 4350000, dn: 3750000, change: 3.2 },
-        { month: 'T1/2025', hcm: 4950000, hn: 4500000, dn: 3900000, change: 3.1 }
+        { month: 'T8/2024', price: 4200000, count: 25, change: 2.5 },
+        { month: 'T9/2024', price: 4350000, count: 28, change: 3.6 },
+        { month: 'T10/2024', price: 4500000, count: 32, change: 3.4 },
+        { month: 'T11/2024', price: 4650000, count: 30, change: 3.3 },
+        { month: 'T12/2024', price: 4800000, count: 35, change: 3.2 },
+        { month: 'T1/2025', price: 4950000, count: 38, change: 3.1 }
       ];
       setPriceData(mockData);
     }
   };
 
-  const loadNewsAnalysis = async (keyword = 'thuê phòng trọ') => {
+  const loadNewsAnalysis = async (keyword) => {
     try {
       const response = await RentalAnalyticsAPI.getNewsSentiment(keyword);
+      console.log('News analysis response:', response);
       if (response.success) {
         setSentimentData(response.data.sentiment);
         setNewsData(response.data.news);
@@ -257,7 +292,8 @@ const RentalPriceAnalytics = () => {
   const loadPriceRanges = async (locationParam = null) => {
     try {
       const response = await RentalAnalyticsAPI.getPriceRanges(locationParam);
-      if (response.success) {
+      console.log('Price ranges response:', response);
+      if (response.success && response.data && Array.isArray(response.data)) {
         setPriceRangeData(response.data);
       } else {
         // Fallback to mock data
@@ -284,77 +320,37 @@ const RentalPriceAnalytics = () => {
     }
   };
 
-  const loadRegionComparison = async () => {
+
+  const loadPriceSummary = async (locationParam = null) => {
+    console.log('Loading price summary with location param:', locationParam);
     try {
-      const response = await RentalAnalyticsAPI.getRegionComparison();
-      console.log('Region comparison response:', response);
+      const response = await RentalAnalyticsAPI.getPriceSummary(locationParam);
+      console.log('Price summary response:', response);
       if (response.success) {
-        setRegionComparison(response.data);
+        setPriceSummary(response.data);
       } else {
         // Fallback to mock data
-        const mockComparison = [
-          {
-            region: 'TP. Hồ Chí Minh',
-            currentMonth: 4950000,
-            lastMonth: 4800000,
-            twoMonthsAgo: 4650000,
-            changePercent: 3.1,
-            twoMonthChange: 6.5
-          },
-          {
-            region: 'Hà Nội',
-            currentMonth: 4500000,
-            lastMonth: 4350000,
-            twoMonthsAgo: 4200000,
-            changePercent: 3.4,
-            twoMonthChange: 7.1
-          },
-          {
-            region: 'Đà Nẵng',
-            currentMonth: 3900000,
-            lastMonth: 3750000,
-            twoMonthsAgo: 3600000,
-            changePercent: 4.0,
-            twoMonthChange: 8.3
-          }
-        ];
-        setRegionComparison(mockComparison);
+        const mockSummary = {
+          currentMonthAverage: 4400000,
+          changeFromLastMonth: 3.2,
+          changeFromTwoMonthsAgo: 7.3
+        };
+        setPriceSummary(mockSummary);
       }
     } catch (error) {
-      console.error('Error loading region comparison:', error);
+      console.error('Error loading price summary:', error);
       // Use mock data as fallback
-      const mockComparison = [
-        {
-          region: 'TP. Hồ Chí Minh',
-          currentMonth: 4950000,
-          lastMonth: 4800000,
-          twoMonthsAgo: 4650000,
-          changePercent: 3.1,
-          twoMonthChange: 6.5
-        },
-        {
-          region: 'Hà Nội',
-          currentMonth: 4500000,
-          lastMonth: 4350000,
-          twoMonthsAgo: 4200000,
-          changePercent: 3.4,
-          twoMonthChange: 7.1
-        },
-        {
-          region: 'Đà Nẵng',
-          currentMonth: 3900000,
-          lastMonth: 3750000,
-          twoMonthsAgo: 3600000,
-          changePercent: 4.0,
-          twoMonthChange: 8.3
-        }
-      ];
-      setRegionComparison(mockComparison);
+      const mockSummary = {
+        currentMonthAverage: 4400000,
+        changeFromLastMonth: 3.2,
+        changeFromTwoMonthsAgo: 7.3
+      };
+      setPriceSummary(mockSummary);
     }
   };
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN').format(price) + ' đ';
+    return new Intl.NumberFormat('vi-VN').format(price) + ' VNĐ';
   };
 
   const formatPercent = (value) => {
@@ -388,6 +384,23 @@ const RentalPriceAnalytics = () => {
     setSelectedDistrict(''); // Reset district when province changes
   };
 
+  // Handle news search - only triggered by Enter key or search button click
+  const handleNewsSearch = () => {
+    if (newsKeyword.trim()) {
+      loadNewsAnalysis(newsKeyword.trim());
+    }
+  };
+
+  // Handle clear all filters
+  const handleClearFilters = () => {
+    setPropertyCategory('');
+    setSelectedProvince('');
+    setSelectedDistrict('');
+    setAreaRange('');
+    setDistricts([]); // Clear districts list when province is reset
+    setNewsKeyword('');
+  };
+
   if (loading) {
     return (
       <div className="analytics-loading">
@@ -400,11 +413,13 @@ const RentalPriceAnalytics = () => {
   return (
     <div className="rental-analytics-dashboard">
       <div className="dashboard-header">
-        <h2>
+       <div className="dashboard-item">
+         <h2>
           <i className="fa fa-chart-line"></i>
-          Phân tích giá thuê trọ
+          Phân tích giá thuê
         </h2>
         <p>Theo dõi xu hướng và phân tích thị trường cho thuê phòng trọ</p>
+       </div>
 
         <div className="dashboard-controls">
           <div className="control-group">
@@ -475,6 +490,19 @@ const RentalPriceAnalytics = () => {
           </div>
 
           <div className="control-group">
+            <button
+              onClick={handleClearFilters}
+              className="clear-filters-button"
+              title="Xóa tất cả bộ lọc"
+            >
+              <i className="fa fa-refresh"></i>
+              Xóa bộ lọc
+            </button>
+          </div>
+
+        </div>
+        <div className="dashboard-input">
+          <div className="control-group">
             <label>Chủ đề bạn quan tâm:</label>
             <div className="input-with-button">
               <input
@@ -485,50 +513,202 @@ const RentalPriceAnalytics = () => {
                 placeholder="Nhập từ khóa để tìm tin tức..."
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
-                    loadNewsAnalysis(newsKeyword);
+                    handleNewsSearch();
                   }
                 }}
               />
+              {/* Hiện icon "x" khi có text */}
+              {newsKeyword && (
+                <button
+                  className="clear-button-rental"
+                  onClick={() => setNewsKeyword('')}
+                  title="Xóa nội dung"
+                >
+                  <i className="fa fa-times"></i>
+                </button>
+              )}
               <button
-                onClick={() => loadNewsAnalysis(newsKeyword)}
-                className="search-button"
+                onClick={handleNewsSearch}
+                className="search-button-rental"
                 title="Tìm kiếm tin tức"
               >
                 <i className="fa fa-search"></i>
               </button>
             </div>
           </div>
-
         </div>
+
       </div>
 
       {/* Key Metrics Cards */}
       <div className="metrics-grid">
-        {regionComparison.map((region, index) => (
-          <div key={index} className="metric-card">
-            <div className="metric-header">
-              <h4>{region.region}</h4>
-              <i className="fa fa-map-marker-alt"></i>
-            </div>
-            <div className="metric-value">
-              {formatPrice(region.currentMonth)}
-            </div>
-            <div className="metric-changes">
-              <div className={`change-item ${region.changePercent > 0 ? 'positive' : 'negative'}`}>
-                <span>Tháng trước:</span>
-                <span>{formatPercent(region.changePercent)}</span>
-              </div>
-              <div className={`change-item ${region.twoMonthChange > 0 ? 'positive' : 'negative'}`}>
-                <span>2 tháng trước:</span>
-                <span>{formatPercent(region.twoMonthChange)}</span>
-              </div>
-            </div>
+        {/* Metric Card 1: Giá thuê trung bình hiện tại */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <h4>Giá thuê trung bình</h4>
+            <i className="fa fa-money-bill-wave"></i>
           </div>
-        ))}
+          <div className="metric-value">
+            {priceSummary
+              ? formatPrice(priceSummary.currentAvg)
+              : formatPrice(4400000)
+            }
+          </div>
+          <div className="metric-subtitle">
+            <span>Tháng hiện tại:
+              <span className="highlighted-date-current-month">
+                {new Date().toLocaleDateString('vi-VN', { month: 'numeric', year: 'numeric' })}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {/* Metric Card 2: Thay đổi so với tháng trước */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <h4>Giá so với tháng trước</h4>
+            <i className="fa fa-chart-line"></i>
+          </div>
+          <div className={`metric-value ${priceSummary && priceSummary.changeVsLastMonth > 0 ? 'positive' : 'negative'}`}>
+            {priceSummary
+              ? formatPercent(priceSummary.changeVsLastMonth)
+              : formatPercent(3.2)
+            }
+          </div>
+          <div className="metric-subtitle">
+            <span>Giá so với tháng:
+              <span className="highlighted-date-1-month-ago">
+                {new Date(new Date().setMonth(new Date().getMonth() - 1)).toLocaleDateString('vi-VN', { month: 'numeric', year: 'numeric' })}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {/* Metric Card 3: Thay đổi so với 2 tháng trước */}
+        <div className="metric-card">
+          <div className="metric-header">
+            <h4>Giá so với 2 tháng trước</h4>
+            <i className="fa-chart-line"></i>
+          </div>
+          <div className={`metric-value ${priceSummary && priceSummary.changeVsTwoMonthsAgo > 0 ? 'positive' : 'negative'}`}>
+            {priceSummary
+              ? formatPercent(priceSummary.changeVsTwoMonthsAgo)
+              : formatPercent(7.3)
+            }
+          </div>
+          <div className="metric-subtitle">
+            <span>Giá so với:
+              <span className="highlighted-date-2-months-ago">
+                {new Date(new Date().setMonth(new Date().getMonth() - 2)).toLocaleDateString('vi-VN', { month: 'numeric', year: 'numeric' })}
+              </span>
+            </span>
+          </div>
+        </div>
       </div>
 
-      {/* Charts Grid */}
-      <div className="charts-grid">
+      <div className="charts-grid-first">
+        {/* Price Range Chart - Range Bar Chart */}
+        <div className="chart-card">
+          <div className="chart-header">
+            <h3>
+              <i className="fa fa-chart-bar"></i>
+              Khoảng giá thuê phổ biến
+            </h3>
+          </div>
+          <div className="chart-container">
+            <ResponsiveContainer width="100%" height={400}>
+              <BarChart
+                data={priceRangeData}
+                layout="vertical" // đổi thành vertical để thanh nằm ngang (đúng như hình bạn mong muốn)
+                margin={{ top: 20, right: 40, left: 5, bottom: 20 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
+                {/* Trục X: phần trăm */}
+                <XAxis
+                  type="number"
+                  domain={[0, 100]} // luôn từ 0 → 100% để tránh tự động co nhỏ
+                  tickFormatter={(value) => `${value}%`}
+                />
+
+                {/* Trục Y: nhãn khoảng giá */}
+                <YAxis
+                  type="category"
+                  dataKey="range"
+                  width={100}
+                  tick={{ fontSize: 14 }}
+                />
+
+                {/* Tooltip hiển thị chi tiết */}
+                <Tooltip
+                  formatter={(value, name) => {
+                    if (name === 'percentage') return [`${value}`, 'Tỷ lệ'];
+                    if (name === 'count') return [`${value} tin`, 'Số lượng'];
+                    return [value, name];
+                  }}
+                  labelFormatter={(label) => `Khoảng giá: ${label}`}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                    color: '#750000ff'
+                  }}
+                />
+
+                {/* Cột biểu đồ */}
+                <Bar
+                  dataKey="percentage"
+                  name="Tỷ lệ"
+                  radius={[0, 4, 4, 0]}
+                  barSize={18}
+                  label={{
+                    position: 'right',
+                    formatter: (value) => `${value}%`,
+                    fill: '#4B5563',
+                    fontSize: 14,
+                  }}
+                >
+                  {priceRangeData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={`hsl(${140 + index * 8}, 70%, ${55 - index * 4}%)`}
+                    />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+            {/* Range Indicators */}
+            <div className="range-indicators">
+              {Array.isArray(priceRangeData) && priceRangeData.map((item, index) => (
+                <div key={index} className="range-indicator">
+                  <div
+                    className="range-color"
+                    style={{
+                      backgroundColor: `hsl(${140 + index * 8}, 70%, ${55 - index * 4}%)`
+                    }}
+                  ></div>
+                  <div className="range-info">
+                    <span className="range-label">{item.range}</span>
+                    <div className="range-stats">
+                      <span className="range-count">{item.count || 0} tin</span>
+                      <span className="range-percentage">{item.percentage || 0}%</span>
+                    </div>
+                  </div>
+                  <div className="range-bar">
+                    <div
+                      className="range-fill"
+                      style={{
+                        width: `${item.percentage || 0}%`,
+                        backgroundColor: `hsl(${140 + index * 8}, 70%, ${55 - index * 4}%)`
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
         {/* Price Trend Chart */}
         <div className="chart-card large">
           <div className="chart-header">
@@ -540,157 +720,94 @@ const RentalPriceAnalytics = () => {
           <div className="chart-container">
             <ResponsiveContainer width="100%" height={300}>
               <AreaChart data={priceData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis tickFormatter={(value) => `${value / 1000000}M`} />
-                <Tooltip formatter={(value) => [formatPrice(value), 'Giá thuê']} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                <XAxis
+                  dataKey="month"
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis
+                  tickFormatter={(value) => `${(value / 1000000).toFixed(1)}M`}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip
+                  formatter={(value, name, props) => {
+                    if (props.dataKey === 'price') return [formatPrice(value), 'Giá thuê trung bình'];
+                    if (props.dataKey === 'count') return [`${value} tin`, 'Số lượng tin đăng'];
+                    return [value, name];
+                  }}
+                  labelFormatter={(label) => `Tháng: ${label}`}
+                  contentStyle={{
+                    backgroundColor: '#ffffff',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                  }}
+                />
+
                 <Legend />
                 <Area
                   type="monotone"
-                  dataKey="hcm"
-                  stackId="1"
-                  stroke="#3B82F6"
-                  fill="#3B82F6"
-                  fillOpacity={0.6}
-                  name="TP.HCM"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="hn"
-                  stackId="2"
-                  stroke="#10B981"
-                  fill="#10B981"
-                  fillOpacity={0.6}
-                  name="Hà Nội"
-                />
-                <Area
-                  type="monotone"
-                  dataKey="dn"
-                  stackId="3"
-                  stroke="#F59E0B"
-                  fill="#F59E0B"
-                  fillOpacity={0.6}
-                  name="Đà Nẵng"
+                  dataKey="price"
+                  stroke="#16A34A"
+                  fill="#16A34A"
+                  fillOpacity={0.3}
+                  strokeWidth={2}
+                  name="Giá thuê trung bình"
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
+
         </div>
 
-        {/* Sentiment Pie Chart */}
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>
-              <i className="fa fa-chart-pie"></i>
-              Tỷ lệ tin tức thị trường
-            </h3>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={250}>
-              <PieChart>
-                <Pie
-                  data={sentimentData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, value }) => `${name}: ${value}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {sentimentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      </div>
 
-        {/* Price Range Chart */}
-        <div className="chart-card">
-          <div className="chart-header">
-            <h3>
-              <i className="fa fa-chart-bar"></i>
-              Khoảng giá phổ biến
-            </h3>
-          </div>
-          <div className="chart-container">
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={priceRangeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="range" />
-                <YAxis />
-                <Tooltip formatter={(value) => [`${value}%`, 'Tỷ lệ']} />
-                <Bar dataKey="percentage" fill="#8B5CF6" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+      {/* Charts Grid */}
+      <div className="charts-grid">
       </div>
 
       {/* News Section */}
       <div className="news-section">
-        <div className="section-header">
+        <div className="section-header-rental">
           <h3>
             <i className="fa fa-newspaper"></i>
             Tin tức về "{newsKeyword}"
           </h3>
-          <p>Top 10 tin tức mới nhất được tìm kiếm bằng SERP API</p>
+
         </div>
         <div className="news-grid">
-          {newsData.map((news, index) => (
-            <div key={index} className={`news-card ${news.sentiment}`}>
-              <div className="news-header">
-                <span className={`sentiment-badge ${news.sentiment}`}>
-                  <i className={`fa ${news.sentiment === 'positive' ? 'fa-thumbs-up' :
-                      news.sentiment === 'negative' ? 'fa-thumbs-down' :
-                        'fa-minus'
-                    }`}></i>
-                  {news.sentiment === 'positive' ? 'Tích cực' :
-                    news.sentiment === 'negative' ? 'Tiêu cực' : 'Trung tính'}
-                </span>
-                <span className="news-date">{news.date}</span>
+          {Array.isArray(newsData) && newsData.length > 0 ? (
+            newsData.map((news, index) => (
+              <div key={index} className="news-card">
+                <div className="news-header">
+                  <div className="news-badge">
+                    <i className="fa fa-newspaper"></i>
+                    Tin tức
+                  </div>
+                  <span className="news-date">{news.date}</span>
+                </div>
+                <h4 className="news-title">{news.snippet}</h4>
+                <div className="news-footer">
+                  <a
+                    className="news-source"
+                    href={news.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <i className="fa fa-external-link-alt"></i>
+                    {news.source}
+                  </a>
+                </div>
               </div>
-              <h4 className="news-title">{news.title}</h4>
-              <div className="news-footer">
-                <span className="news-source">
-                  <i className="fa fa-globe"></i>
-                  {news.source}
-                </span>
-              </div>
+            ))
+          ) : (
+            <div className="no-news">
+              <i className="fa fa-newspaper"></i>
+              <p>Không có tin tức</p>
             </div>
-          ))}
+          )}
         </div>
-      </div>
 
-      {/* Summary Section */}
-      <div className="summary-section">
-        <div className="summary-card">
-          <h3>
-            <i className="fa fa-lightbulb"></i>
-            Tóm tắt xu hướng
-          </h3>
-          <div className="summary-content">
-            <div className="summary-item">
-              <i className="fa fa-arrow-up text-success"></i>
-              <p><strong>Xu hướng tăng:</strong> Giá thuê trung bình tăng 3-4% so với tháng trước</p>
-            </div>
-            <div className="summary-item">
-              <i className="fa fa-chart-line text-info"></i>
-              <p><strong>Khu vực hot:</strong> TP.HCM và Hà Nội dẫn đầu về mức tăng giá</p>
-            </div>
-            <div className="summary-item">
-              <i className="fa fa-users text-warning"></i>
-              <p><strong>Nhu cầu cao:</strong> Phòng trọ 2-4 triệu đồng được tìm kiếm nhiều nhất</p>
-            </div>
-            <div className="summary-item">
-              <i className="fa fa-newspaper text-primary"></i>
-              <p><strong>Tin tức:</strong> 45% tin tức tích cực, thị trường ổn định</p>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

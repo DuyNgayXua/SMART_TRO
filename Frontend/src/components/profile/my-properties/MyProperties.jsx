@@ -177,9 +177,9 @@ const MyProperties = () => {
     }
 
     // Kiểm tra gói trial đặc biệt
-    const isTrialPackage = packagePlan.name === 'trial' || 
-                          packageName.toLowerCase().includes('thử') ||
-                          packageName.toLowerCase().includes('trial');
+    const isTrialPackage = packagePlan.name === 'trial' ||
+      packageName.toLowerCase().includes('thử') ||
+      packageName.toLowerCase().includes('trial');
 
     if (isTrialPackage && !property.packageInfo.isActive) {
       return {
@@ -1208,7 +1208,7 @@ const MyProperties = () => {
           </div>
 
           <div className="controls-right">
-            <div className="filter-group">
+            <div className="filter-group-my-properties">
               <label>Trạng thái:</label>
               <select
                 value={filters.approvalStatus}
@@ -1222,7 +1222,7 @@ const MyProperties = () => {
               </select>
             </div>
 
-            <div className="filter-group">
+            <div className="filter-group-my-properties">
               <label>Sắp xếp:</label>
               <select
                 value={`${filters.sortBy}_${filters.sortOrder}`}
@@ -1314,9 +1314,9 @@ const MyProperties = () => {
                               }
 
                               // Kiểm tra xem tin này có phải từ gói trial không (dựa vào plan name hoặc packageType)
-                              const isTrialPost = property.packageInfo.plan?.name === 'trial' || 
-                                                property.packageInfo.plan?.displayName?.toLowerCase().includes('thử') ||
-                                                property.packageInfo.plan?.displayName?.toLowerCase().includes('trial');
+                              const isTrialPost = property.packageInfo.plan?.name === 'trial' ||
+                                property.packageInfo.plan?.displayName?.toLowerCase().includes('thử') ||
+                                property.packageInfo.plan?.displayName?.toLowerCase().includes('trial');
 
                               if (isTrialPost) {
                                 return (
@@ -1350,7 +1350,8 @@ const MyProperties = () => {
 
                               return (
                                 <span
-                                  className={`post-type-badge-my-properties ${postTypeInfo.cssClass}`}
+                                  className={`post-type-badge-my-properties ${postTypeInfo.cssClass} ${postTypeInfo.stars > 0 ? 'has-stars' : ''
+                                    }`}
                                   style={{
                                     backgroundColor: postTypeInfo.color,
                                     color: '#fff',
@@ -2590,7 +2591,7 @@ const MyProperties = () => {
                                     <div key={limitIndex} className="usage-item">
                                       <div className="usage-header">
                                         <div className="post-type-info">
-                                            {limit.packageType?.stars > 0 && (
+                                          {limit.packageType?.stars > 0 && (
                                             <div className="post-type-stars">
                                               {[...Array(limit.packageType.stars)].map((_, starIndex) => (
                                                 <i key={starIndex} className="fa fa-star star-icon"></i>

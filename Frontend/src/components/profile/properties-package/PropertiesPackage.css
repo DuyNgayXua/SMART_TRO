@@ -1183,7 +1183,7 @@
   border-radius: 8px;
   overflow: hidden;
   transition: all 0.2s ease;
-  min-height: 140px;
+  min-height: 155px;
   margin-bottom: 10px;
 }
 
@@ -1605,6 +1605,18 @@
 
 .btn-preview i {
   font-size: 16px;
+}
+.total-row-properties-package{
+    border-top: 2px solid #3b82f6;
+    margin-top: 8px;
+    padding-top: 16px;
+    font-size: 16px;
+    font-weight: 700;
+}
+.total-price-properties-package{
+    font-size: 20px !important;
+    font-weight: 800 !important;
+    color: #00911f !important;
 }
 
 /* Responsive cho nút preview */

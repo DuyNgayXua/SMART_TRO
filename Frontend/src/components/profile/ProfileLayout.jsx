@@ -37,20 +37,6 @@ const ProfileLayout = () => {
       path: '/profile/my-posts',
       active: location.pathname === '/profile/my-posts'
     },
-     {
-      id: 'favorites',
-      icon: 'fa-heart',
-      label: t('header.myList'),
-      path: '/profile/favorites',
-      active: location.pathname === '/profile/favorites'
-    },
-    {
-      id: 'payment-history',
-      icon: 'fa-credit-card',
-      label: t('profile.layout.sidebar.paymentHistory'),
-      path: '/profile/payment-history',
-      active: location.pathname === '/profile/payment-history'
-    },
     {
       id: 'pricing-analytics',
       icon: 'fa-chart-line',
@@ -59,11 +45,25 @@ const ProfileLayout = () => {
       active: location.pathname === '/profile/pricing-analytics'
     },
     {
+      id: 'favorites',
+      icon: 'fa-heart',
+      label: t('header.myList'),
+      path: '/profile/favorites',
+      active: location.pathname === '/profile/favorites'
+    },
+
+    {
       id: 'account',
       icon: 'fa-user-cog',
       label: t('profile.layout.sidebar.account'),
       path: '/profile/account',
       active: location.pathname === '/profile/account'
+    }, {
+      id: 'payment-history',
+      icon: 'fa-credit-card',
+      label: t('profile.layout.sidebar.paymentHistory'),
+      path: '/profile/payment-history',
+      active: location.pathname === '/profile/payment-history'
     }
   ];
 
@@ -90,9 +90,9 @@ const ProfileLayout = () => {
       <div className="profile-sidebar">
         <div className="sidebar-header">
           <div className="user-info">
-            <img 
+            <img
               src={getAvatarUrl(user?.avatar)}
-              alt="Avatar" 
+              alt="Avatar"
               className="sidebar-avatar"
               crossOrigin="anonymous"
               referrerPolicy="no-referrer"
@@ -104,8 +104,8 @@ const ProfileLayout = () => {
             <div className="user-details">
               <h4>{user?.fullName}</h4>
               <p>
-                {user?.phone ? 
-                  `SĐT: ${user.phone}` : 
+                {user?.phone ?
+                  `SĐT: ${user.phone}` :
                   (user?.googleId ? 'Tài khoản Google' : 'Chưa có SĐT')
                 }
               </p>
@@ -125,9 +125,9 @@ const ProfileLayout = () => {
               <span>{item.label}</span>
             </button>
           ))}
-          
+
           <div className="sidebar-divider"></div>
-          
+
           <button className="nav-item logout-item" onClick={handleLogout}>
             <i className="fa fa-sign-out"></i>
             <span>{t('profile.layout.sidebar.logout')}</span>

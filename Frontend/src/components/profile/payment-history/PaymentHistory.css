@@ -7,10 +7,8 @@
 
 /* Header Styles */
 .payment-history-header {
-    padding: 30px;
+    padding: 20px;
     border-radius: 12px;
-    margin-bottom: 25px;
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
     position: relative;
     overflow: hidden;
     text-align: center;
@@ -44,27 +42,26 @@
 
 .payment-history-filters {
     display: flex;
-    justify-content: center;
-    background: white;
+    justify-content: flex-end;
     border-radius: 15px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
 }
 
 .filter-row {
     display: flex;
     gap: 20px;
     align-items: center;
-    flex-wrap: wrap;
+    flex-direction: row;
 }
 
-.filter-group {
+.filter-group-payment-history {
     display: flex;
     flex-direction: column;
     gap: 8px;
     min-width: 200px;
+    margin-bottom: 30px;
 }
 
-.filter-group label {
+.filter-group-payment-history label {
     font-weight: 600;
     color: #495057;
     font-size: 14px;
@@ -72,7 +69,7 @@
 
 .filter-select {
     padding: 12px 15px;
-    border: 2px solid #e9ecef;
+    border: 2px solid #3b82f6;
     border-radius: 10px;
     background: white;
     font-size: 14px;
@@ -367,9 +364,7 @@
     align-items: center;
     gap: 15px;
     padding: 25px;
-    background: white;
     border-radius: 15px;
-    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
 }
 
 .pagination-info {
@@ -529,7 +524,7 @@
         align-items: stretch;
     }
 
-    .filter-group {
+    .filter-group-payment-history {
         min-width: unset;
     }
 

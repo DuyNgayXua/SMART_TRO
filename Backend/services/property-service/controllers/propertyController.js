@@ -729,11 +729,7 @@ class PropertyController {
 
             console.log('Final propertyData coordinates:', propertyData.coordinates);
 
-            // Tính postOrder dựa trên số bài đăng hiện tại của user
-            const userPropertiesCount = await propertyRepository.countUserProperties(userId);
-            propertyData.postOrder = userPropertiesCount + 1;
-            
-            console.log(`User ${userId} creating property #${propertyData.postOrder}`);
+            // Removed postOrder logic since propertyOrder field is removed from schema
 
             // Tạo property
             const property = await propertyRepository.create(propertyData);
@@ -771,7 +767,6 @@ class PropertyController {
                     id: property._id,
                     title: property.title,
                     approvalStatus: property.approvalStatus,
-                    postOrder: property.postOrder,
                     createdAt: property.createdAt,
                     packageInfo: {
                         plan: packagePlan._id,

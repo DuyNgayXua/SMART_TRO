@@ -942,9 +942,9 @@ const PropertiesPackage = () => {
                 </div>
 
                 {/* Tổng giá */}
-                <div className="summary-row total-row">
+                <div className="summary-row total-row-properties-package">
                   <span>Tổng giá:</span>
-                  <span className="total-price">
+                  <span className="total-price-properties-package">
                     {PropertiesPackageAPI.formatPrice(pricing.pricing?.totalPrice || 0)} VNĐ
                   </span>
                 </div>

@@ -18,437 +18,154 @@ const getAreaFilter = (areaRange) => {
   }
 };
 
-// Get price trends by region, category and area
-export const getPriceTrends = async (req, res) => {
+// Xu hướng giá thuê theo thời gian
+export const getPriceTrendOverTime = async (req, res) => {
   try {
-    const { region = 'all', category, areaRange } = req.query;
-    
-    // Calculate date range for last 6 months by default
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setMonth(endDate.getMonth() - 6);
+    const { category, province, district, areaRange, months = 6 } = req.query;
 
-    // Build match conditions
-    const matchConditions = {
-      createdAt: { $gte: startDate, $lte: endDate },
-      approvalStatus: 'approved',
-      isDeleted: { $ne: true },
-      rentPrice: { $exists: true, $gt: 0 }
-    };
-
-    // Add location filter if specified
-    if (region && region !== 'all') {
-      // Direct province name match
-      matchConditions['location.provinceName'] = { $regex: region, $options: 'i' };
-    }
-
-    // Add category filter if specified
-    if (category) {
-      matchConditions['category'] = category;
-    }
-
-    // Add area range filter if specified
-    if (areaRange) {
-      const areaFilter = getAreaFilter(areaRange);
-      if (areaFilter) {
-        matchConditions['area'] = areaFilter;
-      }
-    }
-
-    // Aggregate price trends by month
-    const priceTrends = await Property.aggregate([
-      { $match: matchConditions },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$createdAt' },
-            month: { $month: '$createdAt' },
-            province: '$location.provinceName'
-          },
-          avgPrice: { $avg: '$rentPrice' },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: '$_id.year',
-            month: '$_id.month'
-          },
-          provinces: { 
-            $push: {
-              province: '$_id.province',
-              avgPrice: '$avgPrice',
-              count: '$count'
-            }
-          },
-          totalCount: { $sum: '$count' }
-        }
-      },
-      { $sort: { '_id.year': 1, '_id.month': 1 } }
-    ]);
-
-    // Xử lý dữ liệu để nhóm theo tỉnh thành
-    const processedData = priceTrends.map(item => {
-      const hcmData = item.provinces.filter(p => 
-        p.province && p.province.toLowerCase().includes('hồ chí minh')
-      );
-      const hnData = item.provinces.filter(p => 
-        p.province && p.province.toLowerCase().includes('hà nội')
-      );
-      const dnData = item.provinces.filter(p => 
-        p.province && p.province.toLowerCase().includes('đà nẵng')
-      );
-
-      return {
-        month: `T${item._id.month}/${item._id.year}`,
-        hcm: hcmData.length > 0 ? Math.round(hcmData.reduce((sum, p) => sum + p.avgPrice, 0) / hcmData.length) : 0,
-        hn: hnData.length > 0 ? Math.round(hnData.reduce((sum, p) => sum + p.avgPrice, 0) / hnData.length) : 0,
-        dn: dnData.length > 0 ? Math.round(dnData.reduce((sum, p) => sum + p.avgPrice, 0) / dnData.length) : 0,
-        totalCount: item.totalCount
-      };
-    });
-
-    // Calculate percentage change for each month
-    const trendsWithChange = processedData.map((trend, index) => {
-      let change = 0;
-      if (index > 0) {
-        const prevTrend = processedData[index - 1];
-        const currentAvg = (trend.hcm + trend.hn + trend.dn) / 3;
-        const prevAvg = (prevTrend.hcm + prevTrend.hn + prevTrend.dn) / 3;
-        if (prevAvg > 0) {
-          change = ((currentAvg - prevAvg) / prevAvg * 100).toFixed(1);
-        }
-      }
-      return { ...trend, change: parseFloat(change) };
-    });
-
-    res.json({
-      success: true,
-      data: trendsWithChange
-    });
-
-  } catch (error) {
-    console.error('Error getting price trends:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy xu hướng giá',
-      error: error.message
-    });
-  }
-};
-
-// Get price ranges distribution
-export const getPriceRanges = async (req, res) => {
-  try {
-    const { region = 'all', category, areaRange } = req.query;
-    
-    // Build match conditions
-    const matchConditions = {
-      approvalStatus: 'approved',
-      isDeleted: { $ne: true },
-      rentPrice: { $exists: true, $gt: 0 }
-    };
-
-    // Add location filter if specified
-    if (region && region !== 'all') {
-      // Direct province name match
-      matchConditions['location.provinceName'] = { $regex: region, $options: 'i' };
-    }
-
-    // Add category filter if specified
-    if (category) {
-      matchConditions['category'] = category;
-    }
-
-    // Add area range filter if specified
-    if (areaRange) {
-      const areaFilter = getAreaFilter(areaRange);
-      if (areaFilter) {
-        matchConditions['area'] = areaFilter;
-      }
-    }
-
-    // Get price distribution using simple bucket aggregation
-    const priceRanges = await Property.aggregate([
-      { $match: matchConditions },
-      {
-        $bucket: {
-          groupBy: '$rentPrice',
-          boundaries: [0, 2000000, 3000000, 4000000, 5000000, 7000000, Infinity],
-          default: 'over7m',
-          output: {
-            count: { $sum: 1 }
-          }
-        }
-      }
-    ]);
-
-    // Map bucket results to readable format
-    const bucketMap = {
-      0: 'Dưới 2 triệu',
-      2000000: '2-3 triệu', 
-      3000000: '3-4 triệu',
-      4000000: '4-5 triệu',
-      5000000: '5-7 triệu',
-      7000000: 'Trên 7 triệu',
-      'over7m': 'Trên 7 triệu'
-    };
-
-    // Calculate total and percentages
-    const totalProperties = priceRanges.reduce((sum, range) => sum + range.count, 0);
-    const rangesWithPercentage = priceRanges.map(range => ({
-      range: bucketMap[range._id] || 'Khác',
-      count: range.count,
-      percentage: totalProperties > 0 ? Math.round((range.count / totalProperties) * 100) : 0
-    }));
-
-    res.json({
-      success: true,
-      data: rangesWithPercentage
-    });
-
-  } catch (error) {
-    console.error('Error getting price ranges:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Lỗi khi lấy phân bố giá',
-      error: error.message
-    });
-  }
-};
-
-// Get region comparison data
-export const getRegionComparison = async (req, res) => {
-  try {
     const currentDate = new Date();
-    const lastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
-    const twoMonthsAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 2, 1);
-    const currentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const currentMonth = currentDate.getMonth();
+    const currentYear = currentDate.getFullYear();
 
-    const regions = [
-      { key: 'hcm', name: 'TP. Hồ Chí Minh', regex: /Hồ Chí Minh/i },
-      { key: 'hn', name: 'Hà Nội', regex: /Hà Nội/i },
-      { key: 'dn', name: 'Đà Nẵng', regex: /Đà Nẵng/i }
-    ];
+    const baseFilter = {
+      approvalStatus: 'approved',
+      isDeleted: { $ne: true },
+      rentPrice: { $exists: true, $gt: 0 }
+    };
 
-    const regionComparison = [];
+    if (category && category !== 'all') baseFilter.category = category;
+    if (province && province !== 'all') baseFilter.province = province;
+    if (district && district !== 'all') baseFilter.district = district;
 
-    for (const region of regions) {
-      // Get current month average
-      const currentMonthData = await Property.aggregate([
-        {
-          $match: {
-            'location.provinceName': { $regex: region.regex },
-            createdAt: { $gte: currentMonth },
-            approvalStatus: 'approved',
-            isDeleted: { $ne: true },
-            rentPrice: { $exists: true, $gt: 0 }
-          }
-        },
+    const getAreaFilter = (range) => {
+      switch (range) {
+        case '10-20': return { $gte: 10, $lt: 20 };
+        case '20-30': return { $gte: 20, $lt: 30 };
+        case '30-50': return { $gte: 30, $lt: 50 };
+        case '50+': return { $gte: 50 };
+        default: return null;
+      }
+    };
+
+    if (areaRange) {
+      const filter = getAreaFilter(areaRange);
+      if (filter) baseFilter.area = filter;
+    }
+
+    const trendData = [];
+
+    for (let i = months - 1; i >= 0; i--) {
+      const start = new Date(currentYear, currentMonth - i, 1);
+      const end = new Date(currentYear, currentMonth - i + 1, 1);
+
+      const result = await Property.aggregate([
+        { $match: { ...baseFilter, createdAt: { $gte: start, $lt: end } } },
         {
           $group: {
             _id: null,
-            avgPrice: { $avg: '$rentPrice' },
+            avgPrice: { $avg: "$rentPrice" },
             count: { $sum: 1 }
           }
         }
       ]);
 
-      // Get last month average
-      const lastMonthData = await Property.aggregate([
-        {
-          $match: {
-            'location.provinceName': { $regex: region.regex },
-            createdAt: { $gte: lastMonth, $lt: currentMonth },
-            approvalStatus: 'approved',
-            isDeleted: { $ne: true },
-            rentPrice: { $exists: true, $gt: 0 }
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            avgPrice: { $avg: '$rentPrice' },
-            count: { $sum: 1 }
-          }
-        }
-      ]);
+      // Bỏ qua tháng không có dữ liệu
+      if (result.length === 0) continue;
 
-      // Get two months ago average
-      const twoMonthsAgoData = await Property.aggregate([
-        {
-          $match: {
-            'location.provinceName': { $regex: region.regex },
-            createdAt: { $gte: twoMonthsAgo, $lt: lastMonth },
-            approvalStatus: 'approved',
-            isDeleted: { $ne: true },
-            rentPrice: { $exists: true, $gt: 0 }
-          }
-        },
-        {
-          $group: {
-            _id: null,
-            avgPrice: { $avg: '$rentPrice' },
-            count: { $sum: 1 }
-          }
-        }
-      ]);
-
-      const currentPrice = currentMonthData[0]?.avgPrice || 0;
-      const lastPrice = lastMonthData[0]?.avgPrice || 0;
-      const twoMonthPrice = twoMonthsAgoData[0]?.avgPrice || 0;
-
-      const changePercent = lastPrice > 0 ? 
-        parseFloat(((currentPrice - lastPrice) / lastPrice * 100).toFixed(1)) : 0;
-      const twoMonthChange = twoMonthPrice > 0 ? 
-        parseFloat(((currentPrice - twoMonthPrice) / twoMonthPrice * 100).toFixed(1)) : 0;
-
-      regionComparison.push({
-        region: region.name,
-        currentMonth: Math.round(currentPrice),
-        lastMonth: Math.round(lastPrice),
-        twoMonthsAgo: Math.round(twoMonthPrice),
-        changePercent,
-        twoMonthChange
+      trendData.push({
+        month: `${start.getMonth() + 1}/${start.getFullYear()}`,
+        avgPrice: Math.round(result[0].avgPrice),
+        count: result[0].count
       });
     }
 
-    res.json({
-      success: true,
-      data: regionComparison
-    });
-
+    res.json({ success: true, data: trendData });
   } catch (error) {
-    console.error('Error getting region comparison:', error);
+    console.error('Error in getPriceTrendOverTime:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi so sánh khu vực',
+      message: 'Lỗi khi lấy xu hướng giá thuê theo thời gian',
       error: error.message
     });
   }
 };
 
-// Get news sentiment analysis (placeholder - integrate with Serp API later)
-// Helper function to analyze sentiment from title
-const analyzeSentiment = (title) => {
-  const positiveWords = ['tăng', 'tích cực', 'tốt', 'phát triển', 'khởi sắc', 'ổn định', 'cải thiện'];
-  const negativeWords = ['giảm', 'khó khăn', 'suy thoái', 'khó', 'thiếu', 'đắt', 'cao'];
-  
-  const titleLower = title.toLowerCase();
-  
-  const positiveCount = positiveWords.filter(word => titleLower.includes(word)).length;
-  const negativeCount = negativeWords.filter(word => titleLower.includes(word)).length;
-  
-  if (positiveCount > negativeCount) return 'positive';
-  if (negativeCount > positiveCount) return 'negative';
-  return 'neutral';
-};
 
 // Get news using SERP API
+
 export const getNewsSentiment = async (req, res) => {
   try {
-    const { keywords = 'thuê phòng trọ' } = req.query;
-    
-    // SERP API configuration
-    const SERP_API_KEY = process.env.SERP_API_KEY || 'your_serp_api_key_here';
-    const serpApiUrl = 'https://serpapi.com/search.json';
-    
+    const { keywords } = req.query;
+    const SERP_API_KEY = process.env.SERP_API_KEY || "your_serp_api_key_here";
+    const serpApiUrl = "https://serpapi.com/search.json";
+
     let newsResults = [];
-    let sentimentAnalysis = { positive: 0, neutral: 0, negative: 0 };
-    
+
     try {
-      // Call SERP API for news search
+      // --- Gọi SerpAPI ---
       const response = await axios.get(serpApiUrl, {
         params: {
-          engine: 'google_news',
-          q: keywords + ' site:vnexpress.net OR site:vietnamnet.vn OR site:tuoitre.vn OR site:thanhnien.vn',
+          engine: "google",
+          q: keywords,
           api_key: SERP_API_KEY,
-          gl: 'vn',
-          hl: 'vi',
+          gl: "vn",
+          hl: "vi",
           num: 10
         },
-        timeout: 10000 // 10 second timeout
+        timeout: 15000
       });
 
-      if (response.data && response.data.news_results) {
-        newsResults = response.data.news_results.slice(0, 10).map(article => {
-          const sentiment = analyzeSentiment(article.title);
-          sentimentAnalysis[sentiment]++;
-          
-          return {
-            title: article.title,
-            sentiment: sentiment,
-            date: article.date || new Date().toISOString().split('T')[0],
-            source: article.source || 'Không xác định',
-            link: article.link
-          };
-        });
+      const data = response.data;
+      console.log("SERP API response received", data);
+
+      // --- Lấy dữ liệu từ organic_results ---
+      if (data.organic_results && data.organic_results.length > 0) {
+        newsResults = data.organic_results
+          .filter(item => item.title && item.snippet)
+          .map(item => ({
+            title: item.title,
+            link: item.link,
+            snippet: item.snippet,
+            source: item.source || "Google News",
+            date: new Date().toLocaleDateString("vi-VN").replace(/\//g, "-")
+          }));
       }
+
+      // --- Nếu không có dữ liệu ---
+      if (newsResults.length === 0) {
+        throw new Error("Không tìm thấy kết quả phù hợp.");
+      }
+
     } catch (serpError) {
-      console.log('SERP API error, using fallback data:', serpError.message);
-      
-      // Fallback to mock data with keyword-relevant content
+      console.warn("SERP API error, dùng dữ liệu giả:", serpError.message);
+
+      // --- Fallback dữ liệu mô phỏng ---
       newsResults = [
         {
-          title: `Thị trường ${keywords} tại TP.HCM có xu hướng tích cực`,
-          sentiment: 'positive',
-          date: '2025-01-25',
-          source: 'VnExpress'
+          title: `Thị trường ${keywords} đang có dấu hiệu khởi sắc tại Việt Nam.`,
+          snippet: `Giá ${keywords} được dự báo tiếp tục tăng trong thời gian tới.`,
+          source: "VnExpress",
+          date: new Date().toLocaleDateString("vi-VN").replace(/\//g, "-")
         },
         {
-          title: `Giá ${keywords} tại Hà Nội duy trì ổn định`,
-          sentiment: 'neutral',
-          date: '2025-01-24',
-          source: 'Vietnamnet'
+          title: `Giá ${keywords} có xu hướng ổn định.`,
+          snippet: `Theo các chuyên gia, ${keywords} vẫn duy trì đà tăng nhẹ.`,
+          source: "Vietnamnet",
+          date: new Date().toISOString().split("T")[0]
         },
         {
-          title: `Người dân gặp khó khăn tìm kiếm ${keywords} giá hợp lý`,
-          sentiment: 'negative',
-          date: '2025-01-23',
-          source: 'Tuổi Trẻ'
-        },
-        {
-          title: `Nhu cầu ${keywords} tăng mạnh trong quý này`,
-          sentiment: 'positive',
-          date: '2025-01-22',
-          source: 'Thanh Niên'
-        },
-        {
-          title: `Thị trường ${keywords} có nhiều biến động`,
-          sentiment: 'neutral',
-          date: '2025-01-21',
-          source: 'VnExpress'
+          title: `Doanh nghiệp gặp khó trong lĩnh vực ${keywords}.`,
+          snippet: `Các yếu tố thị trường khiến ${keywords} chưa bứt phá.`,
+          source: "Tuổi Trẻ",
+          date: new Date().toISOString().split("T")[0]
         }
       ];
-      
-      sentimentAnalysis = { positive: 2, neutral: 2, negative: 1 };
     }
 
-    // Calculate sentiment percentages
-    const total = sentimentAnalysis.positive + sentimentAnalysis.neutral + sentimentAnalysis.negative;
-    const sentimentData = [
-      { 
-        name: 'Tích cực', 
-        value: total > 0 ? Math.round((sentimentAnalysis.positive / total) * 100) : 40, 
-        color: '#10B981' 
-      },
-      { 
-        name: 'Trung tính', 
-        value: total > 0 ? Math.round((sentimentAnalysis.neutral / total) * 100) : 40, 
-        color: '#F59E0B' 
-      },
-      { 
-        name: 'Tiêu cực', 
-        value: total > 0 ? Math.round((sentimentAnalysis.negative / total) * 100) : 20, 
-        color: '#EF4444' 
-      }
-    ];
-
+    // --- Trả kết quả ---
     res.json({
       success: true,
       data: {
-        sentiment: sentimentData,
         news: newsResults,
         keyword: keywords,
         totalResults: newsResults.length
@@ -456,99 +173,194 @@ export const getNewsSentiment = async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Error getting news sentiment:', error);
-    
-    // Return fallback data on any error
-    const mockSentiment = [
-      { name: 'Tích cực', value: 45, color: '#10B981' },
-      { name: 'Trung tính', value: 35, color: '#F59E0B' },
-      { name: 'Tiêu cực', value: 20, color: '#EF4444' }
-    ];
+    console.error("Lỗi khi lấy dữ liệu SERP:", error);
 
-    const mockNews = [
-      {
-        title: 'Không thể tải tin tức - vui lòng thử lại sau',
-        sentiment: 'neutral',
-        date: new Date().toISOString().split('T')[0],
-        source: 'Hệ thống'
-      }
-    ];
-
+    // --- Fallback khi lỗi nghiêm trọng ---
     res.json({
       success: true,
       data: {
-        sentiment: mockSentiment,
-        news: mockNews
+        news: [
+          {
+            title: "Không thể tải dữ liệu - vui lòng thử lại sau",
+            snippet: "Hệ thống đang gặp sự cố tạm thời.",
+            source: "Hệ thống",
+            date: new Date().toISOString().split("T")[0]
+          }
+        ],
+        totalResults: 1
       }
     });
   }
 };
 
-// Get market insights
-export const getMarketInsights = async (req, res) => {
+// Get price summary (current month average and percentage change)
+export const getPriceSummary = async (req, res) => {
   try {
-    const { region = 'all', category, areaRange } = req.query;
-    
-    // Build match conditions
-    const matchConditions = {
+    const { category, province, district, areaRange } = req.query;
+    console.log('Received parameters:', { category, province, district, areaRange });
+
+    // Xác định thời gian
+    const currentDate = new Date();
+    const startCurrentMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const startLastMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const startTwoMonthsAgo = new Date(currentDate.getFullYear(), currentDate.getMonth() - 2, 1);
+
+    // Điều kiện lọc cơ bản
+    const baseFilter = {
       approvalStatus: 'approved',
       isDeleted: { $ne: true },
       rentPrice: { $exists: true, $gt: 0 }
     };
 
-    // Add location filter if specified
-    if (region && region !== 'all') {
-      // Direct province name match
-      matchConditions['location.provinceName'] = { $regex: region, $options: 'i' };
-    }
+    // Frontend đã gửi province và district dạng code, sử dụng trực tiếp
+    if (category && category !== 'all') baseFilter.category = category;
+    if (province && province !== 'all') baseFilter.province = province;
+    if (district && district !== 'all') baseFilter.district = district;
 
-    // Add category filter if specified
-    if (category) {
-      matchConditions['category'] = category;
-    }
-
-    // Add area range filter if specified
+    // Xử lý diện tích (nếu có)
+    const getAreaFilter = (areaRange) => {
+      switch (areaRange) {
+        case '10-20': return { $gte: 10, $lt: 20 };
+        case '20-30': return { $gte: 20, $lt: 30 };
+        case '30-50': return { $gte: 30, $lt: 50 };
+        case '50+': return { $gte: 50 };
+        default: return null;
+      }
+    };
     if (areaRange) {
-      const areaFilter = getAreaFilter(areaRange);
-      if (areaFilter) {
-        matchConditions['area'] = areaFilter;
-      }
+      const filter = getAreaFilter(areaRange);
+      if (filter) baseFilter.area = filter;
     }
 
-    // Get various market insights
-    const insights = await Property.aggregate([
-      { $match: matchConditions },
-      {
-        $group: {
-          _id: null,
-          avgPrice: { $avg: '$rentPrice' },
-          minPrice: { $min: '$rentPrice' },
-          maxPrice: { $max: '$rentPrice' },
-          totalProperties: { $sum: 1 },
-          avgArea: { $avg: '$area' }
-        }
-      }
-    ]);
+    // --- Truy vấn dữ liệu ---
+    const getAvgPrice = async (start, end) => {
+      const result = await Property.aggregate([
+        { $match: { ...baseFilter, createdAt: { $gte: start, $lt: end } } },
+        { $group: { _id: null, avgPrice: { $avg: "$rentPrice" }, count: { $sum: 1 } } }
+      ]);
+      return result[0]?.avgPrice || 0;
+    };
 
-    const insight = insights[0] || {};
+
+    const currentAvg = await getAvgPrice(startCurrentMonth, currentDate);
+    console.log('currentAvg:', currentAvg);
+
+    const lastMonthAvg = await getAvgPrice(startLastMonth, startCurrentMonth);
+    console.log('lastMonthAvg:', lastMonthAvg);
+
+    const twoMonthsAgoAvg = await getAvgPrice(startTwoMonthsAgo, startLastMonth);
+    console.log('twoMonthsAgoAvg:', twoMonthsAgoAvg);
+
+    // --- Tính phần trăm thay đổi ---
+    const changeVsLastMonth = lastMonthAvg > 0 ? ((currentAvg - lastMonthAvg) / lastMonthAvg * 100).toFixed(1) : 0;
+    console.log('changeVsLastMonth:', changeVsLastMonth);
+    const changeVsTwoMonthsAgo = twoMonthsAgoAvg > 0 ? ((currentAvg - twoMonthsAgoAvg) / twoMonthsAgoAvg * 100).toFixed(1) : 0;
+    console.log('changeVsTwoMonthsAgo:', changeVsTwoMonthsAgo);
 
     res.json({
       success: true,
       data: {
-        averagePrice: Math.round(insight.avgPrice || 0),
-        minPrice: Math.round(insight.minPrice || 0),
-        maxPrice: Math.round(insight.maxPrice || 0),
-        totalProperties: insight.totalProperties || 0,
-        averageArea: Math.round(insight.avgArea || 0)
+        currentAvg: Math.round(currentAvg),
+        changeVsLastMonth: parseFloat(changeVsLastMonth),
+        changeVsTwoMonthsAgo: parseFloat(changeVsTwoMonthsAgo)
       }
     });
 
   } catch (error) {
-    console.error('Error getting market insights:', error);
+    console.error('Error in getPriceSummary:', error);
     res.status(500).json({
       success: false,
-      message: 'Lỗi khi lấy thông tin thị trường',
+      message: 'Lỗi khi lấy dữ liệu thống kê giá',
       error: error.message
     });
   }
 };
+
+// Phân tích khoảng giá thuê phổ biến
+export const getPriceRangeDistribution = async (req, res) => {
+  try {
+    const { category, province, district, areaRange } = req.query;
+    console.log('Received parameters for price-range:', { category, province, district, areaRange });
+
+    const oldestProperty = await Property.findOne({}).sort({ createdAt: 1 }).select('createdAt');
+    const currentDate = new Date();
+    const startDate = oldestProperty ? oldestProperty.createdAt : new Date(0); // fallback: 1970 nếu không có dữ liệu
+
+    console.log('startDate (oldest createdAt):', startDate);
+    console.log('currentDate:', currentDate);
+    const baseFilter = {
+      approvalStatus: 'approved',
+      isDeleted: { $ne: true },
+      rentPrice: { $exists: true, $gt: 0 },
+      createdAt: { $gte: startDate, $lt: currentDate }
+    };
+
+    if (category && category !== 'all') baseFilter.category = category;
+    if (province && province !== 'all') baseFilter.province = province;
+    if (district && district !== 'all') baseFilter.district = district;
+
+    // Lọc theo diện tích (nếu có)
+    const getAreaFilter = (areaRange) => {
+      switch (areaRange) {
+        case '10-20': return { $gte: 10, $lt: 20 };
+        case '20-30': return { $gte: 20, $lt: 30 };
+        case '30-50': return { $gte: 30, $lt: 50 };
+        case '50+': return { $gte: 50 };
+        default: return null;
+      }
+    };
+    if (areaRange) {
+      const filter = getAreaFilter(areaRange);
+      if (filter) baseFilter.area = filter;
+    }
+
+    // Lấy dữ liệu giá thuê
+    const properties = await Property.find(baseFilter).select('rentPrice');
+    console.log('Number of properties found:', properties.length);
+    if (!properties.length) {
+      return res.json({ success: true, data: [] });
+    }
+
+    // Tạo các khoảng giá cố định (triệu đồng)
+    const priceRanges = [
+      { label: 'Dưới 2 triệu', min: 0, max: 2000000 },
+      { label: '2 - 3 triệu', min: 2000000, max: 3000000 },
+      { label: '3 - 4 triệu', min: 3000000, max: 4000000 },
+      { label: '4 - 5 triệu', min: 4000000, max: 5000000 },
+      { label: '5 - 7 triệu', min: 5000000, max: 7000000 },
+      { label: '7 - 10 triệu', min: 7000000, max: 10000000 },
+      { label: 'Trên 10 triệu', min: 10000000, max: Infinity }
+    ];
+
+    // Đếm số lượng tin trong từng khoảng
+    const counts = priceRanges.map(range => {
+      const count = properties.filter(p =>
+        p.rentPrice >= range.min && p.rentPrice < range.max
+      ).length;
+      return { range: range.label, count };
+    });
+
+    // Tính tổng tin và phần trăm
+    const total = counts.reduce((sum, r) => sum + r.count, 0);
+    const data = counts.map(r => ({
+      range: r.range,
+      count: r.count,
+      percentage: total > 0 ? parseFloat(((r.count / total) * 100).toFixed(1)) : 0
+    }));
+
+    res.json({
+      success: true,
+      data
+    });
+
+  } catch (error) {
+    console.error('Error in getPriceRangeDistribution:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Lỗi khi lấy khoảng giá thuê phổ biến',
+      error: error.message
+    });
+  }
+};
+
+

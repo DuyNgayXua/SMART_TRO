@@ -73,10 +73,9 @@
 }
 
 .package-plan-card {
-  background: #fff;
+  background: #0056b3;
   border-radius: 12px;
   border: 1px solid #e0e6ed;
-  border-top: 5px solid #007bff; /* Viền trên nổi bật */
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
   overflow: hidden;
@@ -103,8 +102,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 16px;
-    background: #f8f9fa;
-    border-bottom: 1px solid #e0e6ed;
+    background: #007bff;
+    border-bottom: 1px solid #000000;
     position: relative;
 }
 
@@ -972,13 +971,16 @@
 }
 
 /* Nút Hủy */
-.modal-body-package-plan-delete .btn.btn-secondary {
+.modal-body-package-plan-delete .btn.btn-secondary-package-plan {
   background: #757575;
   color: #f3f4f6;
 }
-.modal-body-package-plan-delete .btn.btn-secondary:hover {
+.modal-body-package-plan-delete .btn.btn-secondary-package-plan:hover {
   transform: translateY(-2px);
   box-shadow: 0 6px 16px rgba(0,0,0,0.05);
+}
+.btn-secondary-package-plan {
+    background: linear-gradient(135deg, #f48201, #d67200);
 }
 
 /* Nút Xóa */
@@ -1263,11 +1265,11 @@
 }
 
 .btn-edit-package-plan{
-    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    background: #28a745;
     color: white;
 }
 .btn-delete-package-plan {
-    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    background: #dc3545;
     color: white;
 }
 

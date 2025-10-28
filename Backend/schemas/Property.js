@@ -202,14 +202,6 @@ const propertySchema = new mongoose.Schema({
             default: 0
         }
     },
-    propertyOrder: {
-        type: Number,
-        default: null // Thứ tự bài đăng của user này
-    },
-    isPaid: {
-        type: Boolean,
-        default: false // Đã thanh toán hay chưa
-    },
 
     // Thông tin gói đã mua (sử dụng PackagePlan)
     packageInfo: {

@@ -386,7 +386,7 @@ const PaymentHistory = () => {
       {/* Filters */}
       <div className="payment-history-filters">
         <div className="filter-row">
-          <div className="filter-group">
+          <div className="filter-group-payment-history">
             <label>Trạng thái thanh toán</label>
             <select 
               className="filter-select"
@@ -401,7 +401,7 @@ const PaymentHistory = () => {
             </select>
           </div>
 
-          <div className="filter-group">
+          <div className="filter-group-payment-history">
             <label>Thứ tự</label>
             <select 
               className="filter-select"

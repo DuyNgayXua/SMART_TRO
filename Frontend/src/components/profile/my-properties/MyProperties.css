@@ -34,7 +34,6 @@
 .search-box {
   position: relative;
   width: 100%;
-  max-width: 420px;
 }
 
 .search-box i {
@@ -52,7 +51,7 @@
 
 .search-box input {
   width: 100%;
-  padding: 14px 100px 14px 50px;
+  padding: 14px 0px 14px 50px;
   /* Tăng padding-right để có chỗ cho cả 2 button */
   border: 1px solid #007bff;
   border-radius: 999px;
@@ -198,18 +197,25 @@
   gap: 6px;
   margin-top: 12px;
 }
-
+.filter-group-my-properties{
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 10px;
+}
 /* Label nhỏ gọn */
-.filter-group label {
-  font-size: 13px;
+.filter-group-my-properties label {
+  font-size: 14px;
   font-weight: 600;
   color: #444;
   margin: 0;
   letter-spacing: 0.3px;
+  justify-content: flex-start;
+  margin-right: 10px;
 }
 
 /* Select box */
-.filter-group select {
+.filter-group-my-properties select {
   padding: 10px 14px;
   border: 1px solid #007bff;
   border-radius: 8px;
@@ -220,12 +226,12 @@
   transition: all 0.2s ease;
 }
 
-.filter-group select:hover {
+.filter-group-my-properties select:hover {
   border-color: #007bff;
   box-shadow: 0 0 4px rgba(0, 123, 255, 0.2);
 }
 
-.filter-group select:focus {
+.filter-group-my-properties select:focus {
   outline: none;
   border-color: #007bff;
   box-shadow: 0 0 6px rgba(0, 123, 255, 0.25);
@@ -968,7 +974,7 @@
     font-size: 13px;
   }
 
-  .filter-group {
+  .filter-group-my-properties {
     flex: 1;
   }
 
@@ -1658,7 +1664,7 @@
 
 .status-tag {
   padding: 6px 12px;
-  border-radius: 12px;
+  border-radius: 5px;
   font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
@@ -1676,7 +1682,7 @@
 .status-tag.paid {
   background: #ebedd4;
   color: #155724;
-  border: 1px solid #c3e6cb;
+  border: 2px solid #155724;
 }
 
 .status-tag.unpaid {
@@ -1853,15 +1859,15 @@
 }
 
 .btn-edit-row {
-  background: #6c757d;
+  background: #3b82f6;
   color: white;
-  border: 1px solid #6c757d;
+  border: 1px solid #2563eb;
   white-space: nowrap;
 
 }
 
 .btn-edit-row:hover {
-  background: #5a6268;
+    background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
 }
@@ -2208,7 +2214,7 @@
   gap: 4px;
   /* khoảng cách giữa tên và sao */
   padding: 0px 12px;
-  border-radius: 12px;
+  border-radius: 5px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
@@ -2222,6 +2228,17 @@
   top: 80px;
   text-align: center;
   line-height: 1;
+  
+}
+.post-type-badge-my-properties {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; /* canh giữa theo chiều dọc mặc định */
+}
+
+.post-type-badge-my-properties.has-stars {
+  justify-content: flex-start; /* nếu có sao thì đẩy nội dung lên trên */
 }
 
 .post-type-badge-my-properties::before {
