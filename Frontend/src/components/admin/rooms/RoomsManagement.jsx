@@ -608,7 +608,6 @@ const RoomsManagement = () => {
       const templateData = [
         {
           'Tên phòng': 'P101',
-          'Trạng thái': 'Trống',
           'Giá thuê (VNĐ/tháng)': '3000000',
           'Giá cọc (VNĐ)': '3000000',
           'Diện tích (m²)': '25',
@@ -626,7 +625,6 @@ const RoomsManagement = () => {
       // Set column widths
       const colWidths = [
         { wch: 15 }, // Tên phòng
-        { wch: 15 }, // Trạng thái
         { wch: 20 }, // Giá thuê
         { wch: 18 }, // Giá cọc
         { wch: 15 }, // Diện tích
@@ -677,17 +675,10 @@ const RoomsManagement = () => {
 
         // Transform data to match Room schema
         const transformedData = jsonData.map((row, index) => {
-          // Map status
-          let status = 'available';
-          const statusText = row['Trạng thái']?.toLowerCase().trim();
-          if (statusText === 'đã thuê' || statusText === 'rented') status = 'rented';
-          else if (statusText === 'đã đặt cọc' || statusText === 'deposit' || statusText === 'reserved') status = 'reserved';
-          else if (statusText === 'sắp kết thúc' || statusText === 'expiring') status = 'expiring';
-
           return {
             id: `temp-${index}`,
             roomNumber: row['Tên phòng']?.toString() || '',
-            status: status,
+            status: 'available', // Mặc định trạng thái trống
             price: parseFloat(row['Giá thuê (VNĐ/tháng)']?.toString().replace(/[^0-9]/g, '') || 0),
             deposit: parseFloat(row['Giá cọc (VNĐ)']?.toString().replace(/[^0-9]/g, '') || 0),
             area: parseFloat(row['Diện tích (m²)'] || 0),
@@ -832,19 +823,54 @@ const RoomsManagement = () => {
         errors.push('Tên phòng bị trùng trong file');
       }
 
-      // Check duplicate with existing rooms
-      const duplicateInSystem = rooms.find(
-        (r) => r.roomNumber && room.roomNumber && r.roomNumber.toLowerCase() === room.roomNumber.toLowerCase()
-      );
-      if (duplicateInSystem) {
-        errors.push('Tên phòng đã tồn tại trong hệ thống');
-      }
-
       updatedData[idx].isValid = errors.length === 0;
       updatedData[idx].errors = errors;
     });
 
     setImportData(updatedData);
+  };
+
+  // Kiểm tra tên phòng khi rời khỏi ô input (onBlur)
+  const handleCheckRoomNameExists = async (index, roomNumber) => {
+    if (!roomNumber || !roomNumber.trim()) return;
+
+    try {
+      // Gọi API kiểm tra tên phòng có tồn tại chưa
+      const response = await roomsAPI.searchRooms({
+        search: roomNumber.trim(),
+        page: 1,
+        limit: 1
+      });
+
+      const existingRoom = response?.data?.rooms?.find(
+        (r) => r.roomNumber?.toLowerCase() === roomNumber.trim().toLowerCase()
+      );
+
+      if (existingRoom) {
+        const updatedData = [...importData];
+        const currentErrors = updatedData[index].errors || [];
+        
+        // Thêm lỗi nếu chưa có
+        if (!currentErrors.includes('Tên phòng đã tồn tại trong hệ thống')) {
+          updatedData[index].errors = [...currentErrors, 'Tên phòng đã tồn tại trong hệ thống'];
+          updatedData[index].isValid = false;
+          setImportData(updatedData);
+        }
+        
+        showToast('error', `Tên phòng "${roomNumber}" đã tồn tại!`);
+      } else {
+        // Xóa lỗi "tồn tại trong hệ thống" nếu có
+        const updatedData = [...importData];
+        const currentErrors = updatedData[index].errors || [];
+        updatedData[index].errors = currentErrors.filter(
+          err => err !== 'Tên phòng đã tồn tại trong hệ thống'
+        );
+        updatedData[index].isValid = updatedData[index].errors.length === 0;
+        setImportData(updatedData);
+      }
+    } catch (error) {
+      console.error('Error checking room name:', error);
+    }
   };
 
   // ==================== BILLING EXCEL FUNCTIONS ====================
@@ -7626,11 +7652,12 @@ const RoomsManagement = () => {
                       <tr>
                         <th>STT</th>
                         <th>Tên phòng</th>
-                        <th>Trạng thái</th>
                         <th>Giá thuê</th>
                         <th>Giá cọc</th>
                         <th>Diện tích</th>
                         <th>Sức chứa</th>
+                        <th>Điện</th>
+                        <th>Nước</th>
                         <th>Hợp lệ</th>
                       </tr>
                     </thead>
@@ -7644,19 +7671,9 @@ const RoomsManagement = () => {
                               className="editable-cell"
                               value={room.roomNumber}
                               onChange={(e) => handleEditImportRow(index, 'roomNumber', e.target.value)}
+                              onBlur={(e) => handleCheckRoomNameExists(index, e.target.value)}
                               placeholder="Tên phòng"
                             />
-                          </td>
-                          <td>
-                            <select
-                              className="editable-select"
-                              value={room.status}
-                              onChange={(e) => handleEditImportRow(index, 'status', e.target.value)}
-                            >
-                              <option value="available">Trống</option>
-                              <option value="rented">Đã thuê</option>
-                              <option value="reserved">Đã đặt cọc</option>
-                            </select>
                           </td>
                           <td>
                             <input
@@ -7692,6 +7709,24 @@ const RoomsManagement = () => {
                               value={room.capacity}
                               onChange={(e) => handleEditImportRow(index, 'capacity', parseInt(e.target.value) || 0)}
                               placeholder="Sức chứa"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.electricityPrice}
+                              onChange={(e) => handleEditImportRow(index, 'electricityPrice', parseFloat(e.target.value) || 0)}
+                              placeholder="Giá điện"
+                            />
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="editable-cell"
+                              value={room.waterPrice}
+                              onChange={(e) => handleEditImportRow(index, 'waterPrice', parseFloat(e.target.value) || 0)}
+                              placeholder="Giá nước"
                             />
                           </td>
                           <td>

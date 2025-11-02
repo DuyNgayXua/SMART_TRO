@@ -475,7 +475,9 @@ class InvoiceController {
     async getStats(req, res) {
         try {
             const landlordId = req.user.userId;
-            const stats = await invoiceRepository.getStatsByLandlord(landlordId);
+            const { fromDate, toDate } = req.query;
+            
+            const stats = await invoiceRepository.getStatsByLandlord(landlordId, { fromDate, toDate });
             
             res.json({ success: true, data: stats });
         } catch (error) {

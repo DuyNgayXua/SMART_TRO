@@ -56,25 +56,33 @@ const PaymentsManagement = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await invoicesAPI.getInvoiceStats();
+      // Fetch ALL invoices with date filters (no pagination) to count statuses
+      const params = {
+        page: 1,
+        limit: 9999, // Lấy tất cả
+        fromDate: searchFilters.fromDate || undefined,
+        toDate: searchFilters.toDate || undefined
+      };
       
-      if (response.success && response.data) {
-        // Combine 'draft' and 'sent' as 'unpaid', and 'pending' if exists
-        const unpaidCount = (response.data.draft?.count || 0) + 
-                           (response.data.sent?.count || 0) + 
-                           (response.data.pending?.count || 0);
+      const response = await invoicesAPI.getInvoices(params);
+      
+      if (response.success && response.data.items) {
+        const allInvoices = response.data.items;
         
-        setStatusCounts({
-          all: response.data.total || 0,
-          paid: response.data.paid?.count || 0,
-          unpaid: unpaidCount,
-          overdue: response.data.overdue?.count || 0
-        });
+        // Đếm số lượng theo status từ danh sách invoices
+        const counts = {
+          all: allInvoices.length,
+          paid: allInvoices.filter(inv => inv.status === 'paid').length,
+          unpaid: allInvoices.filter(inv => ['draft', 'sent', 'pending'].includes(inv.status)).length,
+          overdue: allInvoices.filter(inv => inv.status === 'overdue').length
+        };
+        
+        setStatusCounts(counts);
       }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
-  }, []);
+  }, [searchFilters.fromDate, searchFilters.toDate]);
 
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
@@ -107,20 +115,16 @@ const PaymentsManagement = () => {
     }
   }, [activeTab, searchFilters, pagination.currentPage, pagination.itemsPerPage, showToast, t]);
 
+  // Fetch stats when date filters change
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchFilters.fromDate, searchFilters.toDate]);
 
+  // Fetch invoices on component mount and when dependencies change
   useEffect(() => {
     fetchInvoices();
   }, [fetchInvoices]);
-
-  // Tự động load khi thay đổi ngày
-  useEffect(() => {
-    if (searchFilters.fromDate || searchFilters.toDate) {
-      fetchInvoices();
-    }
-  }, [searchFilters.fromDate, searchFilters.toDate, fetchInvoices]);
 
   const openDetail = async (invoice) => {
     setShowDetailModal(true);
@@ -1302,6 +1306,31 @@ const PaymentsManagement = () => {
           </div>
         </div>
 
+        {/* Date Filter Info Banner */}
+        {(searchFilters.fromDate || searchFilters.toDate) && (
+          <div className="date-filter-banner">
+            <div className="banner-content">
+              <i className="fas fa-calendar-alt"></i>
+              <span className="banner-text">
+                Hiển thị hóa đơn 
+                {searchFilters.fromDate && ` từ ${new Date(searchFilters.fromDate + 'T00:00:00').toLocaleDateString('vi-VN')}`}
+                {searchFilters.toDate && ` đến ${new Date(searchFilters.toDate + 'T00:00:00').toLocaleDateString('vi-VN')}`}
+              </span>
+            </div>
+            <button 
+              className="banner-clear-btn"
+              onClick={() => {
+                setSearchFilters(f => ({ ...f, fromDate: '', toDate: '' }));
+                setPagination(p => ({ ...p, currentPage: 1 }));
+              }}
+              title="Xóa bộ lọc ngày"
+            >
+              <i className="fas fa-times"></i>
+              Xóa bộ lọc
+            </button>
+          </div>
+        )}
+
         {/* Status Tabs */}
         <div className="status-tabs">
           {Object.keys(statusLabels).map(status => (
@@ -1314,7 +1343,9 @@ const PaymentsManagement = () => {
               }}
             >
               {statusLabels[status]}
-              <span className="tab-count">{statusCounts[status]}</span>
+              {statusCounts[status] > 0 && (
+                <span className="tab-count">{statusCounts[status]}</span>
+              )}
             </button>
           ))}
         </div>

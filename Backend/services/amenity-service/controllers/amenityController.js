@@ -134,29 +134,50 @@ class AmenityController {
   async createAmenity(req, res) {
     try {
       const { name, key, icon, category, description, isActive, displayOrder } = req.body;
-      const owner = req.user?.userId || null;
+      const owner = req.user?.userId;
 
-      // Validate required fields
-      if (!name || !key) {
-        return res.status(400).json({
+      // Validate owner (chủ trọ bắt buộc)
+      if (!owner) {
+        return res.status(401).json({
           success: false,
-          message: 'Tên và key là bắt buộc'
+          message: 'Bạn cần đăng nhập để tạo tiện ích'
         });
       }
 
-      // Check if key already exists for this owner (or global if owner is null)
-      const existingAmenity = await amenityRepository.findByKey(key, owner);
-      if (existingAmenity) {
+      // Validate required fields
+      if (!name) {
         return res.status(400).json({
           success: false,
-          message: 'Key tiện ích đã tồn tại'
+          message: 'Tên tiện ích là bắt buộc'
         });
+      }
+
+      // Auto-generate key from name if not provided
+      let amenityKey = key;
+      if (!amenityKey) {
+        // Convert name to slug format: "Máy lạnh" -> "may-lanh"
+        amenityKey = name
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+          .replace(/đ/g, 'd')
+          .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
+          .replace(/\s+/g, '-') // Replace spaces with dashes
+          .replace(/-+/g, '-') // Replace multiple dashes with single
+          .trim();
+      }
+
+      // Check if key already exists for this owner
+      const existingAmenity = await amenityRepository.findByKey(amenityKey, owner);
+      if (existingAmenity) {
+        // Thêm timestamp vào key để unique
+        amenityKey = `${amenityKey}-${Date.now()}`;
       }
 
       const amenityData = {
         owner,
         name,
-        key,
+        key: amenityKey,
         icon: icon || 'fas fa-check',
         category: category || 'other',
         description,

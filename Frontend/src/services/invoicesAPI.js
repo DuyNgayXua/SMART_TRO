@@ -68,9 +68,9 @@ const invoicesAPI = {
   },
 
   // Lấy thống kê hóa đơn
-  async getInvoiceStats() {
+  async getInvoiceStats(params = {}) {
     try {
-      const response = await api.get('/invoices/stats');
+      const response = await api.get('/invoices/stats', { params });
       return response.data;
     } catch (error) {
       console.error('Lỗi khi lấy thống kê hóa đơn:', error);

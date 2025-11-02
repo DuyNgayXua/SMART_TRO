@@ -173,10 +173,28 @@ class InvoiceRepository {
     }
 
     // Thống kê hóa đơn theo chủ trọ
-    async getStatsByLandlord(landlordId) {
+    async getStatsByLandlord(landlordId, filters = {}) {
         try {
+            const matchStage = { 
+                landlord: new mongoose.Types.ObjectId(landlordId) 
+            };
+
+            // Thêm filter theo ngày nếu có
+            if (filters.fromDate || filters.toDate) {
+                matchStage.issueDate = {};
+                if (filters.fromDate) {
+                    matchStage.issueDate.$gte = new Date(filters.fromDate);
+                }
+                if (filters.toDate) {
+                    // Thêm 1 ngày để bao gồm cả ngày toDate
+                    const endDate = new Date(filters.toDate);
+                    endDate.setDate(endDate.getDate() + 1);
+                    matchStage.issueDate.$lt = endDate;
+                }
+            }
+
             const pipeline = [
-                { $match: { landlord: new mongoose.Types.ObjectId(landlordId) } },
+                { $match: matchStage },
                 {
                     $group: {
                         _id: '$status',

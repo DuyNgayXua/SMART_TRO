@@ -587,7 +587,7 @@
 .room-list-item {
   background: white;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
   transition: all 0.3s ease;
@@ -846,7 +846,7 @@
 .room-card {
   background: white;
   border-radius: 16px;
-  overflow: hidden;
+  overflow: visible;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
   border: 1px solid #e2e8f0;
   transition: all 0.3s ease;
@@ -7711,6 +7711,7 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
   overflow-y: auto;
   padding: 28px;
   background: #fafbfc;
+  max-height: calc(88vh - 140px);
 }
 
 .import-modal-content .modal-body::-webkit-scrollbar {
@@ -7915,12 +7916,13 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
 
 .import-table th:nth-child(1) { width: 60px; } /* STT */
 .import-table th:nth-child(2) { width: 120px; } /* Tên phòng */
-.import-table th:nth-child(3) { width: 110px; } /* Trạng thái */
-.import-table th:nth-child(4) { width: 140px; } /* Giá thuê */
-.import-table th:nth-child(5) { width: 120px; } /* Giá cọc */
-.import-table th:nth-child(6) { width: 100px; } /* Diện tích */
-.import-table th:nth-child(7) { width: 100px; } /* Sức chứa */
-.import-table th:nth-child(8) { width: 80px; } /* Hợp lệ */
+.import-table th:nth-child(3) { width: 130px; } /* Giá thuê */
+.import-table th:nth-child(4) { width: 130px; } /* Giá cọc */
+.import-table th:nth-child(5) { width: 100px; } /* Diện tích */
+.import-table th:nth-child(6) { width: 90px; } /* Sức chứa */
+.import-table th:nth-child(7) { width: 100px; } /* Điện */
+.import-table th:nth-child(8) { width: 100px; } /* Nước */
+.import-table th:nth-child(9) { width: 80px; } /* Hợp lệ */
 
 .import-table td {
   padding: 8px;
