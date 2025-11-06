@@ -1,11 +1,19 @@
 import React, { useState, useEffect } from "react";
 import Heading from "../common/Heading";
 import "./Pricing.css";
-import { FaStar, FaArrowUp } from "react-icons/fa";
+import { FaStar, FaArrowUp, FaTimes } from "react-icons/fa";
+import { toast } from 'react-toastify';
 
 
 const Pricing = () => {
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [showTrialModal, setShowTrialModal] = useState(false);
+  const [trialFormData, setTrialFormData] = useState({
+    fullName: '',
+    email: '',
+    phone: ''
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Theo dõi scroll để hiển thị/ẩn nút scroll to top
   useEffect(() => {
@@ -23,6 +31,92 @@ const Pricing = () => {
       top: 0,
       behavior: 'smooth'
     });
+  };
+
+  // Xử lý mở modal đăng ký dùng thử
+  const handleOpenTrialModal = (planName) => {
+    if (planName === 'free') {
+      setShowTrialModal(true);
+      document.body.style.overflow = 'hidden'; // Prevent background scroll
+    }
+  };
+
+  // Xử lý đóng modal
+  const handleCloseTrialModal = () => {
+    setShowTrialModal(false);
+    document.body.style.overflow = 'auto';
+    setTrialFormData({ fullName: '', email: '', phone: '' });
+  };
+
+  // Xử lý thay đổi input
+  const handleTrialInputChange = (e) => {
+    const { name, value } = e.target;
+    setTrialFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Xử lý submit form đăng ký dùng thử
+  const handleTrialSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validation
+    if (!trialFormData.fullName.trim()) {
+      toast.error('Vui lòng nhập họ tên');
+      return;
+    }
+    if (!trialFormData.email.trim()) {
+      toast.error('Vui lòng nhập email');
+      return;
+    }
+    if (!trialFormData.phone.trim()) {
+      toast.error('Vui lòng nhập số điện thoại');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trialFormData.email)) {
+      toast.error('Email không hợp lệ');
+      return;
+    }
+
+    // Validate phone format (10 digits)
+    const phoneRegex = /^[0-9]{10}$/;
+    if (!phoneRegex.test(trialFormData.phone)) {
+      toast.error('Số điện thoại phải có 10 chữ số');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const response = await fetch(
+        `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/management/trial-request`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(trialFormData)
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success('Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.');
+        handleCloseTrialModal();
+      } else {
+        toast.error(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Error submitting trial request:', error);
+      toast.error('Có lỗi xảy ra. Vui lòng thử lại sau.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const plans = [
@@ -137,9 +231,209 @@ const Pricing = () => {
     },
   ];
 
+  const managementPlans = [
+    {
+      name: "free",
+      title: "Gói Miễn Phí",
+      price: 0,
+      duration: "1 tháng",
+      color: "#22c55e",
+      features: [
+        "Quản lý tối đa 5 phòng trọ",
+        "Quản lý khách thuê & hợp đồng cơ bản",
+        "Quản lý thanh toán đơn giản",
+        "Hỗ trợ qua email"
+      ]
+    },
+    {
+      name: "premium",
+      title: "Gói Tốn Phí",
+      price: 199000,
+      duration: "tháng",
+      color: "#8b5cf6",
+      popular: true,
+      features: [
+        "Quản lý KHÔNG GIỚI HẠN phòng trọ",
+        "Tính toán tiền điện, nước tự động",
+        "Thông báo qua email & SMS",
+        "Báo cáo thống kê thu chi",
+        "Xuất báo cáo Excel, PDF",
+        "Hỗ trợ ưu tiên 24/7"
+      ],
+      badge: "PHỔ BIẾN NHẤT"
+    }
+  ];
+
   return (
     <section className="price-section">
       <div className="container-pricing">
+        {/* Phần Bảng Giá Quản Lý Trọ */}
+        <Heading title="Bảng giá quản lý trọ" subtitle="Giải pháp quản lý toàn diện cho chủ trọ" />
+        
+        <div className="management-pricing-grid">
+          {managementPlans.map((plan, i) => (
+            <div
+              className={`management-card ${plan.popular ? 'popular' : ''}`}
+              key={i}
+              style={{ borderColor: plan.color }}
+            >
+              {plan.popular && (
+                <div className="popular-badge" style={{ backgroundColor: plan.color }}>
+                  {plan.badge}
+                </div>
+              )}
+              
+              <div className="management-header">
+                <h3 className="management-title" style={{ color: plan.color }}>
+                  {plan.title}
+                </h3>
+                <div className="management-price">
+                  {plan.price === 0 ? (
+                    <div className="price-free-large">
+                      Miễn phí <span className="free-duration">{plan.duration}</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="price-amount">{plan.price.toLocaleString()}đ</span>
+                      <span className="price-period">/{plan.duration}</span>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              <div className="management-body">
+                <h4 className="features-title">Tính năng chính:</h4>
+                <ul className="features-list">
+                  {plan.features.map((feature, idx) => (
+                    <li key={idx} className="feature-item">
+                      <i className="fas fa-check-circle" style={{ color: plan.color }}></i>
+                      <span>{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {plan.limitations && (
+                  <>
+                    <h4 className="limitations-title">Giới hạn:</h4>
+                    <ul className="limitations-list">
+                      {plan.limitations.map((limitation, idx) => (
+                        <li key={idx} className="limitation-item">
+                          <i className="fas fa-times-circle"></i>
+                          <span>{limitation}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </>
+                )}
+
+                <button
+                  className="btn-choose-plan"
+                  style={{
+                    backgroundColor: plan.color,
+                    boxShadow: `0 4px 12px ${plan.color}40`
+                  }}
+                  onClick={() => handleOpenTrialModal(plan.name)}
+                >
+                  {plan.price === 0 ? 'Bắt Đầu Miễn Phí' : 'Đăng Ký Ngay'}
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Modal Đăng Ký Dùng Thử */}
+        {showTrialModal && (
+          <div className="trial-modal-overlay" onClick={handleCloseTrialModal}>
+            <div className="trial-modal-content" onClick={(e) => e.stopPropagation()}>
+              <button className="trial-modal-close" onClick={handleCloseTrialModal}>
+                <i className="fas fa-times"></i>
+              </button>
+              
+              <h2 className="trial-modal-title">Đăng Ký Dùng Thử Miễn Phí</h2>
+              <p className="trial-modal-subtitle">
+                Điền thông tin để bắt đầu trải nghiệm quản lý trọ chuyên nghiệp
+              </p>
+
+              <form onSubmit={handleTrialSubmit} className="trial-form">
+                <div className="trial-form-group">
+                  <label htmlFor="fullName">
+                    <i className="fas fa-user"></i>
+                    Họ và tên <span className="required">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    id="fullName"
+                    name="fullName"
+                    value={trialFormData.fullName}
+                    onChange={handleTrialInputChange}
+                    placeholder="Nguyễn Văn A"
+                    required
+                  />
+                </div>
+
+                <div className="trial-form-group">
+                  <label htmlFor="email">
+                    <i className="fas fa-envelope"></i>
+                    Email <span className="required">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    value={trialFormData.email}
+                    onChange={handleTrialInputChange}
+                    placeholder="example@email.com"
+                    required
+                  />
+                </div>
+
+                <div className="trial-form-group">
+                  <label htmlFor="phone">
+                    <i className="fas fa-phone"></i>
+                    Số điện thoại <span className="required">*</span>
+                  </label>
+                  <input
+                    type="tel"
+                    id="phone"
+                    name="phone"
+                    value={trialFormData.phone}
+                    onChange={handleTrialInputChange}
+                    placeholder="0123456789"
+                    maxLength="10"
+                    required
+                  />
+                </div>
+
+                <button
+                  type="submit"
+                  className="trial-submit-btn"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <i className="fas fa-spinner fa-spin"></i>
+                      Đang xử lý...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-check-circle"></i>
+                      Xác Nhận Đăng Ký
+                    </>
+                  )}
+                </button>
+
+                <p className="trial-note">
+                  <i className="fas fa-info-circle"></i>
+                  Chúng tôi sẽ gửi thông tin đăng ký về email của bạn trong vòng 24h
+                </p>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div className="pricing-divider"></div>
+
+        {/* Phần Bảng Giá Gói Tin Đăng */}
         <Heading title="Bảng giá gói tin đăng" subtitle="" />
         <h2>Áp dụng từ 01/08/2025</h2>
 

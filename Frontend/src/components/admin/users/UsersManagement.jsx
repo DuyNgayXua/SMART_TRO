@@ -8,7 +8,7 @@ const UsersManagement = () => {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
-    const [roleFilter, setRoleFilter] = useState('all'); // all, landlord, user
+    const [roleFilter, setRoleFilter] = useState('all'); // all, landlord, tenant
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
     const [stats, setStats] = useState({
@@ -127,7 +127,8 @@ const UsersManagement = () => {
         const labels = {
             admin: 'Quản trị viên',
             landlord: 'Chủ trọ',
-            user: 'Người dùng'
+            tenant: 'Người dùng',
+            user: 'Người dùng' // Alias for backward compatibility
         };
         return labels[role] || role;
     };
@@ -137,7 +138,8 @@ const UsersManagement = () => {
         const colors = {
             admin: '#dc3545',
             landlord: '#28a745',
-            user: '#007bff'
+            tenant: '#007bff',
+            user: '#007bff' // Alias for backward compatibility
         };
         return colors[role] || '#6c757d';
     };
@@ -198,8 +200,8 @@ const UsersManagement = () => {
                             Chủ trọ ({stats.landlord})
                         </button>
                         <button
-                            className={`status-tab ${roleFilter === 'user' ? 'active' : ''}`}
-                            onClick={() => handleRoleFilterChange('user')}
+                            className={`status-tab ${roleFilter === 'tenant' ? 'active' : ''}`}
+                            onClick={() => handleRoleFilterChange('tenant')}
                         >
                             <i className="fas fa-users"></i>
                             Người dùng ({stats.user || 0})

@@ -15,6 +15,486 @@
     font-weight: 500;
 }
 
+/* ============================================
+   MODAL ĐĂNG KÝ DÙNG THỬ
+   ============================================ */
+
+.trial-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.trial-modal-content {
+    background: white;
+    border-radius: 16px;
+    padding: 40px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 90vh;
+    overflow-y: auto;
+    position: relative;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.trial-modal-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background: #f1f5f9;
+    border: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-size: 16px;
+    color: #64748b;
+}
+
+.trial-modal-close:hover {
+    background: #ef4444;
+    color: white;
+    transform: rotate(90deg);
+}
+
+.trial-modal-title {
+    font-size: 28px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    text-align: center;
+}
+
+.trial-modal-subtitle {
+    font-size: 14px;
+    color: #64748b;
+    text-align: center;
+    margin-bottom: 30px;
+    line-height: 1.5;
+}
+
+.trial-form {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.trial-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.trial-form-group label {
+    font-size: 14px;
+    font-weight: 600;
+    color: #1e293b;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.trial-form-group label i {
+    color: #8b5cf6;
+    font-size: 16px;
+}
+
+.trial-form-group .required {
+    color: #ef4444;
+}
+
+.trial-form-group input {
+    padding: 12px 16px;
+    border: 2px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 15px;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+
+.trial-form-group input:focus {
+    outline: none;
+    border-color: #8b5cf6;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.1);
+}
+
+.trial-form-group input::placeholder {
+    color: #94a3b8;
+}
+
+.trial-submit-btn {
+    padding: 14px;
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.trial-submit-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(139, 92, 246, 0.4);
+}
+
+.trial-submit-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+.trial-submit-btn i {
+    font-size: 18px;
+}
+
+.trial-note {
+    font-size: 13px;
+    color: #64748b;
+    text-align: center;
+    margin-top: 10px;
+    padding: 12px;
+    background: #f8fafc;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    line-height: 1.5;
+}
+
+.trial-note i {
+    color: #3b82f6;
+    font-size: 14px;
+    flex-shrink: 0;
+}
+
+/* Responsive cho modal */
+@media (max-width: 768px) {
+    .trial-modal-content {
+        padding: 30px 20px;
+        max-width: 95%;
+    }
+
+    .trial-modal-title {
+        font-size: 24px;
+    }
+
+    .trial-modal-subtitle {
+        font-size: 13px;
+    }
+
+    .trial-form-group input {
+        padding: 10px 14px;
+        font-size: 14px;
+    }
+
+    .trial-submit-btn {
+        padding: 12px;
+        font-size: 14px;
+    }
+}
+
+/* ============================================
+   PHẦN BẢNG GIÁ QUẢN LÝ TRỌ
+   ============================================ */
+
+.management-pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    margin: 30px auto 40px;
+    max-width: 700px;
+}
+
+.management-card {
+    position: relative;
+    background: white;
+    border: 2px solid;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
+}
+
+.management-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.management-card.popular {
+    border-width: 2px;
+    transform: scale(1);
+}
+
+.management-card.popular:hover {
+    transform: translateY(-5px);
+}
+
+.popular-badge {
+    position: absolute;
+    top: 12px;
+    right: -35px;
+    background: #8b5cf6;
+    color: white;
+    padding: 5px 38px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    transform: rotate(45deg);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+}
+
+.management-header {
+    text-align: center;
+    padding: 16px 16px 12px;
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+}
+
+.management-title {
+    font-size: 20px;
+    font-weight: 700;
+    margin-bottom: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.management-price {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.price-free-large {
+    font-size: 24px;
+    font-weight: 700;
+    color: #22c55e;
+    text-transform: uppercase;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.free-duration {
+    font-size: 14px;
+    font-weight: 500;
+    color: #64748b;
+    text-transform: none;
+}
+
+.price-amount {
+    font-size: 30px;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1;
+}
+
+.price-period {
+    font-size: 14px;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.management-body {
+    padding: 16px;
+    background: white;
+}
+
+.features-title,
+.limitations-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #1e293b;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.limitations-title {
+    margin-top: 12px;
+}
+
+.features-list,
+.limitations-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 12px 0;
+}
+
+.feature-item,
+.limitation-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+.feature-item:last-child,
+.limitation-item:last-child {
+    border-bottom: none;
+}
+
+.feature-item i {
+    font-size: 14px;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.limitation-item i {
+    font-size: 14px;
+    color: #94a3b8;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+
+.limitation-item span {
+    color: #64748b;
+}
+
+.btn-choose-plan {
+    width: 100%;
+    padding: 10px;
+    border: none;
+    border-radius: 8px;
+    color: white;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    margin-top: 8px;
+}
+
+.btn-choose-plan:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+}
+
+.btn-choose-plan:active {
+    transform: translateY(0);
+}
+
+.pricing-divider {
+    height: 2px;
+    background: linear-gradient(to right, transparent, #e2e8f0, transparent);
+    margin: 50px 0 40px;
+}
+
+/* Responsive cho bảng giá quản lý trọ */
+@media (max-width: 992px) {
+    .management-pricing-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+        max-width: 600px;
+    }
+
+    .management-card.popular {
+        transform: scale(1);
+    }
+
+    .management-card.popular:hover {
+        transform: translateY(-8px);
+    }
+
+    .popular-badge {
+        font-size: 11px;
+        padding: 6px 40px;
+    }
+
+    .management-title {
+        font-size: 24px;
+    }
+
+    .price-amount {
+        font-size: 36px;
+    }
+
+    .price-free-large {
+        font-size: 32px;
+    }
+}
+
+@media (max-width: 768px) {
+    .management-header {
+        padding: 30px 20px 20px;
+    }
+
+    .management-body {
+        padding: 20px;
+    }
+
+    .management-title {
+        font-size: 22px;
+    }
+
+    .price-amount {
+        font-size: 32px;
+    }
+
+    .price-free-large {
+        font-size: 28px;
+    }
+
+    .feature-item,
+    .limitation-item {
+        font-size: 14px;
+        padding: 10px 0;
+    }
+}
+
+/* ============================================
+   PHẦN BẢNG GIÁ GÓI TIN ĐĂNG (CŨ)
+   ============================================ */
+
 /* Lưới tổng thể */
 .price-grid {
   display: grid;

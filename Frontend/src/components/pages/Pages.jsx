@@ -14,6 +14,7 @@ import ForgotPassword from "../auth/ForgotPassword"
 import VerifyEmail from "../auth/VerifyEmail"
 import ProtectedRoute from "../auth/ProtectedRoute"
 import AdminProtectedRoute from "../auth/AdminProtectedRoute"
+import LandlordProtectedRoute from "../common/LandlordProtectedRoute"
 import Dashboard from "../admin/dashboard/Dashboard"
 import PropertyManagement from "../admin/properties/PropertyManagement"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
@@ -171,19 +172,24 @@ const Pages = () => {
             <Route index element={<AccountManagement />} />
           </Route>
 
-          {/* Admin pages without Header and Footer - Chỉ admin mới truy cập được */}
+          {/* Admin pages without Header and Footer */}
+          {/* Trang chung cho cả admin và landlord */}
           <Route path='/admin/dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+          
+          {/* Trang chỉ dành cho admin */}
           <Route path='/admin/properties' element={<AdminProtectedRoute><PropertyManagement /></AdminProtectedRoute>} />
           <Route path='/admin/report-properties' element={<AdminProtectedRoute><ReportProperties /></AdminProtectedRoute>} />
           <Route path='/admin/users' element={<AdminProtectedRoute><UsersManagement /></AdminProtectedRoute>} />
-          <Route path='/admin/rooms' element={<ProtectedRoute><RoomsManagement /></ProtectedRoute>} />
-          <Route path='/admin/amenities' element={<ProtectedRoute><AmenitiesManagement /></ProtectedRoute>} />
           <Route path='/admin/properties-packages' element={<AdminProtectedRoute><PropertiesPackagesManagement /></AdminProtectedRoute>} />
           <Route path='/admin/package-plans' element={<AdminProtectedRoute><PackagePlanManagement /></AdminProtectedRoute>} />
-          <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-          <Route path='/admin/tenants' element={<ProtectedRoute><Tenants /></ProtectedRoute>} />
-          <Route path='/admin/contracts' element={<ProtectedRoute><Contracts /></ProtectedRoute>} />
-          <Route path='/admin/payments' element={<ProtectedRoute><PaymentsManagement /></ProtectedRoute>} />
+          
+          {/* Trang chỉ dành cho landlord */}
+          <Route path='/admin/rooms' element={<LandlordProtectedRoute><RoomsManagement /></LandlordProtectedRoute>} />
+          <Route path='/admin/amenities' element={<LandlordProtectedRoute><AmenitiesManagement /></LandlordProtectedRoute>} />
+          <Route path='/admin/tenants' element={<LandlordProtectedRoute><Tenants /></LandlordProtectedRoute>} />
+          <Route path='/admin/contracts' element={<LandlordProtectedRoute><Contracts /></LandlordProtectedRoute>} />
+          <Route path='/admin/payments' element={<LandlordProtectedRoute><PaymentsManagement /></LandlordProtectedRoute>} />
         </Routes>
         </PageTitleWrapper>
       </Router>

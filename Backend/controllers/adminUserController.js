@@ -20,7 +20,7 @@ export const getUsers = async (req, res) => {
             filter.$or = [
                 { fullName: { $regex: search, $options: 'i' } },
                 { email: { $regex: search, $options: 'i' } },
-                { phoneNumber: { $regex: search, $options: 'i' } }
+                { phone: { $regex: search, $options: 'i' } }
             ];
         }
         
@@ -29,25 +29,34 @@ export const getUsers = async (req, res) => {
         
         // Get paginated users
         const users = await User.find(filter)
-            .select('fullName email phoneNumber avatar role status createdAt')
+            .select('fullName email phone avatar role isActive createdAt')
             .sort({ createdAt: -1 })
             .skip((page - 1) * limit)
-            .limit(parseInt(limit));
+            .limit(parseInt(limit))
+            .lean();
+        
+        // Map isActive to status for frontend compatibility
+        const mappedUsers = users.map(user => ({
+            ...user,
+            phoneNumber: user.phone, // Map phone to phoneNumber for frontend
+            status: user.isActive ? 'active' : 'blocked'
+        }));
         
         // Get statistics
         const stats = {
             total: await User.countDocuments(),
             landlord: await User.countDocuments({ role: 'landlord' }),
-            user: await User.countDocuments({ role: 'user' }),
+            tenant: await User.countDocuments({ role: 'tenant' }), // tenant thay vì user
+            user: await User.countDocuments({ role: 'tenant' }), // Alias for frontend
             admin: await User.countDocuments({ role: 'admin' }),
-            active: await User.countDocuments({ status: 'active' }),
-            blocked: await User.countDocuments({ status: 'blocked' })
+            active: await User.countDocuments({ isActive: true }),
+            blocked: await User.countDocuments({ isActive: false })
         };
         
         res.status(200).json({
             success: true,
             data: {
-                users,
+                users: mappedUsers,
                 stats,
                 pagination: {
                     currentPage: parseInt(page),
@@ -89,16 +98,16 @@ export const toggleBlockUser = async (req, res) => {
             });
         }
         
-        // Toggle status
-        user.status = user.status === 'active' ? 'blocked' : 'active';
+        // Toggle isActive status
+        user.isActive = !user.isActive;
         await user.save();
         
         res.status(200).json({
             success: true,
-            message: user.status === 'blocked' ? 'Đã khóa người dùng' : 'Đã mở khóa người dùng',
+            message: !user.isActive ? 'Đã khóa người dùng' : 'Đã mở khóa người dùng',
             data: {
                 userId: user._id,
-                status: user.status
+                status: user.isActive ? 'active' : 'blocked'
             }
         });
     } catch (error) {
@@ -148,7 +157,7 @@ export const updateUserRole = async (req, res) => {
         const { userId } = req.params;
         const { role } = req.body;
         
-        if (!['user', 'landlord', 'admin'].includes(role)) {
+        if (!['tenant', 'landlord', 'admin'].includes(role)) {
             return res.status(400).json({
                 success: false,
                 message: 'Vai trò không hợp lệ'
