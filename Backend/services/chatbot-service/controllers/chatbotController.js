@@ -3,27 +3,6 @@ import ollamaService from '../services/ollamaService.js';
 import vectorService from '../services/vectorService.js';
 import axios from 'axios';
 
-// Helper functions for location API
-const fetchDistricts = async (provinceCode) => {
-  try {
-    const response = await axios.get(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`, { timeout: 5000 });
-    return response.data.districts || [];
-  } catch (error) {
-    console.error('Error fetching districts:', error.message);
-    return [];
-  }
-};
-
-const fetchWards = async (districtCode) => {
-  try {
-    const response = await axios.get(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`, { timeout: 5000 });
-    return response.data.wards || [];
-  } catch (error) {
-    console.error('Error fetching wards:', error.message);  
-    return [];
-  }
-};
-
 /**
  * Controller xử lý chatbot AI
  */
@@ -45,7 +24,7 @@ const chatbotController = {
 
       // Xử lý tin nhắn bằng Ollama service với cache info và metadata từ middleware
       const ollamaResult = await ollamaService.processMessage(message.trim(), req.vectorCache, req.userMetadata);
-      console.log('🔍 Full Ollama Result:', JSON.stringify(ollamaResult, null, 2));
+      console.log('Full Ollama Result:', JSON.stringify(ollamaResult, null, 2));
       
       if (!ollamaResult.success) {
         throw new Error('Không thể phân tích tin nhắn từ AI');
@@ -71,7 +50,7 @@ const chatbotController = {
         data: aiResponse
       };
       
-      console.log('🔍 Properties count in final response:', finalResponse.data?.properties?.length || 0);
+      console.log('Properties count in final response:', finalResponse.data?.properties?.length || 0);
       
       return res.json(finalResponse);
 
@@ -87,6 +66,7 @@ const chatbotController = {
 
   /**
    * Xử lý tìm kiếm properties
+   * Returns properties với direct fields: province, ward, detailAddress (đồng nhất với API search)
    */
   handlePropertySearch: async (searchParams) => {
     if (!searchParams || !Object.keys(searchParams).length) {
@@ -98,7 +78,7 @@ const chatbotController = {
       const query = chatbotController.buildMongoQuery(searchParams);
       console.log('MongoDB Query:', JSON.stringify(query, null, 2));
 
-      // Thực hiện tìm kiếm
+      // Thực hiện tìm kiếm - trả về properties với direct fields
       const properties = await Property.find(query)
         .sort({ promotedAt: -1, createdAt: -1 })
         .limit(50)
@@ -110,14 +90,25 @@ const chatbotController = {
       if (properties.length === 0) {
        
         // Chỉ filter theo province  
-        if (searchParams.provinceId) {
+        if (searchParams.province) {
           const provinceOnly = await Property.countDocuments({
             approvalStatus: 'approved',
             status: 'available',
             isDeleted: { $ne: true },
-            province: searchParams.provinceId
+            province: searchParams.province
           });
-          console.log(`Properties with provinceId ${searchParams.provinceId}: ${provinceOnly}`);
+          console.log(`Properties with province ${searchParams.province}: ${provinceOnly}`);
+        }
+        
+        // Chỉ filter theo ward
+        if (searchParams.ward) {
+          const wardOnly = await Property.countDocuments({
+            approvalStatus: 'approved',
+            status: 'available',
+            isDeleted: { $ne: true },
+            ward: searchParams.ward
+          });
+          console.log(`Properties with ward ${searchParams.ward}: ${wardOnly}`);
         }
         
         // Chỉ filter theo category
@@ -128,52 +119,12 @@ const chatbotController = {
             isDeleted: { $ne: true },
             category: searchParams.category
           });
-         
+          console.log(`Properties with category ${searchParams.category}: ${categoryOnly}`);
         }
       }
 
-      // Nếu có properties, thêm location mapping
-      if (properties.length > 0) {
-        // Lấy provinces từ ollamaService cache hoặc API
-        const provinces = await ollamaService.getProvinces();
-        const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-        // Lấy districts & wards theo properties tìm được  
-        const districtMap = new Map();
-        const wardMap = new Map();
-
-        for (const property of properties) {
-          if (property.province && !districtMap.has(property.district)) {
-            try {
-              const districts = await fetchDistricts(property.province);
-              districts.forEach(d => districtMap.set(String(d.code), d.name));
-            } catch (error) {
-              console.error('Error fetching districts for province:', property.province, error);
-            }
-          }
-          if (property.district && !wardMap.has(property.ward)) {
-            try {
-              const wards = await fetchWards(property.district);
-              wards.forEach(w => wardMap.set(String(w.code), w.name));
-            } catch (error) {
-              console.error('Error fetching wards for district:', property.district, error);
-            }
-          }
-        }
-
-        // Map location codes to names - đưa vào cấu trúc nested location
-        properties.forEach(property => {
-          property.location = {
-            provinceName: provinceMap.get(String(property.province)) || property.province,
-            districtName: districtMap.get(String(property.district)) || property.district,
-            wardName: wardMap.get(String(property.ward)) || property.ward,
-            provinceCode: property.province,
-            districtCode: property.district,
-            wardCode: property.ward,
-            detailAddress: property.detailAddress || ''
-          };
-        });
-      }
+      // Properties đã có sẵn các trường province, ward, detailAddress
+      // Không cần tạo nested location object nữa - đồng nhất với API search property
       
       return properties;
 
@@ -193,10 +144,28 @@ const chatbotController = {
       isDeleted: { $ne: true }
     };
 
-    // Location filters - based on Property schema structure
-    if (searchParams.provinceId) query.province = searchParams.provinceId;
-    if (searchParams.districtId) query.district = searchParams.districtId;
-    if (searchParams.wardId) query.ward = searchParams.wardId;
+    // Chỉ hiển thị tin đăng có gói còn hiệu lực hoặc không có gói (tin miễn phí)
+    const now = new Date();
+    query.$and = [
+      {
+        $or: [
+          { 'packageInfo.expiryDate': { $gt: now } }, // Gói còn hiệu lực theo thời gian
+          { 'packageInfo.expiryDate': { $exists: false } }, // Không có thông tin gói
+          { 'packageInfo.expiryDate': null } // Gói không có ngày hết hạn
+        ]
+      },
+      {
+        $or: [
+          { 'packageInfo.isActive': true }, // Gói đang active
+          { 'packageInfo.isActive': { $exists: false } }, // Không có thông tin isActive (tin miễn phí)
+          { 'packageInfo.isActive': null } // isActive null (tin miễn phí)
+        ]
+      }
+    ];
+
+    // Location filters - direct field matching (province, ward are strings)
+    if (searchParams.province) query.province = searchParams.province;
+    if (searchParams.ward) query.ward = searchParams.ward;
 
     // Category filter
     if (searchParams.category) query.category = searchParams.category;
@@ -269,7 +238,8 @@ const chatbotController = {
     
     if (searchParams?.category) suggestions.push('Xem thêm cùng loại hình');
     if (searchParams?.maxPrice) suggestions.push('Tìm với mức giá khác');
-    if (searchParams?.provinceId) suggestions.push('Tìm khu vực lân cận');
+    if (searchParams?.province) suggestions.push('Tìm khu vực lân cận');
+    if (searchParams?.ward) suggestions.push('Tìm phường/xã khác');
     suggestions.push('Lọc theo tiện ích');
     
     return suggestions.length > 0 ? suggestions : chatbotController.getGeneralSuggestions();

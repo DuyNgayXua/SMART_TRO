@@ -1134,7 +1134,7 @@ body{
 .featured-price,
 .related-price {
   font-size: 14px;
-  font-weight: 600;
+  font-weight: bold;
   color: #dc3545;
   margin: 0 0 4px 0;
 }
@@ -2619,8 +2619,8 @@ body{
   background-size: 200% 100%;
   animation: gradientFlow 3s ease-in-out infinite;
 }
-.per-month{
-  font-size: 12px;
+.per-month-property-detail{
+  font-size: 14px;
   margin-left: 5px;
   font-weight: bold;
 }
@@ -3630,4 +3630,46 @@ body{
 .post-type-vip-dac-biet-property-detail {
   color: #8b0000;
   font-weight: 900;
+}
+.directions-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #007bff;
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  margin-left: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  border: 1px solid transparent;
+}
+
+.directions-link:hover {
+  color: #0056b3;
+  text-decoration: underline;
+  background-color: rgba(0, 123, 255, 0.1);
+  border-color: rgba(0, 123, 255, 0.2);
+  transform: translateY(-1px);
+}
+
+.directions-link i {
+  font-size: 12px;
+  color: #28a745;
+}
+
+.directions-link:hover i {
+  color: #1e7e34;
+}
+
+.meta-item-detail-address {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.meta-item-detail-address span {
+  flex: 1;
 }

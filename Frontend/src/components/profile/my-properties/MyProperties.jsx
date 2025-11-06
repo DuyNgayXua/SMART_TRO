@@ -282,7 +282,7 @@ const MyProperties = () => {
         const firstProperty = response.data.properties[0];
         console.log('First property packageInfo:', firstProperty.packageInfo);
         if (firstProperty.packageInfo?.postType) {
-          console.log('Post type info:', getPostTypeInfo(firstProperty.packageInfo.postType));
+          console.log('Post type:', firstProperty.packageInfo.postType);
         }
       }
       if (response.success) {
@@ -1344,29 +1344,33 @@ const MyProperties = () => {
                         {property.packageInfo && property.packageInfo.postType && (
                           <div className="post-type-inline">
                             {(() => {
-                              const postTypeInfo = getPostTypeInfo(property.packageInfo.postType);
-                              console.log('Post type info for property', property._id, ':', postTypeInfo);
-                              if (!postTypeInfo) return null;
+                              const postType = property.packageInfo.postType;
+                              console.log('Post type for property', property._id, ':', postType);
+                              if (!postType) return null;
+
+                              // Tính số sao từ priority trực tiếp từ API
+                              const priority = postType.priority || 10;
+                              const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+                              const bgColor = postType.color || '#6c757d';
 
                               return (
                                 <span
-                                  className={`post-type-badge-my-properties ${postTypeInfo.cssClass} ${postTypeInfo.stars > 0 ? 'has-stars' : ''
-                                    }`}
+                                  className={`post-type-badge-my-properties ${stars > 0 ? 'has-stars' : ''}`}
                                   style={{
-                                    backgroundColor: postTypeInfo.color,
+                                    backgroundColor: bgColor,
                                     color: '#fff',
-                                    border: `2px solid ${postTypeInfo.color}`,
+                                    border: `2px solid ${bgColor}`,
                                     fontWeight: 'bold'
                                   }}
                                 >
-                                  {postTypeInfo.stars > 0 && (
+                                  {stars > 0 && (
                                     <div className="post-type-stars-my-properties">
-                                      {[...Array(postTypeInfo.stars)].map((_, index) => (
+                                      {[...Array(stars)].map((_, index) => (
                                         <i key={index} className="fa fa-star star-icon-my-properties"></i>
                                       ))}
                                     </div>
                                   )}
-                                  {postTypeInfo.displayName}
+                                  {postType.displayName}
 
                                 </span>
                               );
@@ -1410,7 +1414,7 @@ const MyProperties = () => {
                         <div className="location-row">
                           <i className="fa fa-map-marker"></i>
                           <span className="location-text">
-                            {property.location?.detailAddress}, {property.location?.wardName}, {property.location?.districtName}, {property.location?.provinceName}
+                            {property.detailAddress && `${property.detailAddress}, `}{property.ward}, {property.province}
                           </span>
                         </div>
                       </div>
@@ -1512,8 +1516,24 @@ const MyProperties = () => {
                       <div className="actions-main">
 
                         {/* Edit Button */}
-                        {property.approvalStatus !== 'rejected' && (() => {
+                        {(() => {
                           const packageCheck = canPropertyPerformActions(property);
+                          
+                          // Nếu bài đăng bị từ chối, luôn cho phép sửa
+                          if (property.approvalStatus === 'rejected') {
+                            return (
+                              <button
+                                className="btn-row btn-edit-row"
+                                onClick={() => handleEdit(property)}
+                                title="Sửa bài đăng bị từ chối để gửi lại duyệt"
+                              >
+                                <i className="fa fa-edit"></i>
+                                Sửa
+                              </button>
+                            );
+                          }
+                          
+                          // Với các trạng thái khác, kiểm tra gói như cũ
                           return packageCheck.canEdit ? (
                             <button
                               className="btn-row btn-edit-row"
@@ -1542,14 +1562,15 @@ const MyProperties = () => {
                           );
                         })()}
 
-                        {/* Rejected Status */}
+                        {/* Rejected Status - Nút phụ để xem lý do */}
                         {property.approvalStatus === 'rejected' && (
                           <button
-                            className="btn-row btn-reason-row"
+                            className="btn-row btn-reason-row secondary"
                             onClick={() => handleViewDetail(property)}
+                            title="Xem chi tiết lý do từ chối"
                           >
-                            <i className="fa fa-eye"></i>
-                            Xem lý do
+                            <i className="fa fa-info-circle"></i>
+                            Lý do từ chối
                           </button>
                         )}
                       </div>
@@ -1560,8 +1581,8 @@ const MyProperties = () => {
 
               {/* Pagination */}
               {pagination.totalPages > 1 && (
-                <div className="pagination-container">
-                  <div className="pagination">
+                <div className="pagination-container-my-properties">
+                  <div className="pagination-my-properties">
                     <button
                       className="pagination-btn-my-properties"
                       disabled={pagination.page === 1}
@@ -1673,15 +1694,15 @@ const MyProperties = () => {
 
                 <div className="paid-package-info">
                   <div className="package-header-paid">
-                    <div className="package-badge-paid" style={{ backgroundColor: currentPackageInfo.color || '#007bff' }}>
+                    <div className="package-badge-paid" style={{ backgroundColor: 'black' }}>
                       <i className="fa fa-star"></i>
                       {currentPackageInfo.packageType === 'expired'
                         ? `${currentPackageInfo.displayName} (ĐÃ HẾT HẠN)`
                         : currentPackageInfo.displayName}
                     </div>
                     <div className="package-price">
-                      <span className="price-amount">{formatPriceWithCurrency(currentPackageInfo.price)}</span>
-                      <span className="price-period">/{formatDuration(currentPackageInfo)}</span>
+                      <span className="price-amount-my-properties">{formatPriceWithCurrency(currentPackageInfo.price)}</span>
+                      <span className="price-period-my-properties">/{formatDuration(currentPackageInfo)}</span>
                     </div>
                   </div>
 
@@ -2070,8 +2091,8 @@ const MyProperties = () => {
                           {isExpiredPackage ? `${packagePlan.displayName}` : packagePlan.displayName}
                         </div>
                         <div className="package-price-plan">
-                          <span className="price-amount">{formatPriceWithCurrency(packagePlan.price)}</span>
-                          <span className="price-period">/{formatDuration(packagePlan)}</span>
+                          <span className="price-amount-my-properties">{formatPriceWithCurrency(packagePlan.price)}</span>
+                          <span className="price-period-my-properties">/{formatDuration(packagePlan)}</span>
                         </div>
                       </div>
 
@@ -2334,8 +2355,7 @@ const MyProperties = () => {
                   <div className="detail-item">
                     <strong>Địa chỉ:</strong>
                     <span>
-                      {selectedProperty.location?.detailAddress}, {selectedProperty.location?.wardName},
-                      {selectedProperty.location?.districtName}, {selectedProperty.location?.provinceName}
+                      {selectedProperty.detailAddress && `${selectedProperty.detailAddress}, `}{selectedProperty.ward}, {selectedProperty.province}
                     </span>
                   </div>
                   <div className="detail-item">
@@ -2512,8 +2532,10 @@ const MyProperties = () => {
                         <div className="history-item-header">
                           <div className="package-info">
                             <div className="package-badge-history">
-                              <i className="fa fa-star"></i>
-                              <span className='package-history-name'>{historyItem.displayName}</span>
+                              
+                              <span className='package-history-name'>
+                                <i className="fa fa-star"></i>
+                                {historyItem.displayName}</span>
                             </div>
 
                             {/* Tag hiển thị tổng số tin đăng đã chuyển gói */}
@@ -2583,9 +2605,12 @@ const MyProperties = () => {
                                 {historyItem.packagePlanId?.propertiesLimits?.map((limit, limitIndex) => {
                                   // Tìm tin đăng đã được chuyển gói cho loại gói này
                                   const transferredPropsForThisType = historyItem.transferredProperties?.filter(
-                                    transferredProp => transferredProp.postType._id?.toString() === limit.packageType._id?.toString()
+                                    transferredProp =>
+                                      transferredProp.postType._id?.toString() === limit.packageType._id?.toString() &&
+                                      transferredProp.transferredFromPackage?.packagePlanId?.toString() === historyItem.packagePlanId?._id?.toString()
                                   ) || [];
-                                  console.log('Transferred properties for limit type:', limit.packageType?.displayName, transferredPropsForThisType);
+
+                                  console.log('historyItem:', historyItem);
 
                                   return (
                                     <div key={limitIndex} className="usage-item">

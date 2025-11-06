@@ -24,10 +24,13 @@ class PackagePlanController {
                 duration: pkg.duration,
                 durationUnit: pkg.durationUnit || 'month', // Mặc định là tháng để tương thích
                 freePushCount: pkg.freePushCount,
-                propertiesLimits: pkg.propertiesLimits.map(limit => ({
-                    packageType: limit.packageType,
-                    limit: limit.limit
-                })),
+                propertiesLimits: pkg.propertiesLimits
+                    .map(limit => ({
+                        packageType: limit.packageType,
+                        limit: limit.limit,
+                        priority: limit.packageType?.priority || 0
+                    }))
+                    .sort((a, b) => a.priority - b.priority),
                 isActive: pkg.isActive,
                 // Tính tổng số tin có thể đăng
                 totalPosts: pkg.propertiesLimits.reduce((sum, item) => sum + item.limit, 0),
@@ -128,10 +131,13 @@ class PackagePlanController {
                 duration: pkg.duration || pkg.durationDays || 30, // Backward compatibility
                 durationUnit: pkg.durationUnit || 'day', // Mặc định là ngày để tương thích
                 freePushCount: pkg.freePushCount,
-                propertiesLimits: pkg.propertiesLimits.map(limit => ({
-                    packageType: limit.packageType,
-                    limit: limit.limit
-                })),
+                propertiesLimits: pkg.propertiesLimits
+                    .map(limit => ({
+                        packageType: limit.packageType,
+                        limit: limit.limit,
+                        priority: limit.packageType?.priority || 0
+                    }))
+                    .sort((a, b) => a.priority - b.priority),
                 isActive: pkg.isActive,
                 // Tính tổng số tin có thể đăng
                 totalPosts: pkg.propertiesLimits.reduce((sum, item) => sum + item.limit, 0),

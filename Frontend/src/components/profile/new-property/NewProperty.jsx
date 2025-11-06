@@ -11,30 +11,22 @@ import { postAPI } from '../../../services/propertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
 import userPackageAPI from '../../../services/userPackageAPI';
+import { processFilesForUpload, validateFile, formatFileSize, createFilePreview } from '../../../utils/fileUtils';
 import './../ProfilePages.css';
 import './NewProperty.css';
+import './DirectionsPanel.css';
 import './RejectedFiles.css';
 import './PackagePostTypeSelector.css';
+import './TrackAsiaMap.css';
+import './FileValidation.css';
+
+import trackasiagl from 'trackasia-gl';
+import '@mapbox/mapbox-gl-directions/dist/mapbox-gl-directions.css';
+import 'trackasia-gl/dist/trackasia-gl.css';
 
 
-import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-
-
-
-const defaultCenter = {
-  lat: 16.056204,
-  lng: 108.168202
-};
-
-// Icon mặc định Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: require('leaflet/dist/images/marker-icon-2x.png'),
-  iconUrl: require('leaflet/dist/images/marker-icon.png'),
-  shadowUrl: require('leaflet/dist/images/marker-shadow.png'),
-});
+// TrackAsia GL JS configuration
+// No need for icon configuration as TrackAsia uses built-in markers
 
 //Gửi object address đến backend để geocode
 const geocodeAddress = async (addressObject) => {
@@ -53,10 +45,6 @@ const geocodeAddress = async (addressObject) => {
   }
 };
 
-
-
-
-
 const NewProperty = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -70,6 +58,12 @@ const NewProperty = () => {
   const isManuallySetRef = useRef(false);
   // Ref để lưu tọa độ thủ công
   const manualCoordsRef = useRef(null);
+  // Ref cho TrackAsia map
+  const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const markerRef = useRef(null);
+  const directionsRef = useRef(null);
+  const currentLocationMarkerRef = useRef(null);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMessage, setModalMessage] = useState("");
@@ -79,6 +73,20 @@ const NewProperty = () => {
   // Cấu hình dayjs
   dayjs.extend(relativeTime);
   dayjs.locale("vi");
+
+
+  // TrackAsia API configuration
+const TRACKASIA_API_KEY = process.env.REACT_APP_TRACKASIA_API_KEY || 'public_key';
+const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
+
+console.log("TrackAsia API Key (frontend):", TRACKASIA_API_KEY);
+console.log("TRACKASIA_BASE_URL:", TRACKASIA_BASE_URL);
+
+const defaultCenter = {
+  lat: 16.056204,
+  lng: 108.168202
+};
+
 
   // Form state
   const [formData, setFormData] = useState({
@@ -107,9 +115,9 @@ const NewProperty = () => {
     // Nội quy
     houseRules: [],
 
-    // Địa chỉ
+    // Địa chỉ (đồng bộ với Property schema mới)
     province: '',
-    district: '',
+    provinceId: '',
     ward: '',
     detailAddress: '',
     coordinates: defaultCenter,
@@ -129,18 +137,18 @@ const NewProperty = () => {
   const [rejectedFiles, setRejectedFiles] = useState({ images: [], videos: [] });
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // File validation states
+  const [fileValidation, setFileValidation] = useState({ images: [], videos: [] });
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [gettingLocation, setGettingLocation] = useState(false);
   const [isManuallySet, setIsManuallySet] = useState(false);
 
-  const [showMap, setShowMap] = useState(false);
-
-  // Location data from API
+  // Location data from API (cập nhật cho cấu trúc mới)
   const [locationData, setLocationData] = useState({
     provinces: [],
-    districts: [],
     wards: [],
     loadingProvinces: false,
-    loadingDistricts: false,
     loadingWards: false,
     geocoding: false
   });
@@ -153,6 +161,14 @@ const NewProperty = () => {
   const [packageInfo, setPackageInfo] = useState(null);
   const [availablePostTypes, setAvailablePostTypes] = useState([]);
   const [loadingPackage, setLoadingPackage] = useState(false);
+
+  // Directions panel state
+  const [showDirectionsPanel, setShowDirectionsPanel] = useState(false);
+  const [directionsOrigin, setDirectionsOrigin] = useState('');
+  const [directionsDestination, setDirectionsDestination] = useState('');
+  const [routeInfo, setRouteInfo] = useState(null);
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false);
+  const [isGettingCurrentLocation, setIsGettingCurrentLocation] = useState(false);
 
 
 
@@ -189,87 +205,9 @@ const NewProperty = () => {
     { value: 'remove_shoes', label: 'Cởi giày trước khi vào nhà' }
   ];
 
-  // Get user's current location
-  const getUserLocation = () => {
-    if (!navigator.geolocation) {
-      toast.warn('Trình duyệt không hỗ trợ định vị!');
-      setFormData(prev => ({
-        ...prev,
-        coordinates: defaultCenter
-      }));
-      return;
-    }
 
-    setGettingLocation(true);
 
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const userCoords = { lat: latitude, lng: longitude };
-        // console.log("User location:", userCoords);
 
-        // Đánh dấu là đã được set thủ công
-        isManuallySetRef.current = true;
-        setIsManuallySet(true);
-        manualCoordsRef.current = userCoords;
-
-        setFormData(prev => ({
-          ...prev,
-          coordinates: userCoords
-        }));
-
-        // Cập nhật lastCoordsRef để lưu tọa độ hợp lệ
-        lastCoordsRef.current = userCoords;
-        setGettingLocation(false);
-      },
-      (error) => {
-        console.error('Error getting user location:', error);
-        setGettingLocation(false);
-
-        let errorMessage = '';
-        switch (error.code) {
-          case error.PERMISSION_DENIED:
-            errorMessage = 'Người dùng từ chối chia sẻ vị trí';
-            break;
-          case error.POSITION_UNAVAILABLE:
-            errorMessage = 'Không thể xác định vị trí';
-            break;
-          case error.TIMEOUT:
-            errorMessage = 'Hết thời gian chờ định vị';
-            break;
-          default:
-            errorMessage = 'Lỗi không xác định khi định vị';
-            break;
-        }
-
-        toast.error(`${errorMessage}. Sử dụng vị trí mặc định.`);
-        setFormData(prev => ({
-          ...prev,
-          coordinates: defaultCenter
-        }));
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      }
-    );
-  };
-
-  // Initialize user location and user info when component mounts
-  useEffect(() => {
-    // Đảm bảo coordinates luôn có giá trị ban đầu
-    if (!formData.coordinates || !formData.coordinates.lat || !formData.coordinates.lng) {
-      setFormData(prev => ({
-        ...prev,
-        coordinates: defaultCenter
-      }));
-      lastCoordsRef.current = defaultCenter;
-    }
-    getUserLocation();
-
-    // Không auto-fill thông tin liên hệ - để user tự nhập
-  }, []);
 
   // Show toast when there are media errors (images or videos)
   useEffect(() => {
@@ -371,18 +309,38 @@ const NewProperty = () => {
     loadAmenities();
   }, []);
 
-  // Handle modal show/hide và Google Maps
+  // Handle modal show/hide và TrackAsia Maps
   useEffect(() => {
     if (showModal) {
-      // Delay để modal render hoàn toàn trước khi hiển thị map
+      document.body.classList.add('modal-open');
+      // Initialize map after modal is rendered
       const timer = setTimeout(() => {
-        setShowMap(true);
-      }, 500);
+        initializeMap();
+      }, 100);
       return () => clearTimeout(timer);
     } else {
-      setShowMap(false);
+      document.body.classList.remove('modal-open');
+      // Clean up map
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+        directionsRef.current = null;
+        currentLocationMarkerRef.current = null;
+      }
     }
+
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
   }, [showModal]);
+
+  // Update map when coordinates change
+  useEffect(() => {
+    if (formData.coordinates && mapRef.current) {
+      updateMapLocation(formData.coordinates);
+    }
+  }, [formData.coordinates]);
 
   // Load provinces when component mounts
   useEffect(() => {
@@ -390,6 +348,7 @@ const NewProperty = () => {
       try {
         setLocationData(prev => ({ ...prev, loadingProvinces: true }));
         const provinces = await locationAPI.getProvinces();
+        console.log('Loaded provinces:', provinces);
 
         setLocationData(prev => ({
           ...prev,
@@ -405,12 +364,12 @@ const NewProperty = () => {
     loadProvinces();
   }, []);
 
-  // Load districts when province changes
+  // Load wards when province changes (cập nhật cho cấu trúc mới)
   useEffect(() => {
-    const loadDistricts = async () => {
-      if (!formData.province) {
-        setLocationData(prev => ({ ...prev, districts: [], wards: [] }));
-        setFormData(prev => ({ ...prev, district: '', ward: '' }));
+    const loadWards = async () => {
+      if (!formData.province || !formData.provinceId) {
+        setLocationData(prev => ({ ...prev, wards: [] }));
+        setFormData(prev => ({ ...prev, ward: '' }));
         // Reset manual flag khi không có tỉnh
         isManuallySetRef.current = false;
         setIsManuallySet(false);
@@ -419,46 +378,19 @@ const NewProperty = () => {
       }
 
       try {
-        setLocationData(prev => ({ ...prev, loadingDistricts: true }));
-        const districts = await locationAPI.getDistricts(formData.province);
-        setLocationData(prev => ({
-          ...prev,
-          districts: districts.data || [],
-          loadingDistricts: false,
-          wards: []
-        }));
-        setFormData(prev => ({ ...prev, district: '', ward: '' }));
-        // Reset manual flag khi thay đổi tỉnh để cho phép geocoding tự động
-        isManuallySetRef.current = false;
-        setIsManuallySet(false);
-        manualCoordsRef.current = null;
-      } catch (error) {
-        console.error('Error loading districts:', error);
-        setLocationData(prev => ({ ...prev, loadingDistricts: false }));
-      }
-    };
-
-    loadDistricts();
-  }, [formData.province]);
-
-  // Load wards when district changes
-  useEffect(() => {
-    const loadWards = async () => {
-      if (!formData.district) {
-        setLocationData(prev => ({ ...prev, wards: [] }));
-        setFormData(prev => ({ ...prev, ward: '' }));
-        return;
-      }
-
-      try {
         setLocationData(prev => ({ ...prev, loadingWards: true }));
-        const wards = await locationAPI.getWards(formData.district);
+        // Sử dụng tên tỉnh để load wards (theo vietnamlabs.com API)
+        const wards = await locationAPI.getWards(formData.province);
         setLocationData(prev => ({
           ...prev,
           wards: wards.data || [],
           loadingWards: false
         }));
         setFormData(prev => ({ ...prev, ward: '' }));
+        // Reset manual flag khi thay đổi tỉnh để cho phép geocoding tự động
+        isManuallySetRef.current = false;
+        setIsManuallySet(false);
+        manualCoordsRef.current = null;
       } catch (error) {
         console.error('Error loading wards:', error);
         setLocationData(prev => ({ ...prev, loadingWards: false }));
@@ -466,7 +398,9 @@ const NewProperty = () => {
     };
 
     loadWards();
-  }, [formData.district]);
+  }, [formData.province, formData.provinceId]);
+
+
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -521,6 +455,22 @@ const NewProperty = () => {
         ...prev,
         [name]: value
       }));
+    } else if (name === 'province') {
+      // Khi chọn tỉnh, lưu cả tên và ID
+      const selectedProvince = locationData.provinces.find(p => p.code === value);
+      setFormData(prev => ({
+        ...prev,
+        province: selectedProvince ? selectedProvince.name : '',
+        provinceId: value,
+        ward: '' // Reset ward khi thay đổi tỉnh
+      }));
+    } else if (name === 'ward') {
+      // Khi chọn ward, lưu tên ward (theo Property schema)
+      const selectedWard = locationData.wards.find(w => w.code === value);
+      setFormData(prev => ({
+        ...prev,
+        ward: selectedWard ? selectedWard.name : value
+      }));
     } else {
       setFormData(prev => ({
         ...prev,
@@ -538,49 +488,14 @@ const NewProperty = () => {
 
   const getFullAddressPayload = async (formData, locationData) => {
     try {
-      let provinceName = "", districtName = "", wardName = "";
-
-      // Province
-      const province = locationData.provinces.find(
-        p => String(p.code) === String(formData.province)
-      );
-      if (province) {
-        provinceName = province.name;
-      } else if (formData.province) {
-        const res = await locationAPI.getProvinces();
-        const found = res.data.find(p => String(p.code) === String(formData.province));
-        provinceName = found ? found.name : "";
-      }
-
-      // District
-      const district = locationData.districts.find(
-        d => String(d.code) === String(formData.district)
-      );
-      if (district) {
-        districtName = district.name;
-      } else if (formData.district) {
-        const res = await locationAPI.getDistricts(formData.province);
-        const found = res.data.find(d => String(d.code) === String(formData.district));
-        districtName = found ? found.name : "";
-      }
-
-      // Ward
-      const ward = locationData.wards.find(
-        w => String(w.code) === String(formData.ward)
-      );
-      if (ward) {
-        wardName = ward.name;
-      } else if (formData.ward) {
-        const res = await locationAPI.getWards(formData.district);
-        const found = res.data.find(w => String(w.code) === String(formData.ward));
-        wardName = found ? found.name : "";
-      }
+      // Đơn giản hóa theo cấu trúc mới: chỉ có province và ward
+      const provinceName = formData.province || "";
+      const wardName = formData.ward || "";
 
       return {
         street: formData.detailAddress || "",
-        ward: wardName || "",
-        district: districtName || "",
-        province: provinceName || "",
+        ward: wardName,
+        province: provinceName,
         country: "Vietnam"
       };
     } catch (err) {
@@ -593,7 +508,7 @@ const NewProperty = () => {
 
   // --- Auto-update coordinates when address changes ---
   useEffect(() => {
-    if (formData.detailAddress && formData.province && formData.district && formData.ward) {
+    if (formData.detailAddress && formData.province && formData.ward) {
       const timer = setTimeout(async () => {
         const addressPayload = await getFullAddressPayload(formData, locationData);
 
@@ -631,7 +546,7 @@ const NewProperty = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [formData.detailAddress, formData.ward, formData.district, formData.province, locationData]);
+  }, [formData.detailAddress, formData.ward, formData.province, locationData]);
 
 
 
@@ -691,65 +606,99 @@ const NewProperty = () => {
 
 
 
-  // Image upload handler
-  const handleImageUpload = (e) => {
+  // Image upload handler với validation và compression
+  const handleImageUpload = async (e) => {
     const files = Array.from(e.target.files);
 
     // kiểm tra tổng ảnh
     if (formData.images.length + files.length > 5) {
       toast.error("Bạn chỉ được chọn tối đa 5 ảnh.");
-      e.target.value = null; // reset input
+      e.target.value = null;
       return;
     }
 
-    const existingFileNames = formData.images.map(img => img.name);
-    const duplicateFiles = files.filter(f => existingFileNames.includes(f.name));
+    setIsProcessingFiles(true);
+    
+    try {
+      // Validate và process files
+      const processResult = await processFilesForUpload(files, (progress) => {
+        // Có thể hiển thị progress nếu cần
+        console.log(`Đang xử lý ${progress.current}/${progress.total}: ${progress.fileName}`);
+      });
 
-    if (duplicateFiles.length > 0) {
-      const duplicateNames = duplicateFiles.map(f => f.name).join(", ");
+      // Hiển thị grouped warnings và errors
+      if (processResult.groupedWarnings.length > 0) {
+        toast.info(processResult.groupedWarnings.join('\n'), { autoClose: 5000 });
+      }
 
-      toast.warn(
-        <ConfirmToast
-          message={`Ảnh ${duplicateNames} đã tồn tại. Bạn có muốn ghi đè không?`}
-          onConfirm={() => {
-            // Xóa ảnh trùng trước
-            setFormData(prev => ({
-              ...prev,
-              images: prev.images.filter(
-                img => !duplicateFiles.some(f => f.name === img.name)
-              ),
-            }));
+      // Nếu có lỗi, không cho upload
+      if (processResult.hasErrors) {
+        toast.error(processResult.groupedErrors.join('\n'));
+        e.target.value = null;
+        return;
+      }
 
-            // Thêm ảnh mới
-            files.forEach(file => {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                setFormData(prev => ({
-                  ...prev,
-                  images: [...prev.images, {
-                    file,
-                    url: event.target.result,
-                    name: file.name
-                  }]
-                }));
-              };
-              reader.readAsDataURL(file);
-            });
+      // Kiểm tra file trùng lặp
+      const processedFiles = processResult.files;
+      const existingFileNames = formData.images.map(img => img.name);
+      const duplicateFiles = processedFiles.filter(f => existingFileNames.includes(f.name));
 
-            e.target.value = null; // reset input sau confirm
-          }}
-          onCancel={() => {
-            e.target.value = null; // reset input sau khi cancel
-          }}
-        />,
-        { autoClose: false }
-      );
+      if (duplicateFiles.length > 0) {
+        const duplicateNames = duplicateFiles.map(f => f.name).join(", ");
 
-      return;
+        toast.warn(
+          <ConfirmToast
+            message={`Ảnh ${duplicateNames} đã tồn tại. Bạn có muốn ghi đè không?`}
+            onConfirm={() => {
+              // Xóa ảnh trùng trước
+              setFormData(prev => ({
+                ...prev,
+                images: prev.images.filter(
+                  img => !duplicateFiles.some(f => f.name === img.name)
+                ),
+              }));
+
+              // Thêm ảnh mới đã được xử lý
+              addProcessedImages(processedFiles, processResult.validationResults);
+              e.target.value = null;
+            }}
+            onCancel={() => {
+              e.target.value = null;
+            }}
+          />,
+          { autoClose: false }
+        );
+        return;
+      }
+
+      // Thêm ảnh mới đã được xử lý
+      addProcessedImages(processedFiles, processResult.validationResults);
+
+      // Clear lỗi và rejected files
+      if (errors.images) {
+        setErrors(prev => ({ ...prev, images: '' }));
+      }
+      if (rejectedFiles.images?.length > 0) {
+        setRejectedFiles(prev => ({ ...prev, images: [] }));
+      }
+
+    } catch (error) {
+      console.error('Error processing files:', error);
+      toast.error('Lỗi xử lý file: ' + error.message);
+    } finally {
+      setIsProcessingFiles(false);
+      e.target.value = null;
     }
+  };
 
-    // nếu không có trùng → thêm ảnh mới
-    files.forEach(file => {
+  // Helper function to add processed images
+  const addProcessedImages = (processedFiles, validationResults) => {
+    const newValidations = [];
+    
+    processedFiles.forEach((file, index) => {
+      const validation = validationResults[index];
+      newValidations.push(createFilePreview(file, validation));
+      
       const reader = new FileReader();
       reader.onload = (event) => {
         setFormData(prev => ({
@@ -757,45 +706,44 @@ const NewProperty = () => {
           images: [...prev.images, {
             file,
             url: event.target.result,
-            name: file.name
+            name: file.name,
+            originalSize: validationResults[index]?.originalSize || file.size,
+            compressed: validationResults[index]?.compressed || false
           }]
         }));
       };
       reader.readAsDataURL(file);
     });
 
-    // Xóa lỗi validation và clear rejected files cache khi upload ảnh mới
-    if (errors.images) {
-      setErrors(prev => ({
-        ...prev,
-        images: ''
-      }));
-    }
-
-    // Clear rejected files cache khi có ảnh mới được upload
-    if (rejectedFiles.images?.length > 0) {
-      console.log('Clearing rejected files cache on new image upload');
-      setRejectedFiles(prev => ({
-        ...prev,
-        images: []
-      }));
-    }
-
-    e.target.value = null; // luôn reset input sau mỗi lần up
+    // Update file validation state
+    setFileValidation(prev => ({
+      ...prev,
+      images: [...prev.images, ...newValidations]
+    }));
   };
 
 
 
 
-  // Video upload handler
-  const handleVideoUpload = (e) => {
+  // Video upload handler với validation
+  const handleVideoUpload = async (e) => {
     const file = e.target.files[0];
-    if (file.length > 1) {
-      toast.error("Bạn chỉ được chọn tối đa 1 video");
+    if (!file) return;
+
+    // Validate video file
+    const validation = validateFile(file);
+    
+    // Hiển thị lỗi nếu có
+    if (!validation.isValid) {
+      toast.error(validation.errors.join('\n'));
       e.target.value = null;
       return;
     }
-    if (!file) return;
+
+    // Hiển thị warnings nếu có
+    if (validation.warnings.length > 0) {
+      toast.info(validation.warnings.join('\n'), { autoClose: 5000 });
+    }
 
     // Nếu đã có video trùng tên
     if (formData.video && formData.video.name === file.name) {
@@ -803,60 +751,53 @@ const NewProperty = () => {
         <ConfirmToast
           message={`Video "${file.name}" đã tồn tại. Bạn có muốn ghi đè không?`}
           onConfirm={() => {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-              setFormData(prev => ({
-                ...prev,
-                video: {
-                  file,
-                  url: event.target.result,
-                  name: file.name
-                }
-              }));
-            };
-            reader.readAsDataURL(file);
+            addVideoFile(file, validation);
           }}
           onCancel={() => {
-            e.target.value = null; // clear input
+            e.target.value = null;
           }}
         />,
         { autoClose: false }
       );
     } else {
       // Nếu chưa có video → thêm mới
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFormData(prev => ({
-          ...prev,
-          video: {
-            file,
-            url: event.target.result,
-            name: file.name
-          }
-        }));
-      };
-      reader.readAsDataURL(file);
+      addVideoFile(file, validation);
     }
 
-    // Reset input để chọn cùng file liên tiếp vẫn trigger được
+    // Reset input
     e.target.value = null;
 
-    // clear error và rejected files cache nếu có
+    // Clear lỗi và rejected files
     if (errors.video) {
-      setErrors(prev => ({
-        ...prev,
-        video: ''
-      }));
+      setErrors(prev => ({ ...prev, video: '' }));
     }
-
-    // Clear rejected videos cache khi có video mới được upload
     if (rejectedFiles.videos?.length > 0) {
-      console.log('Clearing rejected videos cache on new video upload');
-      setRejectedFiles(prev => ({
-        ...prev,
-        videos: []
-      }));
+      setRejectedFiles(prev => ({ ...prev, videos: [] }));
     }
+  };
+
+  // Helper function to add video file
+  const addVideoFile = (file, validation) => {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setFormData(prev => ({
+        ...prev,
+        video: {
+          file,
+          url: event.target.result,
+          name: file.name,
+          size: file.size,
+          formattedSize: formatFileSize(file.size)
+        }
+      }));
+    };
+    reader.readAsDataURL(file);
+
+    // Update validation state
+    setFileValidation(prev => ({
+      ...prev,
+      videos: [createFilePreview(file, validation)]
+    }));
   };
 
   // Hàm format số thành VNĐ style
@@ -889,14 +830,14 @@ const NewProperty = () => {
       setFormData(prev => ({ ...prev, postType: '' }));
       return;
     }
-    
+
     const selectedType = availablePostTypes.find(type => type.postType._id === postTypeId);
-    
+
     if (selectedType && selectedType.remainingCount <= 0) {
       toast.warn('Bạn đã hết lượt đăng loại tin này');
       return;
     }
-    
+
     // Đơn giản hóa: chỉ cập nhật formData, không dùng ref phức tạp
     setFormData(prev => ({
       ...prev,
@@ -915,25 +856,42 @@ const NewProperty = () => {
   };
 
   const formatPostTypeName = (displayName) => {
-    const name = displayName?.toLowerCase() || '';
-    if (name.includes('tin vip đặc biệt')) return 'TIN VIP ĐẶC BIỆT';
-    if (name.includes('tin vip nổi bật')) return 'TIN VIP NỔI BẬT';
-    if (name.includes('tin vip 1')) return 'TIN VIP 1';
-    if (name.includes('tin vip 2')) return 'TIN VIP 2';
-    if (name.includes('tin vip 3')) return 'TIN VIP 3';
-    if (name.includes('tin thường')) return 'TIN THƯỜNG';
-    return displayName;
+    // Trả về displayName từ API trực tiếp (đã được format sẵn)
+    return displayName || 'Tin đăng';
   };
 
-  const getPostTypeInfo = (displayName) => {
-    const name = displayName?.toLowerCase() || '';
-    if (name.includes('tin vip đặc biệt')) return { stars: 5, color: '#8b0000' };
-    if (name.includes('tin vip nổi bật')) return { stars: 5, color: '#dc3545' };
-    if (name.includes('tin vip 1')) return { stars: 4, color: '#e83e8c' };
-    if (name.includes('tin vip 2')) return { stars: 3, color: '#fd7e14' };
-    if (name.includes('tin vip 3')) return { stars: 2, color: '#20c997' };
-    if (name.includes('tin thường')) return { stars: 0, color: '#6c757d' };
-    return { stars: 0, color: '#6c757d' };
+  const getPostTypeInfo = (postType) => {
+    // Nếu truyền vào là string (backward compatibility)
+    if (typeof postType === 'string') {
+      const name = postType.toLowerCase();
+      if (name.includes('tin vip đặc biệt')) return { stars: 5, color: '#8b0000' };
+      if (name.includes('tin vip nổi bật')) return { stars: 4, color: '#dc3545' };
+      if (name.includes('tin vip 1')) return { stars: 3, color: '#e83e8c' };
+      if (name.includes('tin vip 2')) return { stars: 2, color: '#fd7e14' };
+      if (name.includes('tin vip 3')) return { stars: 1, color: '#27ae60' };
+      if (name.includes('tin thường')) return { stars: 0, color: '#6c757d' };
+      return { stars: 0, color: '#6c757d' };
+    }
+
+    // Tính số sao dựa trên priority từ API (linh động)
+    // Priority càng thấp = VIP càng cao = nhiều sao hơn
+    const priority = postType?.priority || postType?.packageType?.priority || 10;
+    const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+    
+    // Màu sắc theo thứ bậc VIP (dựa trên số sao từ priority)
+    const colorMap = {
+      5: '#8b0000', // Đỏ đậm - VIP đặc biệt (priority 1)
+      4: '#dc3545', // Đỏ - VIP nổi bật (priority 2) 
+      3: '#e83e8c', // Hồng - VIP 1 (priority 3)
+      2: '#fd7e14', // Cam - VIP 2 (priority 4)
+      1: '#27ae60', // Xanh lá - VIP 3 (priority 5)
+      0: '#6c757d'  // Xám - Thường (priority 6+)
+    };
+    
+    return { 
+      stars: Math.max(0, stars), 
+      color: colorMap[stars] || '#6c757d' 
+    };
   };
 
 
@@ -977,14 +935,14 @@ const NewProperty = () => {
 
       // Kiểm tra lượt còn lại của loại tin được chọn
       const selectedPostType = availablePostTypes.find(type => type.postType._id === formData.postType);
-      
+
       if (!selectedPostType || selectedPostType.remainingCount <= 0) {
         toast.error('Loại tin được chọn đã hết lượt đăng');
         setIsSubmitting(false);
         return;
       }
 
-    
+
 
       toast.info('Đang xử lý đăng tin...', {
         position: "top-right",
@@ -992,31 +950,26 @@ const NewProperty = () => {
         hideProgressBar: false,
       });
 
-      // Tìm tên từ code để gửi lên backend
-      const provinceData = locationData.provinces.find(p => p.code === formData.province);
-      const districtData = locationData.districts.find(d => d.code === formData.district);
-      const wardData = locationData.wards.find(w => w.code === formData.ward);
-
       // Đảm bảo coordinates luôn có giá trị hợp lệ - ưu tiên tọa độ thủ công
       let finalCoordinates;
 
       // Nếu có tọa độ thủ công, sử dụng tọa độ đó
       if (isManuallySetRef.current && manualCoordsRef.current) {
         finalCoordinates = manualCoordsRef.current;
-       
+
       } else if (formData.coordinates && formData.coordinates.lat && formData.coordinates.lng) {
         finalCoordinates = formData.coordinates;
-      
+
       } else {
         // Nếu coordinates không hợp lệ, thử geocode lại
-       
+
         const addressPayload = await getFullAddressPayload(formData, locationData);
         if (addressPayload) {
-        
+
           const coords = await geocodeAddress(addressPayload);
           if (coords && coords.lat && coords.lng) {
             finalCoordinates = coords;
-           
+
           }
         }
       }
@@ -1024,7 +977,7 @@ const NewProperty = () => {
       // Nếu vẫn không có coordinates hợp lệ, sử dụng coordinates mặc định
       if (!finalCoordinates || !finalCoordinates.lat || !finalCoordinates.lng) {
         finalCoordinates = defaultCenter;
-       
+
         toast.warn("Không thể xác định vị trí chính xác, sử dụng vị trí mặc định. Bạn có thể chỉnh sửa sau.");
       }
 
@@ -1033,22 +986,19 @@ const NewProperty = () => {
         availableDate: formatDateForBackend(formData.availableDate),
         coordinates: finalCoordinates, // Đảm bảo coordinates được gửi ở root level
         postType: formData.postType, // Sử dụng formData.postType đã validated
-        // Gửi name để backend lưu trữ (vì schema yêu cầu name)
-        province: provinceData?.name || formData.province,
-        district: districtData?.name || formData.district,
-        ward: wardData?.name || formData.ward,
-        // Giữ location object để backward compatibility
+        // Đảm bảo gửi đúng format theo Property schema mới
+        province: formData.province, // Tên tỉnh
+        provinceId: formData.provinceId, // ID tỉnh
+        ward: formData.ward, // Tên phường/xã
+        // Giữ location object để backward compatibility (nếu cần)
         location: {
-          province: provinceData?.name || formData.province,
-          district: districtData?.name || formData.district,
-          ward: wardData?.name || formData.ward,
+          province: formData.province,
+          ward: formData.ward,
           detailAddress: formData.detailAddress,
           coordinates: finalCoordinates
         }
-      };
+      }; console.log('Data to submit:', dataToSubmit);
 
-      console.log('Data to submit:', dataToSubmit);
-    
 
       const result = await postAPI.createPost(dataToSubmit);
 
@@ -1076,7 +1026,7 @@ const NewProperty = () => {
             // Thêm thông tin số lượt còn lại từ server
             const selectedPostType = availablePostTypes.find(type => type.postType._id === formData.postType);
             const postTypeName = selectedPostType ? formatPostTypeName(selectedPostType.postType.displayName) : 'tin đăng';
-            
+
             if (result.data?.postType) {
               const remainingAfterPost = Math.max(0, result.data.postType.allowedLimit - result.data.postType.usedCount);
               rejectedMessage += `\n\nLoại tin: ${postTypeName} (còn ${remainingAfterPost} lượt)`;
@@ -1096,17 +1046,17 @@ const NewProperty = () => {
           }
         } else {
           console.log('No rejectedFiles in response or rejectedFiles is undefined/null');
-          
+
           // Hiển thị thông báo thành công với thông tin số lượt còn lại từ server
           const selectedPostType = availablePostTypes.find(type => type.postType._id === formData.postType);
           const postTypeName = selectedPostType ? formatPostTypeName(selectedPostType.postType.displayName) : 'tin đăng';
-          
+
           let successMessage = `Đăng tin thành công! "${formData.title}" - Trạng thái: Chờ admin duyệt`;
           if (result.data?.postType) {
             const remainingAfterPost = Math.max(0, result.data.postType.allowedLimit - result.data.postType.usedCount);
             successMessage += `\n\nLoại tin: ${postTypeName} (còn ${remainingAfterPost} lượt)`;
           }
-          
+
           toast.success(successMessage, {
             position: "top-right",
             autoClose: 5000,
@@ -1144,7 +1094,7 @@ const NewProperty = () => {
             timeRules: '',
             houseRules: [],
             province: '',
-            district: '',
+            provinceId: '',
             ward: '',
             detailAddress: '',
             coordinates: defaultCenter,
@@ -1168,27 +1118,25 @@ const NewProperty = () => {
         lastAddressRef.current = "";
         lastCoordsRef.current = null;
 
-        getUserLocation();
-
         // Cập nhật remainingCount dựa trên thông tin từ server (chính xác hơn)
         if (formData.postType && result.data?.postType) {
           const serverPostTypeInfo = result.data.postType;
           const newRemainingCount = Math.max(0, serverPostTypeInfo.allowedLimit - serverPostTypeInfo.usedCount);
-          
-          setAvailablePostTypes(prev => 
-            prev.map(item => 
-              item.postType._id === formData.postType 
+
+          setAvailablePostTypes(prev =>
+            prev.map(item =>
+              item.postType._id === formData.postType
                 ? {
-                    ...item,
-                    remainingCount: newRemainingCount,
-                    usedCount: serverPostTypeInfo.usedCount,
-                    totalLimit: serverPostTypeInfo.allowedLimit
-                  }
+                  ...item,
+                  remainingCount: newRemainingCount,
+                  usedCount: serverPostTypeInfo.usedCount,
+                  totalLimit: serverPostTypeInfo.allowedLimit
+                }
                 : item
             )
           );
-          
-          console.log('📈 Post type limit updated from server:', {
+
+          console.log('Post type limit updated from server:', {
             postTypeId: formData.postType,
             usedCount: serverPostTypeInfo.usedCount,
             allowedLimit: serverPostTypeInfo.allowedLimit,
@@ -1300,13 +1248,97 @@ const NewProperty = () => {
     }
   };
 
-  // Map click handler trực tiếp trong component
-  const MapClickHandler = () => {
-    useMapEvents({
-      click(e) {
-        const clickedCoords = { lat: e.latlng.lat, lng: e.latlng.lng };
-        console.log("Map clicked, new coordinates:", clickedCoords);
+  // Initialize TrackAsia map
+  const initializeMap = () => {
+    if (!mapContainerRef.current || mapRef.current) return;
 
+    const map = new trackasiagl.Map({
+      container: mapContainerRef.current,
+      style: `${TRACKASIA_BASE_URL}/styles/v2/streets.json?key=${TRACKASIA_API_KEY}`, // TrackAsia Maps API với style đẹp
+      center: [formData.coordinates.lng, formData.coordinates.lat], // TrackAsia uses [lng, lat]
+      zoom: 13,
+      attributionControl: true,
+      logoPosition: 'bottom-left'
+    });
+
+    mapRef.current = map;
+
+    // Add navigation controls (zoom, rotate)
+    map.addControl(new trackasiagl.NavigationControl(), 'top-right');
+
+    // Add geolocate control
+    map.addControl(
+      new trackasiagl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        trackUserLocation: true,
+        showUserHeading: true
+      }),
+      'top-right'
+    );
+
+    // TrackAsia Directions - Direct API integration
+    let origin = null;
+    let destination = null;
+    let startMarker = null;
+    let endMarker = null;    // Add marker
+    const marker = new trackasiagl.Marker({
+      color: '#FF0000', // Marker màu đỏ cho địa chỉ bất động sản
+      scale: 1.2
+    })
+      .setLngLat([formData.coordinates.lng, formData.coordinates.lat])
+      .addTo(map);
+
+    markerRef.current = marker;
+
+    // Handle map click events - với chức năng chọn điểm đi/đến
+    map.on('click', async (e) => {
+      const clickedCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+      const coords = [e.lngLat.lng, e.lngLat.lat];
+      console.log("Map clicked:", clickedCoords, "coords:", coords);
+
+      // Check if Shift key is pressed for route planning mode
+      if (e.originalEvent.shiftKey) {
+        // Route planning mode
+        if (!origin) {
+          origin = coords;
+          if (startMarker) startMarker.remove();
+          startMarker = new trackasiagl.Marker({ color: 'green' })
+            .setLngLat(coords)
+            .addTo(map);
+        } else if (!destination) {
+          destination = coords;
+          if (endMarker) endMarker.remove();
+          endMarker = new trackasiagl.Marker({ color: 'red' })
+            .setLngLat(coords)
+            .addTo(map);
+        
+        } else {
+          // Reset khi click lần 3
+          origin = coords;
+          destination = null;
+          if (startMarker) startMarker.remove();
+          if (endMarker) endMarker.remove();
+          if (map.getLayer('route-line')) {
+            map.removeLayer('route-line');
+            map.removeSource('route-line');
+          }
+          if (map.getLayer('route-line-casing')) {
+            map.removeLayer('route-line-casing');
+            map.removeSource('route-line-casing');
+          }
+          startMarker = new trackasiagl.Marker({ color: 'green' })
+            .setLngLat(coords)
+            .addTo(map);
+          toast.info('Đặt lại điểm xuất phát mới\n Shift + Click để chọn điểm đến', {
+            position: "top-center",
+            autoClose: 3000
+          });
+          console.log("Đặt lại điểm xuất phát mới");
+        }
+      } else {
+        // Normal mode - set property location
         // Đánh dấu là đã được set thủ công
         isManuallySetRef.current = true;
         setIsManuallySet(true);
@@ -1317,14 +1349,513 @@ const NewProperty = () => {
           coordinates: clickedCoords
         }));
 
+        // Update marker position
+        marker.setLngLat([clickedCoords.lng, clickedCoords.lat]);
+
         // Cập nhật lastCoordsRef để lưu tọa độ hợp lệ
         lastCoordsRef.current = clickedCoords;
 
         console.log("Coordinates manually set to:", clickedCoords);
-      },
+      }
     });
-    return null;
+
+   
   };
+
+  // Hàm lấy vị trí hiện tại và vẽ đường đi
+  const getDirectionsFromCurrentLocation = async () => {
+    if (!formData.coordinates?.lat || !formData.coordinates?.lng) {
+      toast.error('Vui lòng chọn địa chỉ bất động sản trước', {
+        position: "top-center",
+        autoClose: 3000
+      });
+      return;
+    }
+
+    setIsGettingCurrentLocation(true);
+    setIsCalculatingRoute(true);
+
+    try {
+      // Lấy vị trí hiện tại
+      const position = await new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject(new Error('Geolocation is not supported by this browser'));
+          return;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve(position),
+          (error) => reject(error),
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 60000 // Cache for 1 minute
+          }
+        );
+      });
+
+      const currentLocation = [position.coords.longitude, position.coords.latitude];
+      const destination = [formData.coordinates.lng, formData.coordinates.lat];
+
+      console.log('Current location:', currentLocation);
+      console.log('Destination:', destination);
+
+      toast.info('Đã lấy vị trí hiện tại, đang tính đường đi...', {
+        position: "top-center",
+        autoClose: 2000
+      });
+
+      // Vẽ route từ vị trí hiện tại đến địa chỉ
+      await drawRouteFromTo(currentLocation, destination);
+
+    } catch (error) {
+      console.error('Error getting current location:', error);
+      
+      let errorMessage = 'Không thể lấy vị trí hiện tại. ';
+      
+      switch (error.code) {
+        case error.PERMISSION_DENIED:
+          errorMessage += 'Bạn đã từ chối chia sẻ vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt.';
+          break;
+        case error.POSITION_UNAVAILABLE:
+          errorMessage += 'Thông tin vị trí không khả dụng.';
+          break;
+        case error.TIMEOUT:
+          errorMessage += 'Yêu cầu lấy vị trí đã hết thời gian chờ.';
+          break;
+        default:
+          errorMessage += error.message || 'Lỗi không xác định.';
+          break;
+      }
+
+      toast.error(errorMessage, {
+        position: "top-center",
+        autoClose: 5000
+      });
+    } finally {
+      setIsGettingCurrentLocation(false);
+      setIsCalculatingRoute(false);
+    }
+  };
+
+  // Hàm vẽ route giữa 2 điểm
+  const drawRouteFromTo = async (origin, destination) => {
+    console.log("drawRouteFromTo called with origin:", origin, "destination:", destination);
+    const map = mapRef.current;
+    console.log("Drawing route from", origin, "to", destination);
+    console.log("Map instance:", map);
+    if (!map) return;
+    
+
+    // TrackAsia format: latitude,longitude (khác với MapBox)
+    const originStr = `${origin[1]},${origin[0]}`; // lat,lng
+    console.log("Origin string (lat,lng):", originStr);
+    const destinationStr = `${destination[1]},${destination[0]}`; // lat,lng
+    
+    const url = `${TRACKASIA_BASE_URL}/route/v2/directions/json?new_admin=true&origin=${originStr}&destination=${destinationStr}&mode=motorcycling&key=${TRACKASIA_API_KEY}`;
+    console.log("TrackAsia Directions URL:", url);
+    console.log("Origin coordinates (lat,lng):", originStr);
+    console.log("Destination coordinates (lat,lng):", destinationStr);
+
+    try {
+      const response = await fetch(url);
+      console.log("Response status:", response.status);
+      console.log("Response headers:", Object.fromEntries(response.headers.entries()));
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Response Error:', errorText);
+        throw new Error(`TrackAsia Directions API error: ${response.status} - ${errorText}`);
+      }
+
+      const data = await response.json();
+      console.log("TrackAsia Directions Response:", data);
+
+      // Kiểm tra chi tiết response structure
+      if (!data) {
+        console.error('Empty response from API');
+        throw new Error('Empty response from TrackAsia API');
+      }
+
+      if (!data.routes) {
+        console.error('No routes property in response:', data);
+        throw new Error('Invalid response format: missing routes');
+      }
+
+      if (!Array.isArray(data.routes) || data.routes.length === 0) {
+        console.error('No routes found. Full response:', data);
+        
+        // Kiểm tra có error message từ API không
+        if (data.error || data.message) {
+          throw new Error(`TrackAsia API: ${data.error || data.message}`);
+        }
+        
+        throw new Error('Không tìm thấy đường đi giữa hai điểm này. Vui lòng thử lại với vị trí khác.');
+      }
+
+      if (data && data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        console.log("Route object:", route);
+        
+        // TrackAsia API trả về overview_polyline thay vì geometry
+        if (!route.overview_polyline || !route.overview_polyline.points) {
+          console.error('No overview_polyline in route:', route);
+          throw new Error('Route không có thông tin polyline');
+        }
+        
+        // Decode polyline thành coordinates
+        const encodedPolyline = route.overview_polyline.points;
+        console.log("Encoded polyline:", encodedPolyline);
+        
+        // Tạo geometry từ polyline đã decode
+        const decodedCoordinates = decodePolyline(encodedPolyline);
+        console.log("Decoded coordinates:", decodedCoordinates);
+        
+        const routeGeometry = {
+          type: 'LineString',
+          coordinates: decodedCoordinates
+        };        // Xóa route cũ nếu có (cả layer và source) - với error handling
+        try {
+          if (map.getLayer('route-line-casing')) {
+            map.removeLayer('route-line-casing');
+          }
+          if (map.getLayer('route-line')) {
+            map.removeLayer('route-line');
+          }
+          if (map.getSource('route-line')) {
+            map.removeSource('route-line');
+          }
+        } catch (removeError) {
+          console.warn('Error removing old route layers/source:', removeError);
+          // Continue execution even if removal fails
+        }
+
+        // Thêm route mới
+        map.addSource('route-line', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: routeGeometry
+          }
+        });
+
+        // Add route line casing (viền trắng)
+        map.addLayer({
+          id: 'route-line-casing',
+          type: 'line',
+          source: 'route-line',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#ffffff',
+            'line-width': 8,
+            'line-opacity': 0.8
+          }
+        });
+
+        // Add route line (màu chính)
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route-line',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#007cbf',
+            'line-width': 6,
+            'line-opacity': 1
+          }
+        });
+
+        // Xóa marker vị trí hiện tại cũ nếu có
+        if (currentLocationMarkerRef.current) {
+          currentLocationMarkerRef.current.remove();
+        }
+
+        // Thêm marker cho vị trí hiện tại (màu xanh)
+        const currentLocationMarker = new trackasiagl.Marker({ color: 'green' })
+          .setLngLat(origin)
+          .addTo(map);
+        
+        currentLocationMarkerRef.current = currentLocationMarker;
+
+        // Fit map để hiển thị toàn bộ route
+        const coordinates = routeGeometry.coordinates;
+        console.log("Route coordinates:", coordinates);
+        const bounds = coordinates.reduce(function (bounds, coord) {
+          return bounds.extend(coord);
+        }, new trackasiagl.LngLatBounds(coordinates[0], coordinates[0]));
+
+        map.fitBounds(bounds, {
+          padding: { top: 50, bottom: 50, left: 50, right: 50 }
+        });
+
+        // Lấy thông tin từ legs (giống Google Maps)
+        const leg = route.legs[0]; // Lấy leg đầu tiên
+        console.log("Route leg:", leg);
+        
+        const routeData = {
+          distance: leg.distance.text,
+          duration: leg.duration.text,
+          startAddress: leg.start_address,
+          endAddress: leg.end_address,
+          steps: leg.steps.map(step => ({
+            instruction: step.html_instructions || step.instructions,
+            distance: step.distance.text,
+            duration: step.duration.text,
+            maneuver: step.maneuver || 'straight'
+          })),
+          origin: origin,
+          destination: destination
+        };
+
+        setRouteInfo(routeData);
+
+        toast.success(`Đã vẽ đường đi thành công!\nKhoảng cách: ${routeData.distance}\nThời gian: ${routeData.duration}`, {
+          position: "top-center",
+          autoClose: 5000
+        });
+
+      } else {
+        throw new Error('No routes found');
+      }
+    } catch (error) {
+      console.error('Error drawing route:', error);
+      toast.error('Lỗi khi vẽ đường đi: ' + error.message, {
+        position: "top-center",
+        autoClose: 3000
+      });
+    }
+  };
+
+  // Clear route và reset markers  
+  const clearRoute = () => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    // Remove route layers first, then source - with error handling
+    try {
+      if (map.getLayer('route-line-casing')) {
+        map.removeLayer('route-line-casing');
+      }
+      if (map.getLayer('route-line')) {
+        map.removeLayer('route-line');
+      }
+      if (map.getSource('route-line')) {
+        map.removeSource('route-line');
+      }
+    } catch (removeError) {
+      console.warn('Error removing route layers/source in clearRoute:', removeError);
+      // Continue execution even if removal fails
+    }
+
+    // Remove current location marker
+    if (currentLocationMarkerRef.current) {
+      currentLocationMarkerRef.current.remove();
+      currentLocationMarkerRef.current = null;
+    }
+
+    // Reset route info
+    setRouteInfo(null);
+
+    toast.info('Đã xóa đường đi', {
+      position: "top-center",
+      autoClose: 2000
+    });
+  };
+
+  // Function to get maneuver icon
+  const getManeuverIcon = (maneuver, instruction = '') => {
+    const instructionLower = instruction.toLowerCase();
+    
+    // Kiểm tra từ khóa trong instruction trước
+    if (instructionLower.includes('rẽ trái') || instructionLower.includes('quay trái') || instructionLower.includes('left')) {
+      return 'fa-arrow-left';
+    }
+    if (instructionLower.includes('rẽ phải') || instructionLower.includes('quay phải') || instructionLower.includes('right')) {
+      return 'fa-arrow-right';
+    }
+    if (instructionLower.includes('đi thẳng') || instructionLower.includes('tiếp tục') || instructionLower.includes('straight') || instructionLower.includes('continue')) {
+      return 'fa-arrow-up';
+    }
+    if (instructionLower.includes('quay đầu') || instructionLower.includes('u-turn') || instructionLower.includes('uturn')) {
+      return 'fa-undo';
+    }
+    if (instructionLower.includes('vòng xoay') || instructionLower.includes('roundabout')) {
+      return 'fa-refresh';
+    }
+    if (instructionLower.includes('hợp nhất') || instructionLower.includes('merge')) {
+      return 'fa-code-fork';
+    }
+    if (instructionLower.includes('đích') || instructionLower.includes('destination') || instructionLower.includes('arrive')) {
+      return 'fa-flag-checkered';
+    }
+    
+    // Fallback to maneuver type
+    const iconMap = {
+      'turn-left': 'fa-arrow-left',
+      'turn-right': 'fa-arrow-right',
+      'turn-slight-left': 'fa-long-arrow-left',
+      'turn-slight-right': 'fa-long-arrow-right',
+      'turn-sharp-left': 'fa-arrow-left',
+      'turn-sharp-right': 'fa-arrow-right',
+      'uturn-left': 'fa-undo',
+      'uturn-right': 'fa-undo',
+      'continue': 'fa-arrow-up',
+      'straight': 'fa-arrow-up',
+      'merge': 'fa-code-fork',
+      'on-ramp': 'fa-long-arrow-right',
+      'off-ramp': 'fa-long-arrow-left',
+      'fork-left': 'fa-code-fork',
+      'fork-right': 'fa-code-fork',
+      'roundabout-left': 'fa-refresh',
+      'roundabout-right': 'fa-refresh'
+    };
+    
+    return iconMap[maneuver] || 'fa-arrow-up';
+  };
+
+  // Function to decode Google polyline
+  const decodePolyline = (encoded) => {
+    const coordinates = [];
+    let index = 0, len = encoded.length;
+    let lat = 0, lng = 0;
+
+    while (index < len) {
+      let b, shift = 0, result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      
+      const deltaLat = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lat += deltaLat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+      
+      const deltaLng = ((result & 1) ? ~(result >> 1) : (result >> 1));
+      lng += deltaLng;
+
+      coordinates.push([lng / 1e5, lat / 1e5]); // [longitude, latitude] for MapBox format
+    }
+    
+    return coordinates;
+  };
+
+  // Get current location
+  const getCurrentLocation = () => {
+    setGettingLocation(true);
+
+    if (!navigator.geolocation) {
+      toast.error('Trình duyệt không hỗ trợ định vị', {
+        position: "top-center",
+        autoClose: 3000
+      });
+      setGettingLocation(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const newCoords = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        };
+
+        // Đánh dấu là đã được set thủ công
+        isManuallySetRef.current = true;
+        setIsManuallySet(true);
+        manualCoordsRef.current = newCoords;
+
+        setFormData(prev => ({
+          ...prev,
+          coordinates: newCoords
+        }));
+
+        setGettingLocation(false);
+
+        toast.success('Đã cập nhật vị trí hiện tại', {
+          position: "top-center",
+          autoClose: 3000
+        });
+      },
+      (error) => {
+        let errorMessage = 'Không thể lấy vị trí hiện tại. ';
+        
+        switch (error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage += 'Bạn đã từ chối chia sẻ vị trí.';
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage += 'Thông tin vị trí không khả dụng.';
+            break;
+          case error.TIMEOUT:
+            errorMessage += 'Yêu cầu lấy vị trí đã hết thời gian chờ.';
+            break;
+          default:
+            errorMessage += 'Lỗi không xác định.';
+            break;
+        }
+
+        toast.error(errorMessage, {
+          position: "top-center",
+          autoClose: 5000
+        });
+        setGettingLocation(false);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000 // Cache for 1 minute
+      }
+    );
+  };
+
+  // Update map center and marker when coordinates change
+  const updateMapLocation = (newCoords) => {
+    if (mapRef.current && markerRef.current) {
+      const map = mapRef.current;
+      const marker = markerRef.current;
+
+      // Smooth animation to new location
+      map.flyTo({
+        center: [newCoords.lng, newCoords.lat],
+        zoom: 15,
+        duration: 1000 // Animation duration in milliseconds
+      });
+
+      marker.setLngLat([newCoords.lng, newCoords.lat]);
+
+      // Update pulse animation if exists
+      if (map.getSource('marker-pulse')) {
+        map.getSource('marker-pulse').setData({
+          type: 'FeatureCollection',
+          features: [{
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [newCoords.lng, newCoords.lat]
+            }
+          }]
+        });
+      }
+    }
+  };
+
+
+
 
 
   return (
@@ -1364,7 +1895,7 @@ const NewProperty = () => {
                 <div className="form-section-new-property">
                   <h4>
                     <i className="fa fa-package"></i>
-                    Gói tin 
+                    Gói tin
                   </h4>
 
                   {loadingPackage ? (
@@ -1433,7 +1964,7 @@ const NewProperty = () => {
                               onChange={(e) => {
                                 const selectedId = e.target.value;
                                 handlePostTypeSelect(selectedId);
-                                
+
                                 // Clear error khi chọn
                                 if (errors.postType) {
                                   setErrors(prev => ({ ...prev, postType: '' }));
@@ -1443,21 +1974,22 @@ const NewProperty = () => {
                               style={{
                                 color: (() => {
                                   if (!formData.postType) return '#999'; // Màu placeholder
-                                  
+
                                   const selectedItem = availablePostTypes.find(item => item.postType._id === formData.postType);
                                   if (selectedItem) {
-                                    const postTypeInfo = getPostTypeInfo(selectedItem.postType.displayName);
-                                    return postTypeInfo.color;
+                                    // Sử dụng trực tiếp thuộc tính color từ API
+                                    return selectedItem.postType.color || '#333';
                                   }
                                   return '#333'; // Màu mặc định
                                 })(),
                                 fontWeight: (() => {
                                   if (!formData.postType) return '400';
-                                  
+
                                   const selectedItem = availablePostTypes.find(item => item.postType._id === formData.postType);
                                   if (selectedItem) {
-                                    const postTypeInfo = getPostTypeInfo(selectedItem.postType.displayName);
-                                    return postTypeInfo.stars > 0 ? '600' : '400';
+                                    // Sử dụng priority để tính font weight
+                                    const priority = selectedItem.postType.priority || 10;
+                                    return priority <= 6 ? '600' : '400';
                                   }
                                   return '400';
                                 })(),
@@ -1467,10 +1999,10 @@ const NewProperty = () => {
                               <option value="">Chọn loại tin đăng</option>
                               {availablePostTypes.map((item, index) => {
                                 const isDisabled = item.remainingCount <= 0;
-                                const postTypeInfo = getPostTypeInfo(item.postType.displayName);
-                                const starsText = postTypeInfo.stars > 0
-                                  ? ' ' + '★'.repeat(postTypeInfo.stars)
-                                  : '';
+                                // Tính số sao dựa trên priority trực tiếp từ API
+                                const priority = item.postType.priority || 10;
+                                const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+                                const starsText = stars > 0 ? ' ' + '★'.repeat(stars) : '';
 
                                 return (
                                   <option
@@ -1478,16 +2010,14 @@ const NewProperty = () => {
                                     value={item.postType._id}
                                     disabled={isDisabled}
                                     style={{
-                                      color: isDisabled ? '#ccc' : postTypeInfo.color,
-                                      fontWeight: postTypeInfo.stars > 0 ? '600' : '400'
+                                      color: isDisabled ? '#ccc' : (item.postType.color || '#333'),
+                                      fontWeight: stars > 0 ? '600' : '400'
                                     }}
                                   >
-                                    {formatPostTypeName(item.postType.displayName)}{' '}
-                                    {starsText} {' '}
-                                    ({item.remainingCount} còn lại)
+                                    {item.postType.displayName}{starsText}
+                                    {' '}({item.remainingCount} còn lại)
                                     {isDisabled ? ' - Hết lượt' : ''}
                                   </option>
-
                                 );
                               })}
                             </select>
@@ -1797,7 +2327,7 @@ const NewProperty = () => {
                       <label>Tỉnh/Thành phố *</label>
                       <select
                         name="province"
-                        value={formData.province}
+                        value={formData.provinceId}
                         onChange={handleInputChange}
                         className={errors.province ? 'error' : ''}
                         disabled={locationData.loadingProvinces}
@@ -1815,51 +2345,54 @@ const NewProperty = () => {
                     </div>
 
                     <div className="form-group">
-                      <label>Quận/Huyện *</label>
-                      <select
-                        name="district"
-                        value={formData.district}
-                        onChange={handleInputChange}
-                        className={errors.district ? 'error' : ''}
-                        disabled={locationData.loadingDistricts || !formData.province}
-                      >
-                        <option value="">
-                          {locationData.loadingDistricts ? 'Đang tải...' :
-                            !formData.province ? 'Chọn tỉnh trước' : 'Chọn quận/huyện'}
-                        </option>
-                        {locationData.districts.map(district => (
-                          <option key={district.code} value={district.code}>
-                            {district.name}
-                          </option>
-                        ))}
-                      </select>
-                      {errors.district && <span className="error-text">{errors.district}</span>}
-                    </div>
-                  </div>
-
-                  <div className="form-row">
-                    <div className="form-group">
                       <label>Phường/Xã *</label>
                       <select
                         name="ward"
-                        value={formData.ward}
+                        value={locationData.wards.find(w => w.name === formData.ward)?.code || ''}
                         onChange={handleInputChange}
                         className={errors.ward ? 'error' : ''}
-                        disabled={locationData.loadingWards || !formData.district}
+                        disabled={locationData.loadingWards || !formData.provinceId}
                       >
                         <option value="">
                           {locationData.loadingWards ? 'Đang tải...' :
-                            !formData.district ? 'Chọn quận trước' : 'Chọn phường/xã'}
+                            !formData.provinceId ? 'Chọn tỉnh trước' : 'Chọn phường/xã'}
                         </option>
                         {locationData.wards.map(ward => (
-                          <option key={ward.code} value={ward.code}>
+                          <option
+                            key={ward.code}
+                            value={ward.code}
+                            title={ward.mergedFrom && ward.mergedFrom.length > 1
+                              ? `Trước sáp nhập: ${ward.mergedFrom.join(', ')}`
+                              : ''
+                            }
+                            className={ward.mergedFrom && ward.mergedFrom.length > 1 ? 'ward-option-merged' : ''}
+                          >
                             {ward.name}
+                            {ward.mergedFrom && ward.mergedFrom.length > 1 && ' 🔄'}
                           </option>
                         ))}
                       </select>
                       {errors.ward && <span className="error-text">{errors.ward}</span>}
                     </div>
+                  </div>
 
+                  {/* Hiển thị thông tin merged cho ward đã chọn */}
+                  {formData.ward && (() => {
+                    const selectedWard = locationData.wards.find(w => w.name === formData.ward);
+                    if (selectedWard && selectedWard.mergedFrom && selectedWard.mergedFrom.length > 1) {
+                      return (
+                        <div className="ward-merged-info" style={{ marginBottom: '15px' }}>
+                          <small className="merged-from-text">
+                            <i className="fa fa-info-circle"></i>
+                            <strong>Từ:</strong> {selectedWard.mergedFrom.join(', ')}
+                          </small>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
+
+                  <div className="form-row full-width">
                     <div className="form-group">
                       <label>Địa chỉ chi tiết *</label>
                       <input
@@ -1896,34 +2429,119 @@ const NewProperty = () => {
                       </div>
                       <p className="address-hint">💡 Nhấp vào bản đồ để chọn vị trí chính xác</p>
 
-                      <div>
-                        <MapContainer
-                          center={[formData.coordinates.lat, formData.coordinates.lng]}
-                          zoom={13}
-                          style={{ height: '300px', width: '100%' }}
-                        >
-                          <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                          <Marker position={[formData.coordinates.lat, formData.coordinates.lng]} />
-                          <MapClickHandler />
-                        </MapContainer>
+                      {routeInfo && (
+                        <div className="route-info-panel">
+                          <h5><i className="fa fa-route"></i> Thông tin đường đi</h5>
+                          <div className="route-details">
+                            <div className="route-detail-item">
+                              <i className="fa fa-road"></i>
+                              <span>Khoảng cách: <strong>{routeInfo.distance}</strong></span>
+                            </div>
+                            <div className="route-detail-item">
+                              <i className="fa fa-clock"></i>
+                              <span>Thời gian: <strong>{routeInfo.duration}</strong></span>
+                            </div>
+                            <div className="route-detail-item">
+                              <i className="fa fa-map"></i>
+                              <span>Từ: <strong>{routeInfo.startAddress}</strong></span>
+                            </div>
+                            <div className="route-detail-item">
+                              <i className="fa fa-map-marker"></i>
+                              <span>Đến: <strong>{routeInfo.endAddress}</strong></span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="map-container-wrapper" style={{ position: 'relative', display: 'flex' }}>
+                        <div
+                          ref={mapContainerRef}
+                          className="trackasia-map-container"
+                          style={{
+                            height: '300px',
+                            width: '100%'
+                          }}
+                        />
+
+                        {/* Directions Panel - Floating trên map góc top-left */}
+                        {routeInfo && routeInfo.steps && (
+                          <div className="directions-panel-overlay">
+                            <div className="directions-panel-header">
+                              <h5>
+                                <i className="fa fa-route"></i>
+                                Chỉ đường ({routeInfo.distance}, {routeInfo.duration})
+                              </h5>
+                              <button 
+                                className="directions-close-btn"
+                                onClick={clearRoute}
+                                type="button"
+                              >
+                                <i className="fa fa-times"></i>
+                              </button>
+                            </div>
+                            <div className="directions-steps">
+                              {routeInfo.steps.map((step, index) => (
+                                <div key={index} className="direction-step">
+                                  <div className="step-icon">
+                                    <i className={`fa ${getManeuverIcon(step.maneuver, step.instruction)}`}></i>
+                                  </div>
+                                  <div className="step-content">
+                                    <div 
+                                      className="step-instruction"
+                                      dangerouslySetInnerHTML={{ 
+                                        __html: step.instruction || 'Tiếp tục đi thẳng'
+                                      }}
+                                    />
+                                    <div className="step-distance">{step.distance}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                    
                       </div>
 
                       <div className="location-buttons">
-                        <button type="button" className="btn btn-secondary btn-sm-location" onClick={getUserLocation} disabled={gettingLocation}>
-                          <i className={`fa ${gettingLocation ? 'fa-spinner fa-spin' : 'fa-location-arrow'}`}></i>
-                          {gettingLocation ? 'Đang định vị...' : 'Lấy vị trí hiện tại'}
+                        <button
+                          className="btn location-btn"
+                          onClick={getCurrentLocation}
+                          disabled={gettingLocation}
+                          type="button"
+                        >
+                          <i className="fa fa-location-arrow"></i>
+                          {gettingLocation ? 'Đang lấy...' : 'Vị trí hiện tại'}
                         </button>
-                        <button type="button" className="btn btn-secondary btn-sm" onClick={() => {
-                          // Reset về tọa độ mặc định và cho phép geocoding tự động
-                          isManuallySetRef.current = false;
-                          setIsManuallySet(false);
-                          manualCoordsRef.current = null;
-                          setFormData(prev => ({ ...prev, coordinates: defaultCenter }));
-                          console.log("Reset to auto geocoding mode");
-                        }}>
-                          <i className="fa fa-refresh"></i>
-                          Reset & Auto Geo
-                        </button>
+                        
+                        {/* <button
+                          className="btn location-btn directions-btn"
+                          onClick={getDirectionsFromCurrentLocation}
+                          disabled={isGettingCurrentLocation || isCalculatingRoute || !formData.coordinates?.lat}
+                          type="button"
+                        >
+                          {isGettingCurrentLocation || isCalculatingRoute ? (
+                            <>
+                              <i className="fa fa-spinner fa-spin"></i>
+                              {isGettingCurrentLocation ? 'Đang lấy vị trí...' : 'Đang tính đường...'}
+                            </>
+                          ) : (
+                            <>
+                              <i className="fa fa-route"></i>
+                              Chỉ đường đến đây
+                            </>
+                          )}
+                        </button> */}
+
+                        {routeInfo && (
+                          <button
+                            className="btn location-btn clear-btn"
+                            onClick={clearRoute}
+                            type="button"
+                          >
+                            <i className="fa fa-times"></i>
+                            Xóa đường đi
+                          </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -1942,14 +2560,25 @@ const NewProperty = () => {
                       accept="image/*"
                       multiple
                       style={{ display: 'none' }}
+                      disabled={isProcessingFiles}
                     />
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => fileInputRef.current.click()}
+                      disabled={isProcessingFiles}
                     >
-                      <i className="fa fa-upload"></i>
-                      Chọn hình ảnh
+                      {isProcessingFiles ? (
+                        <>
+                          <i className="fa fa-spinner fa-spin"></i>
+                          Đang xử lý ảnh...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa fa-upload"></i>
+                          Chọn hình ảnh
+                        </>
+                      )}
                     </button>
                     {/* {errors.images && <span className="error-text">{errors.images}</span>} */}
 
@@ -1988,6 +2617,13 @@ const NewProperty = () => {
                                     ...prev,
                                     images: prev.images.filter((_, i) => i !== index)
                                   }));
+                                  
+                                  // Xóa validation info tương ứng
+                                  setFileValidation(prev => ({
+                                    ...prev,
+                                    images: prev.images.filter((_, i) => i !== index)
+                                  }));
+                                  
                                   // Xóa khỏi danh sách rejected nếu có
                                   if (isRejected) {
                                     setRejectedFiles(prev => {
@@ -2021,6 +2657,35 @@ const NewProperty = () => {
                               >
                                 <i className="fa fa-times"></i>
                               </button>
+                              
+                              {/* File validation info */}
+                              {fileValidation.images[index] && (
+                                <div className={`file-validation-info ${
+                                  fileValidation.images[index].validation.errors.length > 0 ? 'has-errors' : 
+                                  fileValidation.images[index].validation.warnings.length > 0 ? 'has-warnings' : ''
+                                }`}>
+                                  <div className="file-validation-detail">
+                                    <span>{img.name}</span>
+                                    <span className="file-size-info">
+                                      {img.originalSize && img.originalSize !== img.file.size && (
+                                        <span className="file-size-original">{formatFileSize(img.originalSize)}</span>
+                                      )}
+                                      <span className={img.compressed ? 'file-size-compressed' : ''}>
+                                        {formatFileSize(img.file.size)}
+                                      </span>
+                                      {img.compressed && (
+                                        <span className="compression-badge">Đã nén</span>
+                                      )}
+                                    </span>
+                                  </div>
+                                  {fileValidation.images[index].validation.warnings.map((warning, wIndex) => (
+                                    <div key={wIndex} className="validation-message">
+                                      <i className="fa fa-exclamation-triangle"></i>
+                                      {warning}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           );
                         })}
@@ -2102,6 +2767,13 @@ const NewProperty = () => {
                               ...prev,
                               video: null
                             }));
+                            
+                            // Xóa validation info
+                            setFileValidation(prev => ({
+                              ...prev,
+                              videos: []
+                            }));
+                            
                             // Xóa khỏi danh sách rejected nếu có
                             if (isRejected) {
                               setRejectedFiles(prev => {
@@ -2133,8 +2805,29 @@ const NewProperty = () => {
                             }
                           }}
                         >
-                           <i className="fa fa-times"></i>
+                          <i className="fa fa-times"></i>
                         </button>
+                        
+                        {/* Video validation info */}
+                        {fileValidation.videos.length > 0 && fileValidation.videos[0] && (
+                          <div className={`file-validation-info ${
+                            fileValidation.videos[0].validation.errors.length > 0 ? 'has-errors' : 
+                            fileValidation.videos[0].validation.warnings.length > 0 ? 'has-warnings' : ''
+                          }`}>
+                            <div className="file-validation-detail">
+                              <span>{formData.video.name}</span>
+                              <span className="file-size-info">
+                                <span>{formData.video.formattedSize || formatFileSize(formData.video.size)}</span>
+                              </span>
+                            </div>
+                            {fileValidation.videos[0].validation.warnings.map((warning, wIndex) => (
+                              <div key={wIndex} className="validation-message">
+                                <i className="fa fa-exclamation-triangle"></i>
+                                {warning}
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

@@ -1186,5 +1186,158 @@
       "exporting": "Exporting...",
       "exportCount": "Export {{count}} invoices"
     }
+  },
+  "propertiesListing": {
+    "title": "Properties Listing",
+    "searchTitle": "Search Properties",
+    "searchPlaceholder": "Search by title, description, street, address...",
+    "heroSearch": {
+      "province": "Province/City",
+      "ward": "Ward",
+      "category": "Property Type",
+      "price": "Price Range",
+      "area": "Area",
+      "amenities": "Amenities",
+      "selectProvince": "Select province/city",
+      "selectWard": "Select ward",
+      "selectWardFirst": "Select province/city first",
+      "loading": "Loading...",
+      "search": "Search",
+      "reset": "Reset",
+      "searching": "Searching...",
+      "selectAmenities": "Select amenities",
+      "selectedAmenities": "Selected {{count}} amenities"
+    },
+    "categories": {
+      "all": "All property types",
+      "phong_tro": "Room for rent",
+      "can_ho": "Apartment",
+      "nha_nguyen_can": "Whole house",
+      "chung_cu_mini": "Mini apartment",
+      "homestay": "Homestay"
+    },
+    "priceRanges": {
+      "choose": "Choose price range",
+      "under1M": "Under 1 million",
+      "1to2M": "1 - 2 million",
+      "2to3M": "2 - 3 million",
+      "3to5M": "3 - 5 million",
+      "5to7M": "5 - 7 million",
+      "7to10M": "7 - 10 million",
+      "over10M": "Over 10 million"
+    },
+    "areaRanges": {
+      "choose": "Choose area",
+      "under20": "Under 20m²",
+      "20to30": "20 - 30m²",
+      "30to50": "30 - 50m²",
+      "50to70": "50 - 70m²",
+      "70to100": "70 - 100m²",
+      "over100": "Over 100m²"
+    },
+    "results": {
+      "found": "Found {{count}} properties",
+      "searching": "Searching...",
+      "sortBy": "Sort by:",
+      "newest": "Newest",
+      "oldest": "Oldest",
+      "priceAsc": "Lowest price",
+      "priceDesc": "Highest price",
+      "areaDesc": "Largest area",
+      "areaAsc": "Smallest area",
+      "mostViewed": "Most viewed"
+    },
+    "filters": {
+      "activeFilters": "Filtering by:",
+      "clearAll": "Clear all",
+      "search": "Keyword: \"{{keyword}}\"",
+      "location": "Area: {{location}}",
+      "category": "Type: {{category}}",
+      "priceRange": "Price: {{range}}",
+      "areaRange": "Area: {{range}}",
+      "amenities": "Amenities: {{count}} items",
+      "from": "From",
+      "to": "To"
+    },
+    "loading": {
+      "searching": "Searching properties...",
+      "loadingMore": "Loading more..."
+    },
+    "empty": {
+      "noResults": "No properties found",
+      "adjustFilters": "Try adjusting your filters or search keywords"
+    },
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{page}}"
+    },
+    "sidebar": {
+      "priceFilter": "View by price range",
+      "areaFilter": "View by area",
+      "recentPosts": "Recent posts",
+      "blogPosts": "Latest articles",
+      "recommended": "You might be interested",
+      "support": {
+        "title": "24/7 Support for Property Owners",
+        "description": "If you need help posting properties, please contact the phone number below:"
+      },
+      "blog": {
+        "tip1": "5 Tips to find affordable rentals",
+        "tip2": "Safe rental guide",
+        "tip3": "Tenant rights and responsibilities",
+        "daysAgo": "{{days}} days ago",
+        "weekAgo": "1 week ago",
+        "weeksAgo": "{{weeks}} weeks ago"
+      }
+    },
+    "amenitiesModal": {
+      "title": "Select Amenities",
+      "cancel": "Cancel",
+      "apply": "Apply ({{count}})",
+      "close": "Close"
+    },
+    "property": {
+      "month": "month",
+      "people": "people",
+      "viewDetails": "View details"
+    }
+  },
+  "footer": {
+    "help": {
+      "title": "Do you need any help?",
+      "description": "Get updates, attractive offers, guides, and discounts sent to your email monthly",
+      "emailPlaceholder": "Enter your email...",
+      "subscribeButton": "Subscribe"
+    },
+    "sections": {
+      "0": {
+        "title": "About smarttro.com",
+        "items": {
+          "0": "About us",
+          "1": "Operating regulations",
+          "2": "Terms of use",
+          "3": "Privacy policy",
+          "4": "Contact"
+        }
+      },
+      "1": {
+        "title": "For customers",
+        "items": {
+          "0": "Frequently asked questions",
+          "1": "Posting guide",
+          "2": "Service price list",
+          "3": "Posting regulations",
+          "4": "Complaint resolution"
+        }
+      },
+      "2": {
+        "title": "Payment methods",
+        "items": {}
+      }
+    },
+    "legal": {
+      "copyright": "© 2025 SMART TRO. Designed By DUYHUY."
+    }
   }
 }

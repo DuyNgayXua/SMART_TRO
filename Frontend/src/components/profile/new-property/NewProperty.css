@@ -378,6 +378,37 @@
   flex-wrap: wrap;
 }
 
+.location-btn {
+  padding: 8px 16px;
+  border: 1px solid #1a73e8;
+  background: white;
+  color: #1a73e8;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.location-btn:hover {
+  background: #1a73e8;
+  color: white;
+}
+
+.location-btn:disabled {
+  background: #f1f3f4;
+  color: #9aa0a6;
+  border-color: #dadce0;
+  cursor: not-allowed;
+}
+
+.location-btn i {
+  font-size: 14px;
+}
+
 .geocoding-status {
   color: #3b82f6;
   font-style: italic;
@@ -917,4 +948,126 @@ input[name="availableDate"]:focus {
 
 .package-expired .btn-upgrade i {
   margin-right: 8px;
+}
+
+/* Ward tooltip styles */
+.form-group select option[title]:hover {
+  background-color: #f8f9fa;
+}
+
+/* Custom tooltip for ward merged from info */
+.ward-tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.ward-tooltip .tooltiptext {
+  visibility: hidden;
+  width: 300px;
+  background-color: #333;
+  color: white;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 1001;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -150px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.ward-tooltip .tooltiptext::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #333 transparent transparent transparent;
+}
+
+.ward-tooltip:hover .tooltiptext {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Enhanced select option styling */
+.form-group select {
+  position: relative;
+}
+
+.form-group select option {
+  padding: 8px 12px;
+  background-color: white;
+  color: #333;
+}
+
+.form-group select option:hover {
+  background-color: #e3f2fd !important;
+}
+
+/* Ward option with merged info indicator */
+.ward-option-merged {
+  position: relative;
+}
+
+.ward-option-merged::after {
+  content: " 🔄";
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+/* Ward merged info display */
+.ward-merged-info {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: #e3f2fd;
+  border: 1px solid #bbdefb;
+  border-radius: 6px;
+  animation: fadeIn 0.3s ease-in;
+}
+
+.merged-from-text {
+  color: #1565c0;
+  font-size: 13px;
+  line-height: 1.4;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.merged-from-text i {
+  color: #1976d2;
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.merged-from-text strong {
+  font-weight: 600;
+  margin-right: 4px;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-row.full-width {
+  display: block; /* bỏ flex chia 2 cột */
+}
+
+.form-row.full-width .form-group {
+  width: 100%;
 }

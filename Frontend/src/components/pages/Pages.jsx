@@ -123,7 +123,6 @@ const Pages = () => {
               <Footer />
             </>
           } />
-     
           <Route path='/login' element={
             <>
               <Header />

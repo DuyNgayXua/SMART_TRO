@@ -297,11 +297,7 @@
    text-transform: uppercase;
  }
 
- .package-price {
-   font-size: 0.9rem;
-   font-weight: 600;
-   color: #28a745;
- }
+
 
  /* Selected Package Card Styles */
  .selected-package-card {
@@ -412,22 +408,30 @@
     
 }
 
- .package-price {
-   display: flex;
-   align-items: center;
-   gap: 5px;
- }
+ .package-price-properties-package {
+  display: flex;
+  align-items: baseline; /* giúp đơn vị nhỏ hơn không bị lệch */
+  justify-content: center; /* căn giữa trong card */
+  flex-wrap: wrap; /* nếu quá dài, tự xuống dòng nhưng vẫn cân đối */
+  gap: 4px;
+  font-weight: 600;
+  font-size: 1.2rem;
+  margin-top: 8px;
+  text-align: center;
+}
 
- .price-amount-properties-package {
-   font-size: 1.3rem;
-   font-weight: 800;
-   color: #ffffff;
- }
+.price-amount-properties-package {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  white-space: nowrap; /* tránh tách số và đơn vị VNĐ */
+}
 
- .price-period {
-
-   font-weight: 600;
- }
+.price-period {
+  font-size: 14px;
+  color: white;
+  flex-shrink: 0; /* không bị ép nhỏ */
+}
 
  .package-card-body h5 {
    font-size: 1rem;
@@ -1614,9 +1618,13 @@
     font-weight: 700;
 }
 .total-price-properties-package{
-    font-size: 20px !important;
+    font-size: 18px !important;
     font-weight: 800 !important;
     color: #00911f !important;
+}
+.payment-icon{
+  width: 40px;
+  height: 40px;
 }
 
 /* Responsive cho nút preview */

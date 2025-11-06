@@ -1,27 +1,52 @@
 import { Property } from '../../../schemas/index.js';
+import Amenity from '../../../schemas/Amenity.js';
 import mongoose from 'mongoose';
 import axios from 'axios';
 
-// Helper function to convert area range to MongoDB filter
-const getAreaFilter = (areaRange) => {
-  switch (areaRange) {
-    case '10-20':
-      return { $gte: 10, $lt: 20 };
-    case '20-30':
-      return { $gte: 20, $lt: 30 };
-    case '30-50':
-      return { $gte: 30, $lt: 50 };
-    case '50+':
-      return { $gte: 50 };
-    default:
-      return null;
+
+// Helper function to resolve amenity name to ObjectId
+const getAmenityObjectId = async (amenityName) => {
+  try {
+    const amenity = await Amenity.findOne({ 
+      $or: [
+        { name: { $regex: new RegExp('^' + amenityName + '$', 'i') } }, // case insensitive exact match
+        { key: { $regex: new RegExp('^' + amenityName + '$', 'i') } }
+      ]
+    });
+    return amenity ? amenity._id : null;
+  } catch (error) {
+    console.error('Error finding amenity:', error);
+    return null;
+  }
+};
+
+// Helper function to resolve multiple amenity names to ObjectIds
+const getAmenityObjectIds = async (amenityNames) => {
+  try {
+    if (!Array.isArray(amenityNames)) {
+      amenityNames = [amenityNames];
+    }
+    
+    const amenityIds = [];
+    for (const name of amenityNames) {
+      const amenityId = await getAmenityObjectId(name);
+      if (amenityId) {
+        amenityIds.push(amenityId);
+      }
+    }
+    
+    return amenityIds;
+  } catch (error) {
+    console.error('Error finding amenities:', error);
+    return [];
   }
 };
 
 // Xu hướng giá thuê theo thời gian
 export const getPriceTrendOverTime = async (req, res) => {
   try {
-    const { category, province, district, areaRange, months = 6 } = req.query;
+    const { category, province, ward, areaRange, amenities, months } = req.query;
+    console.log('getPriceTrendOverTime received params:', { category, province, ward, areaRange, amenities , months});
 
     const currentDate = new Date();
     const currentMonth = currentDate.getMonth();
@@ -33,9 +58,23 @@ export const getPriceTrendOverTime = async (req, res) => {
       rentPrice: { $exists: true, $gt: 0 }
     };
 
-    if (category && category !== 'all') baseFilter.category = category;
-    if (province && province !== 'all') baseFilter.province = province;
-    if (district && district !== 'all') baseFilter.district = district;
+    // Check for non-empty values instead of just truthy check
+    if (category && category !== 'all' && category.trim() !== '') baseFilter.category = category;
+    if (province && province !== 'all' && province.trim() !== '') baseFilter.province = province;
+    if (ward && ward !== 'all' && ward.trim() !== '') baseFilter.ward = ward;
+    
+    // Handle amenities filtering - convert names to ObjectIds
+    if (amenities) {
+      let amenityList = Array.isArray(amenities) ? amenities : [amenities];
+      amenityList = amenityList.filter(a => a && a.trim() !== '');
+      
+      if (amenityList.length > 0) {
+        const amenityObjectIds = await getAmenityObjectIds(amenityList);
+        if (amenityObjectIds.length > 0) {
+          baseFilter.amenities = { $in: amenityObjectIds };
+        }
+      }
+    }
 
     const getAreaFilter = (range) => {
       switch (range) {
@@ -96,6 +135,55 @@ export const getPriceTrendOverTime = async (req, res) => {
 export const getNewsSentiment = async (req, res) => {
   try {
     const { keywords } = req.query;
+    
+    // Danh sách từ khóa được phép
+    const allowedKeywords = [
+      // Chủ đề chính
+      'trọ', 'thuê trọ', 'phòng trọ', 'tìm trọ', 'tìm phòng', 'thuê phòng',
+      'nhà trọ', 'phòng cho thuê', 'căn hộ', 'chung cư mini', 'homestay', 
+      'ký túc xá', 'nhà nguyên căn', 'share phòng', 'ghép trọ',
+
+      // Giá cả, thị trường
+      'giá thuê', 'giá phòng', 'giá thị trường', 'so sánh giá', 'bảng giá', 
+      'giá trung bình', 'mức giá', 'giá điện', 'giá nước', 'chi phí thuê',
+
+      // Vị trí & khu vực
+      'gần trường', 'gần trung tâm', 'gần chợ', 'quận', 'huyện', 'phường',
+      'địa chỉ', 'vị trí', 'khu vực', 'bản đồ', 'map', 'xung quanh', 'gần trạm xe',
+
+      // Tiện ích phòng
+      'máy lạnh', 'máy giặt', 'wifi', 'nước nóng', 'tủ lạnh', 'bếp riêng', 
+      'toilet riêng', 'chỗ để xe', 'thú cưng', 'ban công', 'an ninh', 
+      'giờ giấc tự do', 'camera', 'nội thất đầy đủ', 'điều hòa',
+
+      // Đăng tin & người dùng
+      'đăng tin', 'quản lý tin', 'chỉnh sửa tin', 'xóa tin', 
+      'liên hệ chủ trọ', 'chủ nhà', 'người thuê', 'người cho thuê',
+      'đăng nhập', 'đăng ký', 'tài khoản', 'xác thực', 'ảnh phòng',
+
+      // Chatbot & AI
+      'chatbot', 'trợ lý ảo', 'hỏi đáp', 'AI hỗ trợ', 'chat tìm phòng',
+      'chat với chủ trọ', 'gợi ý phòng', 'tư vấn thuê trọ', 'hỗ trợ tìm phòng',
+
+      // Tìm kiếm nâng cao
+      'lọc phòng', 'lọc theo giá', 'lọc theo khu vực', 'tìm nhanh', 
+      'đề xuất phòng', 'phòng nổi bật', 'phòng mới đăng',
+
+      // Khác
+      'đánh giá', 'phản hồi', 'báo cáo tin', 'ưu đãi', 'khuyến mãi'
+    ];
+
+    // Kiểm tra keyword có trong danh sách cho phép không
+    const isValidKeyword = allowedKeywords.some(allowedKeyword => 
+      keywords && keywords.toLowerCase().includes(allowedKeyword.toLowerCase())
+    );
+
+    if (!isValidKeyword) {
+      return res.status(400).json({ 
+        message: 'Từ khóa tìm kiếm không hợp lệ cho chủ đề thuê trọ.' 
+      });
+    }
+
     const SERP_API_KEY = process.env.SERP_API_KEY || "your_serp_api_key_here";
     const serpApiUrl = "https://serpapi.com/search.json";
 
@@ -196,8 +284,8 @@ export const getNewsSentiment = async (req, res) => {
 // Get price summary (current month average and percentage change)
 export const getPriceSummary = async (req, res) => {
   try {
-    const { category, province, district, areaRange } = req.query;
-    console.log('Received parameters:', { category, province, district, areaRange });
+    const { category, province, ward, areaRange, amenities } = req.query;
+    console.log('Received parameters:', { category, province, ward, areaRange, amenities });
 
     // Xác định thời gian
     const currentDate = new Date();
@@ -212,10 +300,23 @@ export const getPriceSummary = async (req, res) => {
       rentPrice: { $exists: true, $gt: 0 }
     };
 
-    // Frontend đã gửi province và district dạng code, sử dụng trực tiếp
-    if (category && category !== 'all') baseFilter.category = category;
-    if (province && province !== 'all') baseFilter.province = province;
-    if (district && district !== 'all') baseFilter.district = district;
+    // Updated schema: province, ward, category, areaRange, amenities
+    if (category && category !== 'all' && category.trim() !== '') baseFilter.category = category;
+    if (province && province !== 'all' && province.trim() !== '') baseFilter.province = province;
+    if (ward && ward !== 'all' && ward.trim() !== '') baseFilter.ward = ward;
+    
+    // Handle amenities filtering - convert names to ObjectIds
+    if (amenities) {
+      let amenityList = Array.isArray(amenities) ? amenities : [amenities];
+      amenityList = amenityList.filter(a => a && a.trim() !== '');
+      
+      if (amenityList.length > 0) {
+        const amenityObjectIds = await getAmenityObjectIds(amenityList);
+        if (amenityObjectIds.length > 0) {
+          baseFilter.amenities = { $in: amenityObjectIds };
+        }
+      }
+    }
 
     // Xử lý diện tích (nếu có)
     const getAreaFilter = (areaRange) => {
@@ -279,8 +380,8 @@ export const getPriceSummary = async (req, res) => {
 // Phân tích khoảng giá thuê phổ biến
 export const getPriceRangeDistribution = async (req, res) => {
   try {
-    const { category, province, district, areaRange } = req.query;
-    console.log('Received parameters for price-range:', { category, province, district, areaRange });
+    const { category, province, ward, areaRange, amenities } = req.query;
+    console.log('Received parameters for price-range:', { category, province, ward, areaRange, amenities });
 
     const oldestProperty = await Property.findOne({}).sort({ createdAt: 1 }).select('createdAt');
     const currentDate = new Date();
@@ -295,9 +396,22 @@ export const getPriceRangeDistribution = async (req, res) => {
       createdAt: { $gte: startDate, $lt: currentDate }
     };
 
-    if (category && category !== 'all') baseFilter.category = category;
-    if (province && province !== 'all') baseFilter.province = province;
-    if (district && district !== 'all') baseFilter.district = district;
+    if (category && category !== 'all' && category.trim() !== '') baseFilter.category = category;
+    if (province && province !== 'all' && province.trim() !== '') baseFilter.province = province;
+    if (ward && ward !== 'all' && ward.trim() !== '') baseFilter.ward = ward;
+    
+    // Handle amenities filtering - convert names to ObjectIds
+    if (amenities) {
+      let amenityList = Array.isArray(amenities) ? amenities : [amenities];
+      amenityList = amenityList.filter(a => a && a.trim() !== '');
+      
+      if (amenityList.length > 0) {
+        const amenityObjectIds = await getAmenityObjectIds(amenityList);
+        if (amenityObjectIds.length > 0) {
+          baseFilter.amenities = { $in: amenityObjectIds };
+        }
+      }
+    }
 
     // Lọc theo diện tích (nếu có)
     const getAreaFilter = (areaRange) => {

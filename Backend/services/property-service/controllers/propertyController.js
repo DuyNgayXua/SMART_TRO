@@ -104,13 +104,12 @@ class PropertyController {
                 }
             }
 
-            // 3. VALIDATION - Địa chỉ bắt buộc (không được để trống).
+            // 3. VALIDATION - Địa chỉ bắt buộc (API mới: Tỉnh → Phường/Xã)
             if (!req.body.province || req.body.province.trim() === '') {
                 validationErrors.province = 'Tỉnh/Thành phố không được để trống';
             }
-            if (!req.body.district || req.body.district.trim() === '') {
-                validationErrors.district = 'Quận/Huyện không được để trống';
-            }
+
+            // District không còn bắt buộc vì API mới đã sáp nhập
             if (!req.body.ward || req.body.ward.trim() === '') {
                 validationErrors.ward = 'Phường/Xã không được để trống';
             }
@@ -121,9 +120,39 @@ class PropertyController {
             }
 
             // 4. VALIDATION - Hình ảnh bắt buộc và video (optional)
-            // With AI moderation middleware, files are processed in req.uploadResults
-            if (!req.uploadResults) {
-                validationErrors.images = 'Lỗi xử lý files. Vui lòng thử lại';
+            // Kiểm tra xem có files nào được upload không
+            let hasFiles = false;
+            let hasImagesInRequest = false;
+            let hasVideosInRequest = false;
+            
+            // Kiểm tra req.files trước để xác định có file nào được upload không
+            if (req.files) {
+                if (Array.isArray(req.files)) {
+                    hasFiles = req.files.length > 0;
+                    hasImagesInRequest = req.files.some(file => file.fieldname === 'images');
+                    hasVideosInRequest = req.files.some(file => file.fieldname === 'video');
+                } else if (typeof req.files === 'object') {
+                    const allFiles = Object.values(req.files).flat();
+                    hasFiles = allFiles.length > 0;
+                    hasImagesInRequest = req.files.images && req.files.images.length > 0;
+                    hasVideosInRequest = req.files.video && req.files.video.length > 0;
+                }
+            }
+            
+            console.log('File upload check:', {
+                hasFiles,
+                hasImagesInRequest,
+                hasVideosInRequest,
+                filesType: typeof req.files,
+                uploadResults: !!req.uploadResults
+            });
+            
+            // Nếu không có files nào được upload
+            if (!hasFiles) {
+                validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh để tạo bài đăng';
+            } else if (!req.uploadResults) {
+                // Có files nhưng không có uploadResults -> lỗi xử lý
+                validationErrors.images = 'Lỗi xử lý files đã tải lên. Vui lòng thử lại';
             } else {
                 console.log('Upload results from moderation middleware:', req.uploadResults);
                 console.log('Rejected images:', req.uploadResults.images?.rejected);
@@ -183,20 +212,23 @@ class PropertyController {
                     filesIsArray: Array.isArray(req.files)
                 });
                 
-                // Chỉ yêu cầu ảnh bắt buộc nếu không có video approved và không có ảnh approved
+                // Logic validation cho hình ảnh và video
                 if (approvedImages.length === 0 && approvedVideos.length === 0) {
-                    if (totalImages === 0 && !hasImagesInForm) {
-                        // Không có ảnh nào được upload
-                        validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh hoặc 1 video';
-                    } else if (rejectedImages.length > 0) {
-                        // Có ảnh được upload nhưng tất cả bị từ chối - CHO PHÉP tạo property nhưng cảnh báo
-                        console.log('All images were rejected, but allowing property creation for user feedback');
-                        validationErrors.images = `${rejectedImages.length} ảnh bị từ chối do vi phạm nội quy.`;
+                    if (totalImages === 0 && approvedVideos.length === 0) {
+                        // Không có ảnh và video nào được upload thành công
+                        if (!hasImagesInRequest && !hasVideosInRequest) {
+                            validationErrors.images = 'Vui lòng tải lên ít nhất 1 hình ảnh để tạo bài đăng';
+                        } else {
+                            // Có upload files nhưng không có file nào được approve
+                            validationErrors.images = 'Không có ảnh hoặc video nào hợp lệ. Vui lòng tải lên ảnh phù hợp với nội quy';
+                        }
+                    } else if (rejectedImages.length > 0 && approvedVideos.length === 0) {
+                        // Tất cả ảnh bị từ chối và không có video
+                        validationErrors.images = `Tất cả ${rejectedImages.length} ảnh đã tải lên bị từ chối do vi phạm nội quy. Vui lòng tải lên ảnh khác phù hợp`;
                     }
                 } else if (approvedImages.length === 0 && rejectedImages.length > 0 && approvedVideos.length === 0) {
-                    // Có ảnh bị từ chối nhưng không có video approved - cảnh báo thay thế
-                    console.log('All images rejected and no approved videos, warning user');
-                    validationErrors.images = `${rejectedImages.length} ảnh bị từ chối do vi phạm nội quy. `;
+                    // Có ảnh bị từ chối nhưng không có video approved
+                    validationErrors.images = `${rejectedImages.length} ảnh bị từ chối do vi phạm nội quy. Vui lòng tải lên ảnh khác để hoàn thành bài đăng`;
                 }
                 
                 // Kiểm tra video bị từ chối (nếu có upload video)
@@ -218,10 +250,15 @@ class PropertyController {
                     hasVideoInForm
                 });
                 
-                if (totalVideos > 0 && rejectedVideos.length > 0 && hasVideoInForm) {
-                    // Có video bị từ chối và vẫn còn video trong form - thông báo cảnh báo
-                    console.log('Some videos were rejected, notifying user for replacement');
-                    validationErrors.video = `${rejectedVideos.length} video bị từ chối do vi phạm nội quy. Vui lòng thay thế bằng video phù hợp.`;
+                // Validation cho video (video là optional)
+                if (hasVideoInForm && totalVideos > 0) {
+                    if (approvedVideos.length === 0 && rejectedVideos.length > 0) {
+                        // Có upload video nhưng tất cả bị từ chối
+                        validationErrors.video = `Video đã tải lên bị từ chối do vi phạm nội quy. Vui lòng tải lên video khác hoặc bỏ qua phần video`;
+                    } else if (rejectedVideos.length > 0 && approvedVideos.length > 0) {
+                        // Có video được approve nhưng cũng có video bị từ chối
+                        validationErrors.video = `${rejectedVideos.length} video bị từ chối do vi phạm nội quy. Video đã được tải lên thành công sẽ được sử dụng`;
+                    }
                 }
                 
                 // Log thông tin về quá trình upload
@@ -693,9 +730,8 @@ class PropertyController {
                 // Nội quy
                 houseRules: houseRules || [],
 
-                // Địa chỉ
+                // Địa chỉ (sử dụng API vietnamlabs.com)
                 province: req.body.province.trim(),
-                district: req.body.district.trim(),
                 ward: req.body.ward.trim(),
                 detailAddress: req.body.detailAddress.trim(),
                 coordinates: {
@@ -715,7 +751,10 @@ class PropertyController {
                     purchaseDate: now,
                     expiryDate: user.currentPackagePlan?.expiryDate,
                     isActive: true,
-                    status: 'active'
+                    status: 'active',
+                    // Theo dõi nguồn gói gốc (khi migrate) - lưu gói hiện tại cho property mới
+                    sourcePackageId: packagePlan._id,
+                    sourcePackageName: packagePlan.displayName || packagePlan.name
                 },
 
                 // Trạng thái và metadata

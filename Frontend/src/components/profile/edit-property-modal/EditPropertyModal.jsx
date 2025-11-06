@@ -5,21 +5,15 @@ import { myPropertiesAPI } from '../../../services/myPropertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
 import adminPackagePlanAPI from '../../../services/adminPackagePlanAPI';
+import { processFilesForUpload, validateFile, formatFileSize, createFilePreview } from '../../../utils/fileUtils';
 import dayjs from 'dayjs';
 import './EditPropertyModal.css';
 import '../new-property/RejectedFiles.css';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+import '../new-property/FileValidation.css';
 
-// Fix default marker icon
-const markerIcon = new L.Icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-});
+// Import TrackAsia GL JS
+import trackasiagl from 'trackasia-gl';
+import 'trackasia-gl/dist/trackasia-gl.css';
 
 const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   console.log("EditPropertyModal property prop:", property);
@@ -27,20 +21,37 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
   const [rejectedFiles, setRejectedFiles] = useState({ images: [], videos: [] });
+  
+  // File validation states
+  const [fileValidation, setFileValidation] = useState({ images: [], videos: [] });
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const fileInputRef = useRef(null);
   const videoInputRef = useRef(null);
 
   const lastAddressRef = useRef(null);
   const lastCoordsRef = useRef(null);
 
+  // TrackAsia map refs
+  const mapRef = useRef(null);
+  const mapContainerRef = useRef(null);
+  const markerRef = useRef(null);
 
-  // Location data
+  // TrackAsia API configuration
+  const TRACKASIA_API_KEY = process.env.REACT_APP_TRACKASIA_API_KEY || 'public_key';
+  const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
+
+  // Default coordinates (Đà Nẵng)
+  const defaultCenter = {
+    lat: 16.056204,
+    lng: 108.168202
+  };
+
+
+  // Location data (cập nhật theo schema mới: chỉ có province và ward)
   const [locationData, setLocationData] = useState({
     provinces: [],
-    districts: [],
     wards: [],
     loadingProvinces: false,
-    loadingDistricts: false,
     loadingWards: false,
     geocoding: false
   });
@@ -349,9 +360,9 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         // Nội quy
         houseRules: property.houseRules || [],
 
-        // Địa chỉ - cần convert từ name về code
+        // Địa chỉ (theo schema mới: chỉ province và ward)
         province: property.province || '',
-        district: property.district || '',
+        provinceId: '', // Sẽ được set trong loadLocationData
         ward: property.ward || '',
         detailAddress: property.detailAddress || '',
         coordinates: property.coordinates || { lat: 16.0583, lng: 108.2772 },
@@ -441,52 +452,33 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         loadingProvinces: false
       }));
 
-
-      // Nếu có province code thì load districts
+      // Nếu có province thì load wards (theo schema mới)
       if (property.province) {
-        setLocationData(prev => ({ ...prev, loadingDistricts: true }));
-        const districtsRes = await locationAPI.getDistricts(property.province);
+        // Tìm provinceId từ tên province
+        const provinceData = provincesData.find(p => p.name === property.province);
+        if (provinceData) {
+          setFormData(prev => ({ ...prev, provinceId: provinceData.code }));
 
-        const districtsData = districtsRes.data || [];
+          setLocationData(prev => ({ ...prev, loadingWards: true }));
+          const wardsRes = await locationAPI.getWards(property.province);
+          const wardsData = wardsRes.data || [];
 
-        setLocationData(prev => ({
-          ...prev,
-          districts: districtsData,
-          loadingDistricts: false
-        }));
+          setLocationData(prev => ({
+            ...prev,
+            wards: wardsData,
+            loadingWards: false
+          }));
 
-        // So sánh code trong danh sách với property.district
-        if (property.district) {
-
-
-          const districtData = districtsData.find(
-            (d) => String(d.code) === String(property.district)
-          );
-
-
-          if (districtData) {
-            setFormData(prev => ({ ...prev, district: String(districtData.code) }));
-
-            // Nếu có district thì load wards
-            setLocationData(prev => ({ ...prev, loadingWards: true }));
-            const wardsRes = await locationAPI.getWards(districtData.code);
-            const wardsData = wardsRes.data || [];
-
-
-            setLocationData(prev => ({
-              ...prev,
-              wards: wardsData,
-              loadingWards: false
-            }));
-
-            // Nếu DB có ward thì set lại luôn
-            if (property.ward) {
-              const wardData = wardsData.find(
-                (w) => String(w.code) === String(property.ward)
-              );
-              if (wardData) {
-                setFormData(prev => ({ ...prev, ward: String(wardData.code) }));
-              }
+          console.log('Loaded wards for province:', property.province, wardsData);
+          
+          // Tự động select ward nếu property có ward
+          if (property.ward && wardsData.length > 0) {
+            const matchingWard = wardsData.find(w => w.name === property.ward);
+            if (matchingWard) {
+              console.log('Auto-selected ward:', matchingWard);
+              // Ward đã được set trong formData từ trước, chỉ cần log để confirm
+            } else {
+              console.log('Ward not found in loaded data:', property.ward);
             }
           }
         }
@@ -497,70 +489,57 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       setLocationData(prev => ({
         ...prev,
         loadingProvinces: false,
-        loadingDistricts: false,
         loadingWards: false
       }));
     }
   };
 
-  // Load districts when province changes
-  useEffect(() => {
-    const loadDistricts = async () => {
-      if (!formData.province) {
-        setLocationData(prev => ({ ...prev, districts: [], wards: [] }));
-        setFormData(prev => ({ ...prev, district: '', ward: '' }));
-        return;
-      }
-
-      try {
-        setLocationData(prev => ({ ...prev, loadingDistricts: true }));
-        const districts = await locationAPI.getDistricts(formData.province);
-        setLocationData(prev => ({
-          ...prev,
-          districts: districts.data || [],
-          loadingDistricts: false,
-          wards: []
-        }));
-        setFormData(prev => ({ ...prev, district: '', ward: '' }));
-      } catch (error) {
-        console.error('Error loading districts:', error);
-        setLocationData(prev => ({ ...prev, loadingDistricts: false }));
-      }
-    };
-
-    if (formData.province) {
-      loadDistricts();
-    }
-  }, [formData.province]);
-
-  // Load wards when district changes
+  // Load wards when province changes (theo schema mới)
   useEffect(() => {
     const loadWards = async () => {
-      if (!formData.district) {
+      // Sử dụng provinceId để đồng bộ với disabled condition
+      if (!formData.provinceId || !formData.province) {
         setLocationData(prev => ({ ...prev, wards: [] }));
         setFormData(prev => ({ ...prev, ward: '' }));
+        // Reset manual flag khi không có tỉnh
+        setIsManuallyModified(false);
         return;
       }
 
       try {
         setLocationData(prev => ({ ...prev, loadingWards: true }));
-        const wards = await locationAPI.getWards(formData.district);
+        const wards = await locationAPI.getWards(formData.province);
+        const wardsData = wards.data || [];
+        
         setLocationData(prev => ({
           ...prev,
-          wards: wards.data || [],
+          wards: wardsData,
           loadingWards: false
         }));
-        setFormData(prev => ({ ...prev, ward: '' }));
+        
+        // Chỉ reset ward nếu ward hiện tại không tồn tại trong danh sách wards mới
+        const currentWard = formData.ward;
+        const wardExists = wardsData.find(w => w.name === currentWard);
+        
+        if (!wardExists && currentWard) {
+          console.log('Current ward not found in new province, resetting:', currentWard);
+          setFormData(prev => ({ ...prev, ward: '' }));
+        } else if (wardExists) {
+          console.log('Current ward found in new province:', currentWard);
+        }
+        // Reset manual flag khi thay đổi tỉnh để cho phép geocoding tự động
+        setIsManuallyModified(false);
       } catch (error) {
         console.error('Error loading wards:', error);
         setLocationData(prev => ({ ...prev, loadingWards: false }));
       }
     };
 
-    if (formData.district) {
+    // Trigger load wards khi có đủ provinceId và province name
+    if (formData.provinceId && formData.province) {
       loadWards();
     }
-  }, [formData.district]);
+  }, [formData.provinceId, formData.province]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -593,10 +572,32 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         }));
       }
     } else {
-      // Reset manual modification flag khi user thay đổi địa chỉ
-      if (['detailAddress', 'province', 'district', 'ward'].includes(name)) {
+      // Reset manual modification flag khi user thay đổi địa chỉ (theo schema mới)
+      if (['detailAddress', 'province', 'ward'].includes(name)) {
         console.log("Address field changed:", name, "->", value);
         setIsManuallyModified(false);
+      }
+
+      // Xử lý province: lưu tên tỉnh (theo vietnamlabs.com API)
+      if (name === 'province') {
+        const selectedProvince = locationData.provinces.find(p => p.code === value);
+        setFormData(prev => ({
+          ...prev,
+          province: selectedProvince ? selectedProvince.name : '',
+          provinceId: value,
+          ward: '' // Reset ward khi thay đổi tỉnh
+        }));
+        return;
+      }
+
+      // Xử lý ward: lưu tên ward (theo vietnamlabs.com API)
+      if (name === 'ward') {
+        const selectedWard = locationData.wards.find(w => w.code === value);
+        setFormData(prev => ({
+          ...prev,
+          ward: selectedWard ? selectedWard.name : value
+        }));
+        return;
       }
 
       setFormData(prev => ({
@@ -663,165 +664,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       </div>
     </div>
   );
-  // Image upload handler
-  const handleImageUpload = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-
-    const existingCount = formData.existingImages?.length || 0;
-    const newCount = formData.newImages?.length || 0;
-
-    // Kiểm tra tổng số ảnh không vượt quá 5
-    if (existingCount + newCount + files.length > 5) {
-      toast.error("Bạn chỉ được chọn tối đa 5 ảnh");
-      e.target.value = null;
-      return;
-    }
-
-    // Lấy danh sách tên ảnh đã có (cả ảnh cũ lẫn ảnh mới)
-    const existingFileNames = [
-      ...(formData.existingImages?.map(img => getFileName(img)) || []),
-      ...(formData.newImages?.map(img => getFileName(img)) || [])
-    ];
-
-    const duplicateFiles = files.filter(f => existingFileNames.includes(f.name));
-
-    if (duplicateFiles.length > 0) {
-      const duplicateNames = duplicateFiles.map(f => f.name).join(", ");
-
-      toast.warn(
-        <ConfirmToast
-          message={`Ảnh ${duplicateNames} đã tồn tại. Bạn có muốn ghi đè không?`}
-          onConfirm={() => {
-            // Xóa ảnh trùng
-            setFormData(prev => ({
-              ...prev,
-              existingImages: prev.existingImages?.filter(
-                img => !duplicateFiles.some(f => getFileName(img) === f.name)
-              ) || [],
-              newImages: prev.newImages?.filter(
-                img => !duplicateFiles.some(f => getFileName(img) === f.name)
-              ) || []
-            }));
-
-            // Thêm ảnh mới
-            files.forEach(file => {
-              const reader = new FileReader();
-              reader.onload = (event) => {
-                setFormData(prev => ({
-                  ...prev,
-                  newImages: [
-                    ...(prev.newImages || []),
-                    { file, url: event.target.result, name: file.name }
-                  ]
-                }));
-              };
-              reader.readAsDataURL(file);
-            });
-
-            e.target.value = null; // reset input
-          }}
-          onCancel={() => {
-            e.target.value = null; // reset input
-          }}
-        />,
-        { autoClose: false }
-      );
-
-      return;
-    }
-
-    // Nếu không có trùng → thêm ảnh mới
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setFormData(prev => ({
-          ...prev,
-          newImages: [
-            ...(prev.newImages || []),
-            { file, url: event.target.result, name: file.name }
-          ]
-        }));
-      };
-      reader.readAsDataURL(file);
-    });
-
-    e.target.value = null; // reset input để chọn liên tiếp
-  };
 
 
 
-  // Video upload handler
-  const handleVideoUpload = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
 
-    if (files.length > 1) {
-      toast.error("Bạn chỉ được chọn tối đa 1 video");
-      e.target.value = null;
-      return;
-    }
-
-    const file = files[0];
-
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error("Video không được lớn hơn 50MB");
-      e.target.value = null;
-      return;
-    }
-
-    const newUrl = URL.createObjectURL(file);
-
-    // Nếu đã có video và trùng tên
-    if (formData.video && formData.video.name === file.name) {
-      toast.warn(
-        <ConfirmToast
-          message={`Video "${file.name}" đã tồn tại. Bạn có muốn ghi đè không?`}
-          onConfirm={() => {
-            // Giải phóng URL cũ
-            if (formData.video?.url) {
-              URL.revokeObjectURL(formData.video.url);
-            }
-
-            setFormData((prev) => ({
-              ...prev,
-              video: {
-                file,
-                url: newUrl,
-                name: file.name,
-              },
-              removeVideo: false,
-            }));
-            e.target.value = null;
-            toast.dismiss();
-          }}
-          onCancel={() => {
-            URL.revokeObjectURL(newUrl); // không dùng thì revoke luôn
-            e.target.value = null;
-            toast.dismiss();
-          }}
-        />,
-        { autoClose: false }
-      );
-      return;
-    }
-
-    // Nếu chưa có hoặc khác tên
-    if (formData.video?.url) {
-      URL.revokeObjectURL(formData.video.url);
-    }
-
-    setFormData((prev) => ({
-      ...prev,
-      video: {
-        file,
-        url: newUrl,
-        name: file.name,
-      },
-    }));
-
-    e.target.value = null;
-  };
 
 
 
@@ -904,20 +750,21 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   // Tạo full address từ các trường
 
   const getFullAddressPayload = async (formData, locationData) => {
-    const provinceName =
-      locationData.provinces.find(p => String(p.code) === String(formData.province))?.name || "";
-    const districtName =
-      locationData.districts.find(d => String(d.code) === String(formData.district))?.name || "";
-    const wardName =
-      locationData.wards.find(w => String(w.code) === String(formData.ward))?.name || "";
+    try {
+      // Đơn giản hóa theo cấu trúc mới: chỉ có province và ward
+      const provinceName = formData.province || "";
+      const wardName = formData.ward || "";
 
-    return {
-      street: formData.detailAddress || "",
-      ward: wardName || "",
-      district: districtName || "",
-      province: provinceName || "",
-      country: "Vietnam",
-    };
+      return {
+        street: formData.detailAddress || "",
+        ward: wardName,
+        province: provinceName,
+        country: "Vietnam"
+      };
+    } catch (err) {
+      console.error("Error building full address payload:", err);
+      return null;
+    }
   };
 
 
@@ -954,10 +801,10 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
   const [isManuallyModified, setIsManuallyModified] = useState(false);
 
   useEffect(() => {
-    if (formData.detailAddress && formData.province && formData.district && formData.ward) {
+    if (formData.detailAddress && formData.province && formData.ward) {
       const timer = setTimeout(async () => {
         // Chỉ geocoding nếu:
-        // 1. Không có coordinates gốc từ DB, HOẶC
+        // 1. Không có coordinates gốc từ DB, HOẶC  
         // 2. Địa chỉ đã thay đổi và không phải chỉnh thủ công marker
         if (!hasOriginalCoordinates || (!isManuallyModified && formData.detailAddress !== property?.detailAddress)) {
           const addressPayload = await getFullAddressPayload(formData, locationData);
@@ -972,8 +819,12 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
             if (res?.lat && res?.lng) {
               lastCoordsRef.current = res;
               setFormData(prev => ({ ...prev, coordinates: res }));
+              console.log("Updated coordinates from geocoding (Edit):", res);
             } else if (lastCoordsRef.current) {
+              console.log("Using last valid coordinates (Edit):", lastCoordsRef.current);
               setFormData(prev => ({ ...prev, coordinates: lastCoordsRef.current }));
+            } else {
+              console.log("No valid coordinates, keeping current (Edit):", formData.coordinates);
             }
           }
         }
@@ -981,7 +832,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
 
       return () => clearTimeout(timer);
     }
-  }, [formData.detailAddress, formData.ward, formData.district, formData.province, locationData, hasOriginalCoordinates, isManuallyModified]);
+  }, [formData.detailAddress, formData.ward, formData.province, locationData, hasOriginalCoordinates, isManuallyModified]);
 
 
 
@@ -1046,15 +897,19 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
         return;
       }
 
-      const provinceData = locationData.provinces.find(
-        (p) => String(p.code) === String(formData.province)
+      // Validation data (theo schema mới: chỉ province và ward)
+      const provinceData = locationData.provinces?.find(
+        (p) => p.name === formData.province
       );
-      const districtData = locationData.districts.find(
-        (d) => String(d.code) === String(formData.district)
+      const wardData = locationData.wards?.find(
+        (w) => w.name === formData.ward
       );
-      const wardData = locationData.wards.find(
-        (w) => String(w.code) === String(formData.ward)
-      );
+      
+      console.log('Submit validation - Province:', formData.province, 'Ward:', formData.ward);
+      console.log('Available provinces:', locationData.provinces?.length);
+      console.log('Available wards:', locationData.wards?.length);
+      console.log('Found province:', provinceData);
+      console.log('Found ward:', wardData);
 
       // ---- Tạo FormData ----
       const formDataToSend = new FormData();
@@ -1073,7 +928,6 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       formDataToSend.append("maxOccupants", formData.maxOccupants || "");
       formDataToSend.append("timeRules", formData.timeRules || "");
       formDataToSend.append("province", formData.province || "");
-      formDataToSend.append("district", formData.district || "");
       formDataToSend.append("ward", formData.ward || "");
       formDataToSend.append("detailAddress", formData.detailAddress || "");
       formDataToSend.append("availableDate", formatDateForBackend(formData.availableDate));
@@ -1158,9 +1012,9 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       // Đóng toast loading
       toast.dismiss();
 
-      console.log('🔍 Full API response:', response);
-      console.log('🔍 Result success:', response.success);
-      console.log('🔍 Result data:', response.data);
+      console.log('Full API response:', response);
+      console.log('Result success:', response.success);
+      console.log('Result data:', response.data);
 
       if (response.success) {
         const hasRejectedFiles = handleRejectedFiles(response.data?.rejectedFiles);
@@ -1223,55 +1077,326 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
     }
   };
 
+  // Initialize TrackAsia map
+  const initializeMap = () => {
+    if (!mapContainerRef.current || mapRef.current) return;
 
-  // Draggable Marker component
-  const DraggableMarker = ({ position, onChange }) => {
-    const [draggable] = useState(true);
-    const markerRef = useRef(null);
+    const coordinates = formData.coordinates || defaultCenter;
 
-    const handlePositionChange = (latlng) => {
-      console.log("Manual marker position change:", latlng);
-      setIsManuallyModified(true); // Set flag khi user chỉnh thủ công
-      onChange(latlng);
-    };
-
-    useMapEvents({
-      click(e) {
-        handlePositionChange(e.latlng);
-      }
+    const map = new trackasiagl.Map({
+      container: mapContainerRef.current,
+      style: `${TRACKASIA_BASE_URL}/styles/v2/streets.json?key=${TRACKASIA_API_KEY}`,
+      center: [coordinates.lng, coordinates.lat], // TrackAsia uses [lng, lat]
+      zoom: 15,
+      attributionControl: true,
+      logoPosition: 'bottom-left'
     });
-    return (
-      <Marker
-        position={position}
-        draggable={draggable}
-        eventHandlers={{
-          dragend: () => {
-            const marker = markerRef.current;
-            if (marker != null) {
-              handlePositionChange(marker.getLatLng());
-            }
-          }
-        }}
-        icon={markerIcon}
-        ref={markerRef}
-      />
-    );
+
+    mapRef.current = map;
+
+    // Add navigation controls (zoom, rotate)
+    map.addControl(new trackasiagl.NavigationControl(), 'top-right');
+
+    // Add marker
+    const marker = new trackasiagl.Marker({
+      color: '#FF0000',
+      scale: 1.2,
+      draggable: true
+    })
+      .setLngLat([coordinates.lng, coordinates.lat])
+      .addTo(map);
+
+    markerRef.current = marker;
+
+    // Handle marker drag events
+    marker.on('dragend', () => {
+      const lngLat = marker.getLngLat();
+      const newCoords = { lat: lngLat.lat, lng: lngLat.lng };
+      console.log("Manual marker drag:", newCoords);
+      setIsManuallyModified(true);
+      setFormData(prev => ({
+        ...prev,
+        coordinates: newCoords
+      }));
+    });
+
+    // Handle map click events
+    map.on('click', (e) => {
+      const clickedCoords = { lat: e.lngLat.lat, lng: e.lngLat.lng };
+      console.log("Map clicked:", clickedCoords);
+      
+      setIsManuallyModified(true);
+      setFormData(prev => ({
+        ...prev,
+        coordinates: clickedCoords
+      }));
+
+      // Update marker position
+      marker.setLngLat([clickedCoords.lng, clickedCoords.lat]);
+    });
   };
 
+  // Update map when coordinates change
+  const updateMapLocation = (newCoords) => {
+    if (mapRef.current && markerRef.current && newCoords?.lat && newCoords?.lng) {
+      const map = mapRef.current;
+      const marker = markerRef.current;
+
+      // Smooth animation to new location
+      map.flyTo({
+        center: [newCoords.lng, newCoords.lat],
+        zoom: 15,
+        duration: 1000
+      });
+
+      marker.setLngLat([newCoords.lng, newCoords.lat]);
+    }
+  };
+
+  // Handle modal show/hide và TrackAsia Maps
+  useEffect(() => {
+    if (property) {
+      // Initialize map after a short delay to ensure modal is rendered
+      const timer = setTimeout(() => {
+        initializeMap();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+
+    return () => {
+      // Clean up map
+      if (mapRef.current) {
+        mapRef.current.remove();
+        mapRef.current = null;
+        markerRef.current = null;
+      }
+    };
+  }, [property, formData.coordinates]);
+
+  // Update map when coordinates change
+  useEffect(() => {
+    if (formData.coordinates && mapRef.current) {
+      updateMapLocation(formData.coordinates);
+    }
+  }, [formData.coordinates]);
+
+  // Handle modal close with cleanup
+  const handleClose = () => {
+    // Clean up map before closing
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+      markerRef.current = null;
+    }
+    onClose();
+  };
+
+  // Image upload handler with validation and compression
+  const handleImageUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (!files.length) return;
+
+    const existingCount = formData.existingImages?.length || 0;
+    const newCount = formData.newImages?.length || 0;
+
+    // Kiểm tra tổng số ảnh không vượt quá 5
+    if (existingCount + newCount + files.length > 5) {
+      toast.error("Bạn chỉ được chọn tối đa 5 ảnh");
+      e.target.value = null;
+      return;
+    }
+
+    setIsProcessingFiles(true);
+    
+    try {
+      // Validate và process files
+      const processResult = await processFilesForUpload(files, (progress) => {
+        console.log(`Đang xử lý ${progress.current}/${progress.total}: ${progress.fileName}`);
+      });
+
+      // Hiển thị grouped warnings và errors
+      if (processResult.groupedWarnings.length > 0) {
+        toast.info(processResult.groupedWarnings.join('\n'), { autoClose: 5000 });
+      }
+
+      // Nếu có lỗi, không cho upload
+      if (processResult.hasErrors) {
+        toast.error(processResult.groupedErrors.join('\n'));
+        e.target.value = null;
+        return;
+      }
+
+      const processedFiles = processResult.files;
+
+      // Lấy danh sách tên ảnh đã có (cả ảnh cũ lẫn ảnh mới)
+      const existingFileNames = [
+        ...(formData.existingImages?.map(img => getFileName(img)) || []),
+        ...(formData.newImages?.map(img => getFileName(img)) || [])
+      ];
+
+      const duplicateFiles = processedFiles.filter(f => existingFileNames.includes(f.name));
+
+      if (duplicateFiles.length > 0) {
+        const duplicateNames = duplicateFiles.map(f => f.name).join(", ");
+
+        toast.warn(
+          <ConfirmToast
+            message={`Ảnh ${duplicateNames} đã tồn tại. Bạn có muốn ghi đè không?`}
+            onConfirm={() => {
+              // Xóa ảnh trùng
+              setFormData(prev => ({
+                ...prev,
+                existingImages: prev.existingImages?.filter(
+                  img => !duplicateFiles.some(f => getFileName(img) === f.name)
+                ) || [],
+                newImages: prev.newImages?.filter(
+                  img => !duplicateFiles.some(f => getFileName(img) === f.name)
+                ) || []
+              }));
+
+              // Thêm ảnh mới đã được xử lý
+              addProcessedImages(processedFiles, processResult.validationResults);
+              e.target.value = null;
+            }}
+            onCancel={() => {
+              e.target.value = null;
+            }}
+          />,
+          { autoClose: false }
+        );
+        return;
+      }
+
+      // Thêm ảnh mới đã được xử lý
+      addProcessedImages(processedFiles, processResult.validationResults);
+
+    } catch (error) {
+      console.error('Error processing files:', error);
+      toast.error('Lỗi xử lý file: ' + error.message);
+    } finally {
+      setIsProcessingFiles(false);
+      e.target.value = null;
+    }
+  };
+
+  // Helper function to add processed images
+  const addProcessedImages = (processedFiles, validationResults) => {
+    const newValidations = [];
+    
+    processedFiles.forEach((file, index) => {
+      const validation = validationResults[index];
+      newValidations.push(createFilePreview(file, validation));
+      
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setFormData(prev => ({
+          ...prev,
+          newImages: [
+            ...(prev.newImages || []),
+            { 
+              file, 
+              url: event.target.result, 
+              name: file.name,
+              originalSize: validationResults[index]?.originalSize || file.size,
+              compressed: validationResults[index]?.compressed || false
+            }
+          ]
+        }));
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Update file validation state
+    setFileValidation(prev => ({
+      ...prev,
+      images: [...prev.images, ...newValidations]
+    }));
+  };
+
+  // Video upload handler with validation
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Validate video file
+    const validation = validateFile(file);
+    
+    // Hiển thị lỗi nếu có
+    if (!validation.isValid) {
+      toast.error(validation.errors.join('\n'));
+      e.target.value = null;
+      return;
+    }
+
+    // Hiển thị warnings nếu có
+    if (validation.warnings.length > 0) {
+      toast.info(validation.warnings.join('\n'), { autoClose: 5000 });
+    }
+
+    // Nếu đã có video trùng tên
+    if (formData.video && formData.video.name === file.name) {
+      toast.warn(
+        <ConfirmToast
+          message={`Video "${file.name}" đã tồn tại. Bạn có muốn ghi đè không?`}
+          onConfirm={() => {
+            addVideoFile(file, validation);
+          }}
+          onCancel={() => {
+            e.target.value = null;
+          }}
+        />,
+        { autoClose: false }
+      );
+    } else {
+      // Nếu chưa có video → thêm mới
+      addVideoFile(file, validation);
+    }
+
+    // Reset input
+    e.target.value = null;
+  };
+
+  // Helper function to add video file
+  const addVideoFile = (file, validation) => {
+    // Giải phóng URL cũ nếu có
+    if (formData.video?.url) {
+      URL.revokeObjectURL(formData.video.url);
+    }
+
+    const newUrl = URL.createObjectURL(file);
+
+    setFormData(prev => ({
+      ...prev,
+      video: {
+        file,
+        url: newUrl,
+        name: file.name,
+        size: file.size,
+        formattedSize: formatFileSize(file.size)
+      },
+      removeVideo: false
+    }));
+
+    // Update validation state
+    setFileValidation(prev => ({
+      ...prev,
+      videos: [createFilePreview(file, validation)]
+    }));
+  };
 
   return (
-    <div className="modal-overlay-edit-property" onClick={onClose}>
+    <div className="modal-overlay-edit-property" onClick={handleClose}>
       <div className="edit-modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
           <h3>
             Chỉnh sửa tin đăng</h3>
-          <button className="close-btn-current-package" onClick={onClose}>
+          <button className="close-btn-current-package" onClick={handleClose}>
             <i className="fa fa-times"></i>
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="edit-form">
-          <div className="form-content">
+          <div className="form-content-edit-property">
 
              {/* Package and Post Type Selection */}
             <div className="form-group">
@@ -1642,8 +1767,8 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
               </div>
               {errors.amenities && <span className="error-text">{errors.amenities}</span>}
 
-              <div className="form-group">
-                <label>Quy định giờ giấc</label>
+              <div className="form-section">
+                <h4>Quy định giờ giấc</h4>
                 <textarea
                   name="timeRules"
                   value={formData.timeRules || ''}
@@ -1683,7 +1808,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   <label>Tỉnh/Thành phố *</label>
                   <select
                     name="province"
-                    value={formData.province || ''}
+                    value={formData.provinceId || ''}
                     onChange={handleInputChange}
                     className={errors.province ? 'error' : ''}
                     disabled={locationData.loadingProvinces}
@@ -1701,51 +1826,60 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                 </div>
 
                 <div className="form-group">
-                  <label>Quận/Huyện *</label>
-                  <select
-                    name="district"
-                    value={formData.district || ''}
-                    onChange={handleInputChange}
-                    className={errors.district ? 'error' : ''}
-                    disabled={locationData.loadingDistricts || !formData.province}
-                  >
-                    <option value="">
-                      {locationData.loadingDistricts ? 'Đang tải...' :
-                        !formData.province ? 'Chọn tỉnh trước' : 'Chọn quận/huyện'}
-                    </option>
-                    {locationData.districts.map(district => (
-                      <option key={district.code} value={district.code}>
-                        {district.name}
-                      </option>
-                    ))}
-                  </select>
-                  {errors.district && <span className="error-text">{errors.district}</span>}
-                </div>
-              </div>
-
-              <div className="form-row">
-                <div className="form-group">
                   <label>Phường/Xã *</label>
                   <select
                     name="ward"
-                    value={formData.ward || ''}
+                    value={(() => {
+                      const matchingWard = locationData.wards.find(w => w.name === formData.ward);
+                      console.log('Ward selection - formData.ward:', formData.ward);
+                      console.log('Available wards:', locationData.wards.map(w => w.name));
+                      console.log('Matching ward:', matchingWard);
+                      return matchingWard?.code || '';
+                    })()}
                     onChange={handleInputChange}
                     className={errors.ward ? 'error' : ''}
-                    disabled={locationData.loadingWards || !formData.district}
+                    disabled={locationData.loadingWards || !formData.provinceId || !formData.province}
                   >
                     <option value="">
                       {locationData.loadingWards ? 'Đang tải...' :
-                        !formData.district ? 'Chọn quận trước' : 'Chọn phường/xã'}
+                        (!formData.provinceId || !formData.province) ? 'Chọn tỉnh trước' : 'Chọn phường/xã'}
                     </option>
                     {locationData.wards.map(ward => (
-                      <option key={ward.code} value={ward.code}>
+                      <option
+                        key={ward.code}
+                        value={ward.code}
+                        title={ward.mergedFrom && ward.mergedFrom.length > 1
+                          ? `Trước sáp nhập: ${ward.mergedFrom.join(', ')}`
+                          : ''
+                        }
+                        className={ward.mergedFrom && ward.mergedFrom.length > 1 ? 'ward-option-merged' : ''}
+                      >
                         {ward.name}
+                        {ward.mergedFrom && ward.mergedFrom.length > 1 && ' 🔄'}
                       </option>
                     ))}
                   </select>
                   {errors.ward && <span className="error-text">{errors.ward}</span>}
                 </div>
+              </div>
 
+              {/* Hiển thị thông tin merged cho ward đã chọn */}
+              {formData.ward && (() => {
+                const selectedWard = locationData.wards.find(w => w.name === formData.ward);
+                if (selectedWard && selectedWard.mergedFrom && selectedWard.mergedFrom.length > 1) {
+                  return (
+                    <div className="ward-merged-info" style={{ marginBottom: '15px' }}>
+                      <small className="merged-from-text">
+                        <i className="fa fa-info-circle"></i>
+                        <strong>Từ:</strong> {selectedWard.mergedFrom.join(', ')}
+                      </small>
+                    </div>
+                  );
+                }
+                return null;
+              })()}
+
+              <div className="form-row full-width">
                 <div className="form-group">
                   <label>Địa chỉ chi tiết *</label>
                   <input
@@ -1753,58 +1887,44 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                     name="detailAddress"
                     value={formData.detailAddress || ''}
                     onChange={handleInputChange}
-                    placeholder="VD: 123 Nguyễn Văn A"
+                    placeholder="VD: Hẻm 566 Nguyễn Thái Sơn"
                     className={errors.detailAddress ? 'error' : ''}
                   />
-
                   {errors.detailAddress && <span className="error-text">{errors.detailAddress}</span>}
                 </div>
               </div>
 
-              {/* Leaflet Map */}
+              {/* TrackAsia Map */}
               <div className="form-group">
-                <label>Vị trí trên bản đồ</label>
-                <div className="map-container" style={{ height: '250px', width: '100%' }}>
-                  <MapContainer
-                    center={formData.coordinates || { lat: '10.8533189', lng: '106.6501853' }}
-                    zoom={15}
-                    style={{ height: '100%', width: '100%' }}
-                    scrollWheelZoom={true}
-                  >
-                    <TileLayer
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                      attribution="&copy; OpenStreetMap contributors"
-                    />
-                    {formData.coordinates && (
-                      <DraggableMarker
-                        position={formData.coordinates}
-                        onChange={(latlng) =>
-                          setFormData(prev => ({
-                            ...prev,
-                            coordinates: { lat: latlng.lat, lng: latlng.lng }
-                          }))
-                        }
-                      />
-                    )}
-                  </MapContainer>
+                <h4>Vị trí trên bản đồ</h4>
+                <div className="coordinates-info">
+                  <div className="coordinate-display">
+                    <div className="coordinate-item">
+                      <i className="fa fa-map-marker"></i>
+                      <span>Vĩ độ: <strong>{formData.coordinates?.lat?.toFixed(6) || 'N/A'}</strong></span>
+                    </div>
+                    <div className="coordinate-item">
+                      <i className="fa fa-compass"></i>
+                      <span>Kinh độ: <strong>{formData.coordinates?.lng?.toFixed(6) || 'N/A'}</strong></span>
+                    </div>
+                    <div className="coordinate-item">
+                      <i className={`fa ${isManuallyModified ? 'fa-hand' : 'fa-magic'}`} style={{ color: isManuallyModified ? '#007bff' : '#007bff' }}></i>
+                      <span>Trạng thái: <strong style={{ color: isManuallyModified ? '#28a745' : '#007bff' }}>
+                        {isManuallyModified ? 'Đã chỉnh thủ công' : 'Tự động geocoding'}
+                      </strong></span>
+                    </div>
+                  </div>
+                  <p className="address-hint">💡 Nhấp vào bản đồ hoặc kéo marker để chọn vị trí chính xác</p>
                 </div>
 
-                <div className="coordinates-display">
-                  <span>Vĩ độ: {formData.coordinates?.lat?.toFixed(7) || 'N/A'}</span>
-                  <span>Kinh độ: {formData.coordinates?.lng?.toFixed(7) || 'N/A'}</span>
-                  {isManuallyModified && (
-                    <span className="manual-coords-indicator">
-                      <i className="fa fa-map-pin" style={{ color: '#28a745' }}></i>
-                      Đã chỉnh thủ công
-                    </span>
-                  )}
-                  {locationData.geocoding && (
-                    <span className="geocoding-indicator">
-                      <i className="fa fa-spinner fa-spin"></i>
-                      Đang định vị...
-                    </span>
-                  )}
-                </div>
+                <div
+                  ref={mapContainerRef}
+                  className="trackasia-map-container"
+                  style={{
+                    height: '250px',
+                    width: '100%'
+                  }}
+                />
               </div>
             </div>
 
@@ -1866,14 +1986,25 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                   accept="image/*"
                   multiple
                   style={{ display: 'none' }}
+                  disabled={isProcessingFiles}
                 />
                 <button
                   type="button"
                   className="btn btn-secondary btn-sm"
                   onClick={() => fileInputRef.current?.click()}
+                  disabled={isProcessingFiles}
                 >
-                  <i className="fa fa-upload"></i>
-                  Chọn hình ảnh
+                  {isProcessingFiles ? (
+                    <>
+                      <i className="fa fa-spinner fa-spin"></i>
+                      Đang xử lý ảnh...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa fa-upload"></i>
+                      Chọn hình ảnh
+                    </>
+                  )}
                 </button>
 
                 {formData.newImages?.length > 0 && (
@@ -1905,6 +2036,11 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                             className="remove-image-new-property"
                             onClick={() => {
                               handleRemoveNewImage(index);
+                              // Xóa validation info tương ứng
+                              setFileValidation(prev => ({
+                                ...prev,
+                                images: prev.images.filter((_, i) => i !== index)
+                              }));
                               // Xóa khỏi rejected files nếu có
                               if (isRejected) {
                                 setRejectedFiles(prev => ({
@@ -1916,6 +2052,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                           >
                             <i className="fa fa-times"></i>
                           </button>
+
                         </div>
                       );
                     })}
@@ -2005,6 +2142,12 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                             removeVideo: true, // gửi flag cho backend
                           }));
 
+                          // Clear validation info
+                          setFileValidation(prev => ({
+                            ...prev,
+                            videos: []
+                          }));
+
                           // Clear rejected files và errors cho video
                           setRejectedFiles(prev => ({
                             ...prev,
@@ -2022,8 +2165,24 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
                           });
                         }}
                       >
-                        <i className="fa fa-trash" style={{ fontSize: "20px", alignItems: "center", marginLeft: "5px" }}></i>
+                        <i className="fa fa-times" style={{ fontSize: "20px", alignItems: "center", marginLeft: "5px" }}></i>
                       </button>
+
+                      {/* Video validation info */}
+                      {fileValidation.videos.length > 0 && fileValidation.videos[0] && (
+                        <div className={`file-validation-info ${
+                          fileValidation.videos[0].validation.errors.length > 0 ? 'has-errors' : 
+                          fileValidation.videos[0].validation.warnings.length > 0 ? 'has-warnings' : ''
+                        }`} style={{ marginTop: '10px' }}>
+                          
+                          {fileValidation.videos[0].validation.warnings.map((warning, wIndex) => (
+                            <div key={wIndex} className="validation-message">
+                              <i className="fa fa-exclamation-triangle"></i>
+                              {warning}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
@@ -2057,7 +2216,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
             <button
               type="button"
               className="btn btn-secondary"
-              onClick={onClose}
+              onClick={handleClose}
             >
               Hủy
             </button>

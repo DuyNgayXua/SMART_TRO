@@ -714,17 +714,7 @@ const PropertiesPackagesManagement = () => {
                         />
                       </div>
 
-                      <div className="form-group">
-                        <label>Lượt đẩy tin miễn phí</label>
-                        <input
-                          type="number"
-                          name="freePushCount"
-                          value={formData.freePushCount}
-                          onChange={handleInputChange}
-                          placeholder="Nhập số lượt đẩy tin (mặc định: 0)"
-                          min="0"
-                        />
-                      </div>
+             
 
                       <div className="form-group">
                         <label>Độ ưu tiên *</label>

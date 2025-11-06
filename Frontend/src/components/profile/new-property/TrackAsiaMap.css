@@ -1,0 +1,846 @@
+/* TrackAsia Maps Styles */
+.trackasia-map-container {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid #e1e5e9;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  position: relative;
+}
+
+.trackasia-map-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 12px;
+  pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.trackasia-popup {
+  font-family: 'Roboto', sans-serif;
+}
+
+.trackasia-popup .mapboxgl-popup-content {
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.trackasia-popup .mapboxgl-popup-tip {
+  border-top-color: white;
+}
+
+/* Marker styling */
+.trackasia-marker {
+  cursor: pointer;
+}
+
+/* TrackAsia Control styling */
+.trackasiagl-ctrl-group, 
+.mapboxgl-ctrl-group {
+  background: rgba(255, 255, 255, 0.98);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Font fallback for Mapbox Directions Control */
+.mapboxgl-ctrl-directions,
+.mapbox-directions-component,
+.mapbox-directions-inputs,
+.mapbox-directions-instructions {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+}
+
+/* Ensure text is visible even without glyphs */
+.mapboxgl-ctrl-directions *,
+.mapbox-directions-component *,
+.directions-control * {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+  font-weight: normal !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Override any font loading issues */
+.trackasia-map-container canvas {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif !important;
+}
+
+/* Directions Panel Styles - Google Maps inspired */
+.directions-panel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 350px;
+  height: 100%;
+  background: white;
+  border-right: 1px solid #e0e0e0;
+  z-index: 1000;
+  overflow-y: auto;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.directions-panel-header {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.directions-panel-title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 500;
+  color: #1a73e8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.directions-close-btn {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #5f6368;
+  padding: 4px;
+  border-radius: 4px;
+}
+
+.directions-close-btn:hover {
+  background: #f1f3f4;
+}
+
+.directions-inputs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.directions-input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.directions-input-icon {
+  position: absolute;
+  left: 12px;
+  z-index: 1;
+  color: #5f6368;
+  font-size: 14px;
+}
+
+.directions-input {
+  width: 100%;
+  padding: 12px 12px 12px 36px;
+  border: 1px solid #dadce0;
+  border-radius: 4px;
+  font-size: 14px;
+  outline: none;
+  transition: all 0.2s;
+}
+
+.directions-input:focus {
+  border-color: #1a73e8;
+  box-shadow: 0 1px 6px rgba(26, 115, 232, 0.3);
+}
+
+.directions-input::placeholder {
+  color: #9aa0a6;
+}
+
+.directions-actions {
+  margin-top: 12px;
+  display: flex;
+  gap: 8px;
+}
+
+.directions-btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.directions-btn-primary {
+  background: #1a73e8;
+  color: white;
+}
+
+.directions-btn-primary:hover {
+  background: #1557b0;
+}
+
+.directions-btn-primary:disabled {
+  background: #dadce0;
+  color: #9aa0a6;
+  cursor: not-allowed;
+}
+
+.directions-btn-secondary {
+  background: white;
+  color: #1a73e8;
+  border: 1px solid #dadce0;
+}
+
+.directions-btn-secondary:hover {
+  background: #f8f9fa;
+}
+
+.directions-btn-property {
+  background: #34a853;
+  color: white;
+  font-size: 12px;
+  padding: 6px 12px;
+}
+
+.directions-btn-property:hover {
+  background: #2e7d32;
+}
+
+.directions-route-info {
+  padding: 16px;
+  border-bottom: 1px solid #e0e0e0;
+  background: #f8f9fa;
+}
+
+.directions-route-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.directions-route-distance {
+  font-size: 18px;
+  font-weight: 500;
+  color: #202124;
+}
+
+.directions-route-duration {
+  font-size: 14px;
+  color: #5f6368;
+}
+
+.directions-route-mode {
+  display: flex;
+  gap: 8px;
+}
+
+.directions-mode-btn {
+  padding: 6px 12px;
+  border: 1px solid #dadce0;
+  background: white;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.directions-mode-btn.active {
+  background: #1a73e8;
+  color: white;
+  border-color: #1a73e8;
+}
+
+.directions-instructions {
+  padding: 16px;
+}
+
+.directions-instructions-title {
+  font-size: 16px;
+  font-weight: 500;
+  margin-bottom: 12px;
+  color: #202124;
+}
+
+.directions-instruction {
+  display: flex;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid #f1f3f4;
+}
+
+.directions-instruction:last-child {
+  border-bottom: none;
+}
+
+.directions-instruction-icon {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #f1f3f4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  font-size: 12px;
+  color: #5f6368;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.directions-instruction-text {
+  flex: 1;
+  font-size: 14px;
+  line-height: 1.4;
+  color: #202124;
+}
+
+.directions-instruction-distance {
+  font-size: 12px;
+  color: #5f6368;
+  margin-left: auto;
+  flex-shrink: 0;
+  padding-left: 8px;
+}
+
+/* Loading state */
+.directions-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #5f6368;
+}
+
+.directions-loading i {
+  margin-right: 8px;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Map container adjustment when directions panel is open */
+.map-with-directions {
+  margin-left: 350px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .directions-panel {
+    width: 100%;
+    height: 50%;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    border-right: none;
+    border-top: 1px solid #e0e0e0;
+  }
+  
+  .map-with-directions {
+    margin-left: 0;
+  }
+}
+
+/* Directions Info Styling */
+.directions-info {
+  margin: 16px 0;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9ff 0%, #e8f4fd 100%);
+  border: 1px solid #d1ecf1;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.directions-info::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: linear-gradient(180deg, #007bff 0%, #0056b3 100%);
+  border-radius: 0 4px 4px 0;
+}
+
+.directions-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-left: 8px;
+}
+
+.directions-note i {
+  margin-top: 2px;
+  font-size: 18px;
+  opacity: 0.8;
+}
+
+.directions-note span {
+  line-height: 1.6;
+  color: #2c3e50;
+  font-size: 14px;
+}
+
+.directions-note strong {
+  color: #1a365d;
+  display: block;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+/* Mapbox Directions Control styling */
+.mapbox-directions-component {
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.mapbox-directions-component .mapbox-directions-inputs {
+  padding: 10px;
+}
+
+.mapbox-directions-component input {
+  border-radius: 6px;
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.mapbox-directions-component input:focus {
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.25);
+  outline: none;
+}
+
+.mapbox-directions-component .mapbox-directions-instructions {
+  max-height: 200px;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 0 0 8px 8px;
+}
+
+.mapbox-directions-component .mapbox-directions-instruction {
+  padding: 8px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  font-size: 13px;
+}
+
+.mapbox-directions-component .mapbox-directions-instruction:hover {
+  background: rgba(0, 123, 255, 0.1);
+}
+
+/* Ensure directions control is always visible */
+.trackasia-map-container .mapbox-directions-component {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  z-index: 1000;
+  max-width: 300px;
+  min-width: 250px;
+}
+
+/* Style for directions route on map */
+.directions-info {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(0, 123, 255, 0.1);
+  border-radius: 6px;
+  border-left: 4px solid #007bff;
+}
+
+.directions-note {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #495057;
+}
+
+.directions-note i {
+  font-size: 16px;
+}
+
+.trackasiagl-ctrl button, 
+.mapboxgl-ctrl button {
+  border-radius: 0;
+  transition: all 0.2s ease;
+}
+
+.trackasiagl-ctrl button:hover, 
+.mapboxgl-ctrl button:hover {
+  background: rgba(66, 133, 244, 0.1);
+}
+
+.trackasiagl-ctrl button:first-child, 
+.mapboxgl-ctrl button:first-child {
+  border-top-left-radius: 8px;
+  border-top-right-radius: 8px;
+}
+
+.trackasiagl-ctrl button:last-child, 
+.mapboxgl-ctrl button:last-child {
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+/* Geolocate control styling */
+.trackasiagl-ctrl-geolocate, 
+.mapboxgl-ctrl-geolocate {
+  border-radius: 8px;
+}
+
+/* Attribution styling */
+.trackasiagl-ctrl-attrib, 
+.mapboxgl-ctrl-attrib {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* Location buttons styling */
+.location-buttons {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.location-buttons .btn {
+  min-width: 120px;
+  font-size: 14px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
+.location-buttons .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.location-buttons .btn-primary {
+  background: linear-gradient(135deg, #007bff, #0056b3);
+  border: none;
+  color: white;
+}
+
+.location-buttons .btn-primary:hover {
+  background: linear-gradient(135deg, #0056b3, #004085);
+}
+
+.location-buttons .btn-warning {
+  background: linear-gradient(135deg, #ffc107, #e0a800);
+  border: none;
+  color: #212529;
+}
+
+.location-buttons .btn-warning:hover {
+  background: linear-gradient(135deg, #e0a800, #c69500);
+}
+
+.location-buttons .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Route info styling */
+.route-info {
+  background: #e7f3ff;
+  border: 1px solid #007bff;
+  border-radius: 6px;
+  padding: 10px;
+  margin: 10px 0;
+  font-size: 14px;
+}
+
+.route-info .route-stats {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 8px;
+}
+
+.route-info .route-stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.route-info .route-stat i {
+  color: #007bff;
+}
+
+/* TrackAsia Directions Panel Styles */
+.map-container-wrapper {
+  position: relative !important;
+  display: flex !important;
+}
+
+.directions-panel {
+  position: absolute !important;
+  top: 10px !important;
+  left: 10px !important;
+  width: 320px !important;
+  max-width: 90% !important;
+  background: white !important;
+  border-radius: 12px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+  z-index: 1000 !important;
+  padding: 20px !important;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  backdrop-filter: blur(10px) !important;
+  max-height: 280px !important;
+  overflow-y: auto !important;
+}
+
+.directions-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.directions-panel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.directions-panel::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 6px;
+}
+
+.directions-panel::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+.directions-header {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 20px !important;
+  border-bottom: 2px solid #f0f0f0 !important;
+  padding-bottom: 12px !important;
+}
+
+.directions-header h4 {
+  margin: 0 !important;
+  font-size: 18px !important;
+  font-weight: 600 !important;
+  color: #2c3e50 !important;
+}
+
+.directions-header button {
+  background: none !important;
+  border: none !important;
+  font-size: 24px !important;
+  cursor: pointer !important;
+  color: #7f8c8d !important;
+  padding: 8px !important;
+  border-radius: 50% !important;
+  width: 36px !important;
+  height: 36px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: all 0.2s ease !important;
+}
+
+.directions-header button:hover {
+  background-color: #f8f9fa !important;
+  color: #e74c3c !important;
+}
+
+.directions-form {
+  margin-bottom: 20px !important;
+}
+
+.directions-form > div {
+  margin-bottom: 16px !important;
+}
+
+.directions-form label {
+  display: block !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: #5d6d7e !important;
+  margin-bottom: 6px !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.directions-form input {
+  width: 100% !important;
+  padding: 12px 16px !important;
+  border: 2px solid #e8ecef !important;
+  border-radius: 8px !important;
+  font-size: 14px !important;
+  font-family: inherit !important;
+  transition: all 0.2s ease !important;
+  box-sizing: border-box !important;
+}
+
+.directions-form input:focus {
+  outline: none !important;
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.1) !important;
+}
+
+.directions-form input::placeholder {
+  color: #adb5bd !important;
+}
+
+.directions-form button {
+  width: 100% !important;
+  padding: 14px !important;
+  background: linear-gradient(135deg, #007bff 0%, #0056b3 100%) !important;
+  color: white !important;
+  border: none !important;
+  border-radius: 8px !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.directions-form button:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0056b3 0%, #004085 100%) !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.3) !important;
+}
+
+.directions-form button:disabled {
+  background: #dee2e6 !important;
+  color: #6c757d !important;
+  cursor: not-allowed !important;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.route-info {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+  padding: 16px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  border: 1px solid #dee2e6 !important;
+}
+
+.route-info > div {
+  display: flex !important;
+  justify-content: space-between !important;
+  margin-bottom: 10px !important;
+  align-items: center !important;
+}
+
+.route-info > div:last-child {
+  margin-bottom: 0 !important;
+}
+
+.route-info span:first-child {
+  font-weight: 600 !important;
+  color: #495057 !important;
+}
+
+.route-info span:last-child {
+  color: #007bff !important;
+  font-weight: 500 !important;
+}
+
+.route-info strong {
+  font-size: 12px !important;
+  color: #6c757d !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+}
+
+.route-info .route-steps {
+  max-height: 120px !important;
+  overflow-y: auto !important;
+  margin-top: 12px !important;
+  border: 1px solid #e9ecef !important;
+  border-radius: 6px !important;
+  padding: 12px !important;
+  background: white !important;
+}
+
+.route-info .route-steps::-webkit-scrollbar {
+  width: 4px;
+}
+
+.route-info .route-steps::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+.route-info .route-steps::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+.route-info .route-steps > div {
+  padding: 6px 0 !important;
+  border-bottom: 1px solid #f8f9fa !important;
+  font-size: 12px !important;
+  line-height: 1.5 !important;
+  display: block !important;
+}
+
+.route-info .route-steps > div:last-child {
+  border-bottom: none !important;
+}
+
+.route-info .route-steps span:first-child {
+  color: #007bff !important;
+  margin-right: 12px !important;
+  font-weight: 600 !important;
+  min-width: 20px !important;
+  display: inline-block !important;
+}
+
+.route-info .route-steps span:last-child {
+  color: #868e96 !important;
+  font-size: 11px !important;
+  margin-left: 12px !important;
+  font-weight: 400 !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .directions-panel {
+    width: calc(100vw - 40px) !important;
+    max-width: none !important;
+    left: 20px !important;
+    right: 20px !important;
+  }
+}
+
+/* Animation for panel */
+.directions-panel {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

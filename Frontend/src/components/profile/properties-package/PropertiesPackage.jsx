@@ -3,6 +3,7 @@ import { toast } from 'react-toastify';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import PropertiesPackageAPI from '../../../services/PropertiesPackageAPI.js';
 import adminPackagePlanAPI from '../../../services/adminPackagePlanAPI';
+import { createVNPayPaymentUrl, createPaymentOrder, createRenewalPaymentOrder } from '../../../services/paymentVNPayAPI';
 import './PropertiesPackage.css';
 
 const PropertiesPackage = () => {
@@ -17,7 +18,7 @@ const PropertiesPackage = () => {
   const [duration, setDuration] = useState(3);
   const [addFastRent, setAddFastRent] = useState(false);
   const [pricing, setPricing] = useState(null);
-  const [selectedPayment, setSelectedPayment] = useState('sepay_qr');
+  const [selectedPayment, setSelectedPayment] = useState('vnpay');
   const [pricingLoading, setPricingLoading] = useState(false);
 
   // Migration modal states
@@ -501,47 +502,91 @@ const PropertiesPackage = () => {
   };
 
   // Proceed to payment (after migration or directly)
-  const proceedToPayment = (migrationData = null) => {
-    toast.info('Đang chuyển hướng đến trang thanh toán...');
+  const proceedToPayment = async (migrationData = null) => {
+    try {
+      // Prepare payment data - không cần propertyId vì thanh toán cho toàn bộ tài khoản
+      const paymentData = {
+        packageInfo: {
+          ...pricing.packageInfo,
+          packageId: currentPackage?._id || upgradePackageId || expiredPackageId,
+          _id: currentPackage?._id || upgradePackageId || expiredPackageId,
+          name: currentPackage?.name || upgradePackageName || renewalPackageName,
+          displayName: currentPackage?.displayName || upgradePackageName || renewalPackageName,
+          dailyPrice: currentPackage?.dailyPrice || upgradePackagePrice,
+        },
+        pricing: pricing.pricing,
+        timeline: {
+          ...pricing.timeline,
+          duration,
+          durationUnit,
+          durationDisplay: formatDurationDisplay()
+        },
+        paymentMethod: selectedPayment,
+        isUpgrade: isUpgrade,
+        isRenewal: isRenewal,
+        // Thêm thông tin bắt buộc cho renewal
+        packagePlanId: isRenewal ? expiredPackageId : (currentPackage?._id || upgradePackageId),
+        totalAmount: pricing.pricing?.totalPrice || 0,
+        renewalInfo: isRenewal ? {
+          expiredPackageId: expiredPackageId,
+          packageType: renewalPackageType,
+          packageName: renewalPackageName,
+          packagePlanId: expiredPackageId,
+          totalAmount: pricing.pricing?.totalPrice || 0
+        } : null,
+        migration: migrationData // Add migration data if available
+      };
 
-    // Prepare payment data - không cần propertyId vì thanh toán cho toàn bộ tài khoản
-    const paymentData = {
-      packageInfo: {
-        ...pricing.packageInfo,
-        packageId: currentPackage?._id || upgradePackageId || expiredPackageId,
-        _id: currentPackage?._id || upgradePackageId || expiredPackageId,
-        name: currentPackage?.name || upgradePackageName || renewalPackageName,
-        displayName: currentPackage?.displayName || upgradePackageName || renewalPackageName,
-        dailyPrice: currentPackage?.dailyPrice || upgradePackagePrice,
-      },
-      pricing: pricing.pricing,
-      timeline: {
-        ...pricing.timeline,
-        duration,
-        durationUnit,
-        durationDisplay: formatDurationDisplay()
-      },
-      paymentMethod: selectedPayment,
-      isUpgrade: isUpgrade,
-      isRenewal: isRenewal,
-      // Thêm thông tin bắt buộc cho renewal
-      packagePlanId: isRenewal ? expiredPackageId : (currentPackage?._id || upgradePackageId),
-      totalAmount: pricing.pricing?.totalPrice || 0,
-      renewalInfo: isRenewal ? {
-        expiredPackageId: expiredPackageId,
-        packageType: renewalPackageType,
-        packageName: renewalPackageName,
-        packagePlanId: expiredPackageId,
-        totalAmount: pricing.pricing?.totalPrice || 0
-      } : null,
-      migration: migrationData // Add migration data if available
-    };
+      console.log('isRenewal flag:', isRenewal);
+      console.log('Payment data:', paymentData);
+      console.log('Selected payment method:', selectedPayment);
 
-    console.log('isRenewal flag:', isRenewal);
-    console.log('Payment data:', paymentData);
+      // Navigate based on payment method
+      if (selectedPayment === 'vnpay') {
+        // Chuyển hướng trực tiếp đến VNPay sandbox
+        // Bước 1: Tạo đơn hàng trước
+        const orderData = {
+          packagePlanId: paymentData.packagePlanId,
+          totalAmount: paymentData.totalAmount,
+          orderInfo: `Thanh toán gói ${paymentData.packageInfo.displayName}`,
+          isUpgrade: paymentData.isUpgrade,
+          isRenewal: paymentData.isRenewal,
+          renewalInfo: paymentData.renewalInfo,
+          migration: paymentData.migration
+        };
 
-    // Navigate to payment page
-    navigate('/profile/payment', { state: paymentData });
+        // Chọn API tạo order phù hợp
+        let createOrderResponse;
+        if (paymentData.isRenewal) {
+          createOrderResponse = await createRenewalPaymentOrder(orderData);
+        } else {
+          createOrderResponse = await createPaymentOrder(orderData);
+        }
+
+        if (!createOrderResponse.success || !createOrderResponse.data.orderId) {
+          toast.error('Không thể tạo đơn hàng: ' + (createOrderResponse.message || 'Lỗi không xác định'));
+          return;
+        }
+
+        // Bước 2: Tạo URL VNPay với orderId
+        toast.info('Đang chuyển hướng đến VNPay...');
+        const vnpayResponse = await createVNPayPaymentUrl(createOrderResponse.data.orderId);
+        console.log('VNPay payment URL response:', vnpayResponse);
+
+        if (vnpayResponse.success && vnpayResponse.data.vnpayUrl) {
+          // Chuyển hướng trực tiếp đến VNPay
+          window.location.href = vnpayResponse.data.vnpayUrl;
+        } else {
+          toast.error('Không thể tạo liên kết thanh toán VNPay: ' + (vnpayResponse.message || 'Lỗi không xác định'));
+        }
+      } else {
+        // Navigate to traditional payment page (SePay)
+        navigate('/profile/payment', { state: paymentData });
+      }
+    } catch (error) {
+      console.error('Error proceeding to payment:', error);
+      toast.error('Lỗi khi chuẩn bị thanh toán: ' + error.message);
+    }
   };
 
   // Confirm migration and proceed to payment
@@ -662,10 +707,10 @@ const PropertiesPackage = () => {
               <div className="selected-package-card">
                 <div className="package-card-header">
                   <h4 className="package-title-properties-package">
-                    <i className="fa fa-history" style={{ color: '#ffc107'}}></i>
+                    <i className="fa fa-history" style={{ color: '#ffc107' }}></i>
                     {renewalPackageName}
                   </h4>
-                  <div className="package-price">
+                  <div className="package-price-properties-package">
                     <span className="price-amount-properties-package">{PropertiesPackageAPI.formatPrice(upgradePackagePrice || 0)} VNĐ</span>
                     <span className="price-period">/{upgradeDuration || 1} {upgradeDurationUnit === 'month' ? 'tháng' : upgradeDurationUnit === 'year' ? 'năm' : 'ngày'}</span>
                   </div>
@@ -673,14 +718,14 @@ const PropertiesPackage = () => {
 
                 <div className="package-card-body">
                   {(() => {
-                    
+
                     // Since renewalPackageName contains the expired package name, we need to match it
-                    const packageDetails = packages.find(pkg => 
-                      pkg.displayName === renewalPackageName || 
+                    const packageDetails = packages.find(pkg =>
+                      pkg.displayName === renewalPackageName ||
                       pkg.name === renewalPackageName ||
                       pkg._id === expiredPackageId
                     );
-                 
+
 
                     if (packageDetails?.propertiesLimits) {
                       console.log('Found propertiesLimits for renewal:', packageDetails.propertiesLimits);
@@ -742,7 +787,7 @@ const PropertiesPackage = () => {
               <div className="selected-package-card">
                 <div className="package-card-header">
                   <h4 className="package-title-properties-package">{upgradePackageName}</h4>
-                  <div className="package-price">
+                  <div className="package-price-properties-package">
                     <span className="price-amount-properties-package">{PropertiesPackageAPI.formatPrice(upgradePackagePrice)} VNĐ</span>
                     <span className="price-period">/{upgradeDuration} {upgradeDurationUnit === 'month' ? 'tháng' : upgradeDurationUnit === 'year' ? 'năm' : 'ngày'}</span>
                   </div>
@@ -821,7 +866,7 @@ const PropertiesPackage = () => {
             console.log('Rendering package preview for:', currentPackage),
             <div className="package-preview-section">
               <div className="preview-sample">
-                <button 
+                <button
                   className="btn-preview"
                   onClick={() => window.open('/pricing', '_blank')}
                 >
@@ -859,12 +904,25 @@ const PropertiesPackage = () => {
                 <input
                   type="radio"
                   name="payment"
+                  value="vnpay"
+                  checked={selectedPayment === 'vnpay'}
+                  onChange={(e) => setSelectedPayment(e.target.value)}
+                />
+                <span className="payment-label">
+                 <img className="payment-icon" src="https://res.cloudinary.com/dapvuniyx/image/upload/v1761911175/vnpay_xnbjkc.jpg" alt="" />
+                  Thanh toán VNPay (Thẻ ATM, Internet Banking)
+                </span>
+              </label>
+              <label className="payment-option">
+                <input
+                  type="radio"
+                  name="payment"
                   value="sepay_qr"
                   checked={selectedPayment === 'sepay_qr'}
                   onChange={(e) => setSelectedPayment(e.target.value)}
                 />
                 <span className="payment-label">
-                  <i className="fa fa-qrcode"></i>
+                 <img className="payment-icon" src="https://res.cloudinary.com/dapvuniyx/image/upload/v1761911174/sepay_v5akjp.png" alt="" />
                   Thanh toán quét mã QR Code Sepay
                 </span>
               </label>
@@ -954,8 +1012,8 @@ const PropertiesPackage = () => {
                 <p>
                   {fromPaymentHistory ? 'Đang tải thông tin thanh toán...' :
                     isUpgrade ? 'Đang tính chi phí nâng cấp gói...' :
-                    isRenewal ? 'Đang tính chi phí gia hạn gói...' :
-                      'Chọn gói tin đăng để xem chi tiết giá cả'}
+                      isRenewal ? 'Đang tính chi phí gia hạn gói...' :
+                        'Chọn gói tin đăng để xem chi tiết giá cả'}
                 </p>
               </div>
             )}
@@ -1071,7 +1129,7 @@ const PropertiesPackage = () => {
                               <div className="location-row">
                                 <i className="fa fa-map-marker"></i>
                                 <span className="location-text">
-                                  {property.location?.detailAddress}, {property.location?.wardName}, {property.location?.districtName}, {property.location?.provinceName}
+                                  {property.detailAddress}, {property.ward}, {property.province}
                                 </span>
                               </div>
                               <div className="property-meta-row">
@@ -1090,14 +1148,17 @@ const PropertiesPackage = () => {
                                     color: 'white'
                                   }}
                                 >
-
-                                  {property.packageInfo?.postType?.stars > 0 && (
-                                    <div className="post-type-stars-my-properties">
-                                      {[...Array(property.packageInfo?.postType?.stars)].map((_, index) => (
-                                        <i key={index} className="fa fa-star star-icon-my-properties"></i>
-                                      ))}
-                                    </div>
-                                  )}
+                                  {(() => {
+                                    const priority = property.packageInfo?.postType?.priority;
+                                    const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+                                    return stars > 0 && (
+                                      <div className="post-type-stars-my-properties">
+                                        {[...Array(stars)].map((_, index) => (
+                                          <i key={index} className="fa fa-star star-icon-my-properties"></i>
+                                        ))}
+                                      </div>
+                                    );
+                                  })()}
                                   {property.packageInfo?.postType?.displayName || 'Tin cơ bản'}
                                 </span>
                               </div>

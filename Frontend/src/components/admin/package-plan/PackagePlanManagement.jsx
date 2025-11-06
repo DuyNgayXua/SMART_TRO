@@ -79,6 +79,7 @@ const PackagePlanManagement = () => {
         try {
             setLoading(true);
             const response = await adminPackagePlanAPI.getPackagePlans();
+            console.log('Fetched package plans:', response);
 
             if (response.success) {
                 setPackagePlans(response.data || []);
@@ -106,6 +107,7 @@ const PackagePlanManagement = () => {
     const fetchPropertiesPackages = async () => {
         try {
             const response = await adminPackagePlanAPI.getPropertiesPackages();
+           
             if (response.success) {
                 setPropertiesPackages(response.data || []);
             }
@@ -702,8 +704,19 @@ const PackagePlanManagement = () => {
                                             <h6>Giới hạn đăng tin:</h6>
                                             {packagePlan.propertiesLimits && packagePlan.propertiesLimits.length > 0 ? (
                                                 packagePlan.propertiesLimits.map((limit, index) => (
-                                                    <div key={index} className={`post-limit-item ${getPostTypeClass(limit.packageType?.displayName)}`}>
-                                                        <span className="post-type-name">{limit.packageType?.displayName || 'Loại tin'}:</span>
+                                                    <div key={index} className="post-limit-item">
+                                                        <span 
+                                                            className="post-type-name"
+                                                            style={{
+                                                                backgroundColor: limit.packageType?.color || '#6c757d',
+                                                                color: '#fff',
+                                                                padding: '2px 6px',
+                                                                borderRadius: '3px',
+                                                                fontSize: '12px'
+                                                            }}
+                                                        >
+                                                            {limit.packageType?.displayName || 'Loại tin'}:
+                                                        </span>
                                                         <span className="limit-number">{limit.limit}</span>
                                                     </div>
                                                 ))

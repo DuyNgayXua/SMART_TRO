@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import chatbotAPI from '../../services/chatbotAPI';
 import mcpChatbotAPI from '../../services/mcpChatbotAPI';
 import { useAuth } from '../../contexts/AuthContext';
 import PropertySlider from '../properties/PropertySlider';
+import ChatInput from './ChatInput';
+import ChatMessages from './ChatMessages';
 import {
   FaRobot,
   FaTimes,
@@ -18,13 +20,11 @@ import './ChatBot.css';
 const ChatBot = ({ onPropertySearch, formatPrice }) => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const textareaRef = useRef(null);
   
   // Chatbot states
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
   const [guidedMessages, setGuidedMessages] = useState([]);
   const [freeMessages, setFreeMessages] = useState([]);
-  const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [searching, setSearching] = useState(false);
@@ -87,51 +87,9 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     }
   }, []);
 
-  // Auto-resize textarea when inputMessage changes
-  useEffect(() => {
-    if (textareaRef.current) {
-      autoResizeTextarea();
-    }
-  }, [inputMessage]);
 
-  // Function to auto-resize textarea
-  const autoResizeTextarea = () => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
 
-    // Lưu current scroll position
-    const scrollTop = textarea.scrollTop;
-    
-    // Reset height để tính toán scrollHeight chính xác
-    textarea.style.height = 'auto';
-    
-    // Tính toán height dựa trên scrollHeight
-    const scrollHeight = textarea.scrollHeight;
-    const minHeight = window.innerWidth <= 480 ? 36 : 40; // Responsive min height
-    const maxHeight = window.innerWidth <= 480 ? 100 : 120; // Responsive max height
-    
-    // Set height trong khoảng min-max
-    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
-    textarea.style.height = `${newHeight}px`;
-    
-    // Restore scroll position nếu cần
-    textarea.scrollTop = scrollTop;
-    
-    // Quản lý overflow
-    if (scrollHeight > maxHeight) {
-      textarea.style.overflowY = 'auto';
-    } else {
-      textarea.style.overflowY = 'hidden';
-    }
-  };
 
-  // Handle Enter key press
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
 
   // Sound functions
   const playSuccessSound = () => {
@@ -198,9 +156,11 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     setSoundEnabled(!soundEnabled);
   };
 
+  const [hintMessage, setHintMessage] = useState('');
+
   const handleHintClick = () => {
     setIsChatbotOpen(true);
-    setInputMessage('Tìm phòng trọ gần Đại học Công Nghiệp ở Thành phố Hồ Chí Minh, tiện ích: wifi, ban công, diện tích 22m2, giá dưới 3 triệu');
+    setHintMessage('Tìm phòng trọ gần Đại học Công Nghiệp ở Thành phố Hồ Chí Minh, tiện ích: wifi, ban công, diện tích 22m2, giá dưới 3 triệu');
     setShowHint(false);
     setGuidedMode(false); // Chuyển sang chế độ tự do
     // Lưu trạng thái đã xem hint
@@ -283,8 +243,6 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
           setConversationState(conversationData.conversationState || null);
           setCurrentStep(conversationData.currentStep || 'greeting');
           
-          console.log('Loaded conversation from storage for:', user?._id || 'guest');
-          
           return true;
         } else {
           // Xóa data cũ
@@ -302,7 +260,6 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
   const clearConversationStorage = () => {
     const storageKey = user?._id ? `chatbot_conversation_${user._id}` : 'chatbot_conversation_guest';
     localStorage.removeItem(storageKey);
-    console.log('Cleared conversation storage for:', user?._id || 'guest');
   };
 
   // Helper function to create message with proper timestamp
@@ -312,28 +269,23 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     ...messageData
   });
 
-  const handleSendMessage = async (messageText = null) => {
-    const message = messageText || inputMessage;
-    if (!message.trim() || isLoading) return;
+  // Optimized callbacks for ChatInput
+  const handleModeChange = useCallback((isGuidedMode) => {
+    setGuidedMode(isGuidedMode);
+  }, []);
+
+  const handleSendMessage = useCallback(async (messageText) => {
+    if (!messageText.trim() || isLoading) return;
 
     const userMessage = {
       id: Date.now(),
-      text: message,
+      text: messageText,
       sender: 'user',
       timestamp: new Date()
     };
 
     setMessages(prev => [...prev, userMessage]);
-    setInputMessage('');
     setIsLoading(true);
-    
-    // Reset textarea height sau khi gửi tin nhắn
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.style.height = '40px';
-        textareaRef.current.style.overflowY = 'hidden';
-      }
-    }, 0);
     
     // Scroll xuống tin nhắn user mới
     setTimeout(() => {
@@ -346,24 +298,14 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
       if (guidedMode) {
         // Sử dụng MCP guided conversation cho tốc độ tối ưu
         response = await mcpChatbotAPI.sendGuidedMessage(
-          message, 
+          messageText, 
           sessionId, 
           conversationState
         );
       } else {
         // Sử dụng free-form conversation (cũ)
-        response = await chatbotAPI.sendMessage(message, sessionId);
+        response = await chatbotAPI.sendMessage(messageText, sessionId);
       }
-      
-      console.log('=== CHATBOT SEND MESSAGE RESPONSE');
-      console.log('Message sent:', message);
-      console.log('Mode:', guidedMode ? 'Guided' : 'Free');
-      console.log('Full response:', JSON.stringify(response, null, 2));
-      console.log('Properties received:', response.data?.properties?.length || 0);
-      if (response.data?.properties?.length > 0) {
-        console.log('Properties details:', response.data.properties);
-      }
-      console.log('=== END SEND MESSAGE RESPONSE ===');
       
       if (response.success) {
         // Cập nhật session ID nếu có
@@ -402,9 +344,6 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
         
         // Nếu có properties, hiển thị chúng
         if (response.data.showGrid && response.data.properties?.length > 0) {
-          // Có thể scroll to results hoặc highlight properties
-          console.log('Found properties:', response.data.properties.length);
-          
           // Call callback if provided
           if (onPropertySearch && typeof onPropertySearch === 'function') {
             onPropertySearch(response.data.properties);
@@ -433,14 +372,14 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [guidedMode, sessionId, conversationState, setSessionId, setMessages, isLoading, onPropertySearch]);
 
   // Xử lý khi user click vào option
-  const handleOptionClick = (option) => {
+  const handleOptionClick = useCallback((option) => {
     // Xử lý cả trường hợp option là string hoặc object
     const optionText = typeof option === 'string' ? option : option.name || option.text || option._id || 'Tùy chọn';
     handleSendMessage(optionText);
-  };
+  }, [handleSendMessage]);
 
   // Khởi tạo conversation khi mở chatbot
   const initializeConversation = async () => {
@@ -452,13 +391,6 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
           null, 
           null
         );
-        console.log('=== INITIALIZE CONVERSATION RESPONSE ===');
-        console.log('Full response:', JSON.stringify(response, null, 2));
-        console.log('Response success:', response.success);
-        console.log('Response data:', response.data);
-        console.log('Properties in response:', response.data?.properties);
-        console.log('=== END INITIALIZE RESPONSE ===');
-        
         if (response.success) {
           // Cập nhật session ID
           if (response.data.sessionId) {
@@ -654,139 +586,25 @@ const ChatBot = ({ onPropertySearch, formatPrice }) => {
             </div>
           </div>
           
-          <div className="chatbot-messages">
-            {messages.length === 0 && !guidedMode && (
-              <div className="welcome-message">
-                <FaRobot className="bot-avatar" />
-                <div className="message-content">
-                  <p>Xin chào! Tôi là AI trợ lý tìm phòng trọ. Hãy mô tả yêu cầu của bạn, ví dụ:</p>
-                  <ul>
-                    <li>"Tìm căn hộ ở quận 5 Thành phố Hồ Chí Minh, tiện ích: tủ quần áo, diện tích 20m2, giá 3 triệu 500"</li>
-                    <li>"Cần phòng trọ ở quận Gò Vấp giá dưới 3 triệu, có diện tích trên 22m², có tiện ích wifi"</li>
-                    <li>"Tìm phòng trọ ở quận Bình Thạnh, Thành phố Hồ Chí Minh, tiện ích: tivi, diện tích 50m2, giá 7 triệu"</li>
-                  </ul>
-                </div>
-              </div>
-            )}
-            
-            {messages.map((message) => (
-              <div key={message.id} className={`message ${message.sender}`}>
-                {message.sender === 'bot' && <FaRobot className="bot-avatar" />}
-                <div className="message-content">
-                  <p>{typeof message.text === 'string' ? message.text : JSON.stringify(message.text)}</p>
-                  
-                  {/* Hiển thị options cho guided conversation */}
-                  {message.sender === 'bot' && message.options && message.options.length > 0 && (
-                    <div className="chat-options">
-                      {message.options.map((option, index) => (
-                        <button
-                          key={index}
-                          className="chat-option-btn"
-                          onClick={() => handleOptionClick(typeof option === 'string' ? option : option.name || option.text || option._id)}
-                          disabled={isLoading}
-                        >
-                          {typeof option === 'string' ? option : option.name || option.text || option._id || 'Tùy chọn'}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  
-                  {/* Hiển thị properties nếu có */}
-                  {message.properties && message.properties.length > 0 && (
-                    <PropertySlider 
-                      properties={message.properties}
-                      onViewDetail={(propertyId) => navigate(`/properties/${propertyId}`)}
-                      formatPrice={formatPrice}
-                    />
-                  )}
-                  
-                  <span className="timestamp">
-                    {message.timestamp instanceof Date 
-                      ? message.timestamp.toLocaleTimeString('vi-VN', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })
-                      : new Date(message.timestamp).toLocaleTimeString('vi-VN', { 
-                          hour: '2-digit', 
-                          minute: '2-digit' 
-                        })
-                    }
-                  </span>
-                </div>
-              </div>
-            ))}
-            
-            {isLoading && (
-              <div className="message bot">
-                <FaRobot className="bot-avatar" />
-                <div className="message-content">
-                  <div className="typing-indicator">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+          <ChatMessages
+            messages={messages}
+            guidedMode={guidedMode}
+            onOptionClick={handleOptionClick}
+            isLoading={isLoading}
+            navigate={navigate}
+            formatPrice={formatPrice}
+          />
           
-          <div className="chatbot-input">
-            {/* Mode toggle */}
-            <div className="chat-mode-toggle">
-              <button
-                className={`mode-btn ${guidedMode ? 'active' : ''}`}
-                onClick={() => {
-                  if (!guidedMode) {
-                    setGuidedMode(true);
-                    // Nếu chưa có guided messages, khởi tạo conversation
-                    if (guidedMessages.length === 0) {
-                      setTimeout(() => {
-                        initializeConversation();
-                      }, 100);
-                    }
-                  }
-                }}
-              >
-                Hướng dẫn
-              </button>
-              <button
-                className={`mode-btn ${!guidedMode ? 'active' : ''}`}
-                onClick={() => {
-                  if (guidedMode) {
-                    setGuidedMode(false);
-                    // Không reset messages, chỉ chuyển mode
-                  }
-                }}
-              >
-                Tự do
-              </button>
-            </div>
-            
-            <div className="input-wrapper">
-              <textarea
-                ref={textareaRef}
-                value={inputMessage}
-                onChange={(e) => {
-                  setInputMessage(e.target.value);
-                }}
-                onInput={autoResizeTextarea}
-                onKeyPress={handleKeyPress}
-                placeholder={guidedMode ? 
-                  "Nhập câu trả lời của bạn..." : 
-                  "Nhập yêu cầu tìm kiếm của bạn..."
-                }
-                disabled={isLoading}
-                rows={1}
-              />
-              <button 
-                className="send-btn" 
-                onClick={() => handleSendMessage()}
-                disabled={!inputMessage.trim() || isLoading}
-              >
-                <FaPaperPlane />
-              </button>
-            </div>
-          </div>
+          <ChatInput
+            onSendMessage={handleSendMessage}
+            isLoading={isLoading}
+            guidedMode={guidedMode}
+            onModeChange={handleModeChange}
+            onInitializeConversation={initializeConversation}
+            guidedMessages={guidedMessages}
+            hintMessage={hintMessage}
+            onHintMessageUsed={() => setHintMessage('')}
+          />
         </div>
       )}
     </div>

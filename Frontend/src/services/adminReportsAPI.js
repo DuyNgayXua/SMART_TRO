@@ -83,11 +83,24 @@ class AdminReportsAPI {
         body: JSON.stringify({ reason })
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Nếu có lỗi validation, tạo error với chi tiết từ backend
+        if (data.errors && Array.isArray(data.errors)) {
+          const errorMessages = data.errors.map(err => err.msg || err.message).join('; ');
+          const error = new Error(data.message || 'Validation failed');
+          error.validationErrors = data.errors;
+          error.detailedMessage = errorMessages;
+          throw error;
+        } else if (data.message) {
+          throw new Error(data.message);
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error('Error sending warning:', error);
       throw error;
@@ -103,11 +116,24 @@ class AdminReportsAPI {
         body: JSON.stringify({ reason })
       });
 
+      const data = await response.json();
+      
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // Nếu có lỗi validation, tạo error với chi tiết từ backend
+        if (data.errors && Array.isArray(data.errors)) {
+          const errorMessages = data.errors.map(err => err.msg || err.message).join('; ');
+          const error = new Error(data.message || 'Validation failed');
+          error.validationErrors = data.errors;
+          error.detailedMessage = errorMessages;
+          throw error;
+        } else if (data.message) {
+          throw new Error(data.message);
+        } else {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
       }
 
-      return await response.json();
+      return data;
     } catch (error) {
       console.error('Error hiding property:', error);
       throw error;

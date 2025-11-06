@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import SideBar from '../../common/adminSidebar';
 import adminPropertiesAPI from '../../../services/adminPropertiesAPI';
-import { locationAPI } from '../../../services/locationAPI';
 import '../admin-global.css';
 import './PropertyManagement.css';
 
@@ -44,8 +43,8 @@ const PropertyManagement = () => {
 
                 // Load address info for all properties
                 data.data.properties.forEach(property => {
-                    if (property.province && property.district && property.ward) {
-                        loadAddressInfo(property.province, property.district, property.ward);
+                    if (property.province  && property.ward) {
+                        loadAddressInfo(property.province, property.ward);
                     }
                 });
             } else {
@@ -72,69 +71,41 @@ const PropertyManagement = () => {
     };
 
     // Load address info and cache it
-    const loadAddressInfo = async (provinceCode, districtCode, wardCode) => {
-        const cacheKey = `${provinceCode}-${districtCode}-${wardCode}`;
+    const loadAddressInfo = async (provinceName, wardName) => {
+        const cacheKey = `${provinceName}-${wardName}`;
 
         if (addressCache.has(cacheKey)) {
             return addressCache.get(cacheKey);
         }
 
         try {
-            // Step 1: Load provinces and find province name
-            const provincesRes = await locationAPI.getProvinces();
-            if (provincesRes.success && provincesRes.data) {
-                const foundProvince = provincesRes.data.find(p => p.code == provinceCode);
-                if (foundProvince) {
-                    let provinceName = foundProvince.name;
-                    let districtName = '';
-                    let wardName = '';
-
-                    // Step 2: Load districts for this province and find district name
-                    const districtsRes = await locationAPI.getDistricts(provinceCode);
-                    if (districtsRes.success && districtsRes.data) {
-                        const foundDistrict = districtsRes.data.find(d => d.code == districtCode);
-                        if (foundDistrict) {
-                            districtName = foundDistrict.name;
-
-                            // Step 3: Load wards for this district and find ward name
-                            const wardsRes = await locationAPI.getWards(districtCode);
-                            if (wardsRes.success && wardsRes.data) {
-                                const foundWard = wardsRes.data.find(w => w.code == wardCode);
-                                if (foundWard) {
-                                    wardName = foundWard.name;
-                                }
-                            }
-                        }
-                    }
-
-                    const addressInfo = { provinceName, districtName, wardName };
-                    // Cache the result
-                    setAddressCache(prev => new Map(prev.set(cacheKey, addressInfo)));
-                    return addressInfo;
-                }
-            }
+            // Schema mới chỉ lưu tên province và ward trực tiếp
+            // Không cần gọi API vì đã có sẵn tên
+            const addressInfo = { 
+                provinceName: provinceName, 
+                wardName: wardName 
+            };
+            
+            // Cache the result
+            setAddressCache(prev => new Map(prev.set(cacheKey, addressInfo)));
+            return addressInfo;
         } catch (error) {
             console.error('Error loading address info:', error);
         }
 
         // Return default if failed
-        const defaultInfo = { provinceName: provinceCode, districtName: districtCode, wardName: wardCode };
+        const defaultInfo = { 
+            provinceName: provinceName, 
+            wardName: wardName 
+        };
         setAddressCache(prev => new Map(prev.set(cacheKey, defaultInfo)));
         return defaultInfo;
     };
 
     // Format address with names instead of codes
     const formatAddress = (property) => {
-
-        const cacheKey = `${property.province}-${property.district}-${property.ward}`;
-        const cached = addressCache.get(cacheKey);
-
-        if (cached) {
-            return ` ${cached.wardName}, ${cached.districtName}, ${cached.provinceName}`;
-        }
-
-        // Return codes as fallback while loading
-        return `${property.district}, ${property.province}`;
+        // Schema mới đã lưu trực tiếp tên province và ward
+        return ` ${property.ward}, ${property.province}`;
     };
 
     // Approve property
@@ -510,7 +481,22 @@ const PropertyManagement = () => {
                                                             </div>
                                                              <div className="property-plan-details">
                                                                 <span className="plan-tag">{property.packageInfo.plan?.displayName}</span>
-                                                                <span className={`plan-post-type-tag ${property.packageInfo.postType ? getPostTypeInfo(property.packageInfo.postType)?.cssClass || '' : ''}`}>
+                                                                <span 
+                                                                    className="plan-post-type-tag"
+                                                                    style={{
+                                                                        backgroundColor: property.packageInfo.postType?.color || '#6c757d',
+                                                                        color: '#ffffff',
+                                                                        padding: '4px 8px',
+                                                                        borderRadius: '4px',
+                                                                        fontSize: '12px',
+                                                                        fontWeight: 'bold'
+                                                                    }}
+                                                                >
+                                                                    {(() => {
+                                                                        const priority = property.packageInfo.postType?.priority || 6;
+                                                                        const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+                                                                        return stars > 0 ? '★'.repeat(stars) + ' ' : '';
+                                                                    })()}
                                                                     {property.packageInfo.postType?.displayName}
                                                                 </span>
                                                             </div>
@@ -532,7 +518,7 @@ const PropertyManagement = () => {
                                                                 {property.detailAddress},{formatAddress(property)}
                                                             </div>
                                                         </div>
-                                                        <div className="price-section">
+                                                        <div className="price-section-property-management">
                                                             <div className="main-price">
                                                                 {formatPrice(property.rentPrice)}/tháng
                                                             </div>
@@ -847,12 +833,12 @@ const PropertyManagement = () => {
                                                     <strong>Địa chỉ:</strong>
                                                     <span>
                                                         {selectedProperty.detailAddress}, {(() => {
-                                                            const cacheKey = `${selectedProperty.province}-${selectedProperty.district}-${selectedProperty.ward}`;
+                                                            const cacheKey = `${selectedProperty.province}-${selectedProperty.ward}`;
                                                             const cached = addressCache.get(cacheKey);
                                                             if (cached) {
-                                                                return `${cached.wardName}, ${cached.districtName}, ${cached.provinceName}`;
+                                                                return `${cached.wardName}, ${cached.provinceName}`;
                                                             }
-                                                            return `${selectedProperty.ward}, ${selectedProperty.district}, ${selectedProperty.province}`;
+                                                            return `${selectedProperty.ward}, ${selectedProperty.province}`;
                                                         })()}
                                                     </span>
                                                 </div>

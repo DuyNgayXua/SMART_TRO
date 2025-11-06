@@ -126,7 +126,7 @@ class adminReportPropertyRepository {
       reportId,
       {
         status: 'resolved',
-        actionTaken: `Đã xử lý, xóa bài đăng: ${reason}`,
+        actionTaken: `Đã gửi cảnh báo: ${reason}`,
         processedAt: new Date(),
         processedBy: adminId,
         updatedAt: new Date()

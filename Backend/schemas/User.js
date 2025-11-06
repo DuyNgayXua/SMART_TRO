@@ -18,12 +18,12 @@ const userSchema = new mongoose.Schema({
     },
     phone: {
         type: String,
-        required: function() {
+        required: function () {
             // Phone chỉ required nếu không đăng nhập qua Google
             return !this.googleId;
         },
         validate: {
-            validator: function(v) {
+            validator: function (v) {
                 // Nếu là tài khoản Google và phone rỗng thì hợp lệ
                 if (this.googleId && (!v || v.trim() === '')) {
                     return true;
@@ -42,7 +42,7 @@ const userSchema = new mongoose.Schema({
     },
     password: {
         type: String,
-        required: function() {
+        required: function () {
             // Password chỉ required nếu không đăng nhập qua Google
             return !this.googleId;
         },
@@ -62,7 +62,6 @@ const userSchema = new mongoose.Schema({
     address: {
         street: String,
         ward: String,
-        district: String,
         province: String
     },
     isActive: {
@@ -121,7 +120,7 @@ const userSchema = new mongoose.Schema({
             }
         }]
     },
-    
+
     // Lịch sử các gói đã sử dụng
     packageHistory: [{
         packagePlanId: {
@@ -148,6 +147,10 @@ const userSchema = new mongoose.Schema({
             enum: ['active', 'expired', 'upgraded', 'cancelled', 'renewed'],
             default: 'active'
         },
+         isActive: {
+            type: Boolean,
+            default: true
+        },
         propertiesLimits: [{
             packageType: {
                 type: mongoose.Schema.Types.ObjectId,
@@ -159,6 +162,7 @@ const userSchema = new mongoose.Schema({
                 default: 0
             }
         }],
+        
         // Thông tin tin đăng đã được chuyển sang gói khác
         transferredProperties: [{
             propertyId: {
@@ -169,6 +173,14 @@ const userSchema = new mongoose.Schema({
             postType: {
                 type: mongoose.Schema.Types.ObjectId,
                 ref: 'PropertiesPackage'
+            },
+
+            transferredFromPackage: {
+                packagePlanId: {
+                    type: mongoose.Schema.Types.ObjectId,
+                    ref: 'PackagePlan'
+                },
+                displayName: String
             },
             transferredToPackage: {
                 packagePlanId: {
@@ -187,7 +199,7 @@ const userSchema = new mongoose.Schema({
 });
 
 // Hash password trước khi lưu
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
     // Chỉ hash password nếu có password và được modified
     if (!this.password || !this.isModified('password')) return next();
     this.password = await bcrypt.hash(this.password, 12);
@@ -195,7 +207,7 @@ userSchema.pre('save', async function(next) {
 });
 
 // So sánh password
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
     // Nếu không có password (Google login), return false
     if (!this.password) return false;
     return bcrypt.compare(candidatePassword, this.password);

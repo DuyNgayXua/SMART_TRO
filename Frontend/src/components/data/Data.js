@@ -301,15 +301,15 @@ export const price = [
 ]
 export const footer = [
   {
-    title: "LAYOUTS",
-    text: [{ list: "Home Page" }, { list: "About Page" }, { list: "Service Page" }, { list: "Property Page" }, { list: "Contact Page" }, { list: "Single Blog" }],
+    title: "Về smarttro.com",
+    text: [{ list: "Giới thiệu" }, { list: "Quy chế hoạt động" }, { list: "Quy định sử dụng" }, { list: "Chính sách bảo mật" }, { list: "Liên hệ" }],
   },
   {
-    title: "ALL SECTIONS",
-    text: [{ list: "Headers" }, { list: "Features" }, { list: "Attractive" }, { list: "Testimonials" }, { list: "Videos" }, { list: "Footers" }],
+    title: "Dành cho khách hàng",
+    text: [{ list: "Câu hỏi thường gặp" }, { list: "Hướng dẫn đăng tin" }, { list: "Bảng giá dịch vụ" }, { list: "Quy định đăng tin" }, { list: "Giải quyết khiếu nại" }],
   },
   {
-    title: "COMPANY",
-    text: [{ list: "About" }, { list: "Blog" }, { list: "Pricing" }, { list: "Affiliate" }, { list: "Login" }, { list: "Changelog" }],
+    title: "Phương thức thanh toán",
+    text: [{ list: "https://res.cloudinary.com/dapvuniyx/image/upload/v1761911175/vnpay_xnbjkc.jpg" }, { list: "https://res.cloudinary.com/dapvuniyx/image/upload/v1761911174/sepay_v5akjp.png" }],
   },
 ]

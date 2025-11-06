@@ -197,12 +197,14 @@
   gap: 6px;
   margin-top: 12px;
 }
-.filter-group-my-properties{
+
+.filter-group-my-properties {
   display: flex;
   flex-direction: column;
   gap: 6px;
   padding-bottom: 10px;
 }
+
 /* Label nhỏ gọn */
 .filter-group-my-properties label {
   font-size: 14px;
@@ -680,13 +682,21 @@
 }
 
 /* Pagination */
-.pagination-container {
+.pagination-container-my-properties {
+  margin-top: 20px;
+  padding: 30px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  position: relative;
+  overflow: hidden;
   display: flex;
   justify-content: center;
-  margin-top: 30px;
+  border-top: 1px solid #e9ecef;
 }
 
-.pagination {
+.pagination-my-properties {
   display: flex;
   align-items: center;
   gap: 15px;
@@ -1066,7 +1076,6 @@
 
 .page-header-my-properties {
   text-align: center;
-  border-bottom: 3px solid #f3f4f6;
 }
 
 .page-header-my-properties h2 {
@@ -1844,6 +1853,8 @@
   text-transform: uppercase;
   letter-spacing: 0.5px;
   min-height: 36px;
+  white-space: nowrap;
+
 }
 
 .btn-package-active {
@@ -1867,7 +1878,7 @@
 }
 
 .btn-edit-row:hover {
-    background: #2563eb;
+  background: #2563eb;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
 }
@@ -1885,15 +1896,34 @@
 }
 
 .btn-reason-row {
-  background: #17a2b8;
+  background: #007f92;
   color: white;
   border: 1px solid #17a2b8;
+  font-size: 13px;
+  opacity: 0.9;
 }
 
 .btn-reason-row:hover {
   background: #138496;
   transform: translateY(-1px);
   box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+  opacity: 1;
+}
+
+/* Nút phụ có thêm class secondary */
+.btn-reason-row.secondary {
+  background: #007f92;
+  color: white;
+  border: 1px solid #17a2b8;
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.btn-reason-row.secondary:hover {
+background: #138496;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(23, 162, 184, 0.3);
+  opacity: 1;
 }
 
 .free-notice-row {
@@ -2072,12 +2102,6 @@
   color: #6c757d;
 }
 
-/* Pagination updates */
-.pagination-container {
-  margin-top: 32px;
-  padding-top: 24px;
-  border-top: 1px solid #e9ecef;
-}
 
 
 /* Responsive Design */
@@ -2228,17 +2252,20 @@
   top: 80px;
   text-align: center;
   line-height: 1;
-  
+
 }
+
 .post-type-badge-my-properties {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center; /* canh giữa theo chiều dọc mặc định */
+  justify-content: center;
+  /* canh giữa theo chiều dọc mặc định */
 }
 
 .post-type-badge-my-properties.has-stars {
-  justify-content: flex-start; /* nếu có sao thì đẩy nội dung lên trên */
+  justify-content: flex-start;
+  /* nếu có sao thì đẩy nội dung lên trên */
 }
 
 .post-type-badge-my-properties::before {

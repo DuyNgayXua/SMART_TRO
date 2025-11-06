@@ -13,7 +13,7 @@ footer {
 }
 footer .container {
   display: grid;
-  grid-template-columns: 6fr 2fr 2fr 1fr;
+  grid-template-columns: 4fr 2fr 2fr 2fr;
   grid-gap: 20px;
 }
 footer img {
@@ -29,7 +29,7 @@ footer p {
 footer input {
   background-color: #fff;
   padding: 17px;
-  width: 100%;
+  width: 75.5%;
   border-radius: 5px;
 }
 footer h3 {
@@ -57,8 +57,56 @@ footer ul li {
   cursor: pointer;
 }
 
+/* Payment Methods Styling */
+.payment-methods {
+  display: flex;
+  flex-direction: row;
+  gap: 15px;
+}
+
+.payment-item {
+  display: flex;
+  align-items: center;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.payment-item:hover {
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.payment-item img {
+  width: 100%;
+  max-width: 50px;
+  height: auto;
+  object-fit: contain;
+  border-radius: 6px;
+  transition: transform 0.3s ease;
+}
+
+.payment-item:hover img {
+  transform: scale(1.05);
+}
+
 @media screen and (max-width: 800px) {
   footer .container {
     grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .payment-methods {
+    gap: 10px;
+  }
+  
+  .payment-item {
+    padding: 8px;
+  }
+  
+  .payment-item img {
+    max-width: 100px;
   }
 }

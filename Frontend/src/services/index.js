@@ -8,6 +8,7 @@ import paymentsAPI from './paymentsAPI';
 import reportsAPI from './reportsAPI';
 import propertiesAPI from './propertiesAPI';
 import amenitiesAPI from './amenitiesAPI';
+import * as paymentVNPayAPI from './paymentVNPayAPI';
 import { locationAPI } from './locationAPI';
 
 // Export tất cả services để dễ dàng import
@@ -166,3 +167,6 @@ export const API_STATUS = {
   LOADING: 'loading',
   IDLE: 'idle'
 };
+
+// Export VNPay API functions
+export { paymentVNPayAPI };

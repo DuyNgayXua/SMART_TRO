@@ -1,57 +1,29 @@
 import axios from "axios";
+import { fetchProvinces, fetchWards } from "../../shared/utils/locationService.js";
 
+// Cập nhật để sử dụng vietnamlabs.com API (loại bỏ districts, wardId)
 export const getProvinces = async (req, res) => {
   try {
-    const response = await axios.get("https://provinces.open-api.vn/api/p/");
-    // console.log("Provinces data:", response.data);
-    res.status(200).json({ success: true, data: response.data });
+    const provinces = await fetchProvinces();
+    res.status(200).json({ success: true, data: provinces });
   } catch (error) {
+    console.error('Error in getProvinces:', error);
     res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách tỉnh thành" });
   }
 };
 
-export const getDistricts = async (req, res) => {
-  try {
-    const { provinceCode } = req.params;
-    const response = await axios.get(`https://provinces.open-api.vn/api/p/${provinceCode}?depth=2`);
-    // console.log("Districts data:", response.data.districts);
-    res.status(200).json({ success: true, data: response.data.districts });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách quận huyện" });
-  }
-};
-
+// Lấy danh sách phường/xã theo tỉnh (cập nhật cho cấu trúc mới)
 export const getWards = async (req, res) => {
   try {
-    const { districtCode } = req.params;
-    const response = await axios.get(`https://provinces.open-api.vn/api/d/${districtCode}?depth=2`);
-    res.status(200).json({ success: true, data: response.data.wards });
+    const { provinceName } = req.params;
+    const wards = await fetchWards(provinceName);
+    res.status(200).json({ success: true, data: wards });
   } catch (error) {
+    console.error('Error in getWards:', error);
     res.status(500).json({ success: false, message: "Lỗi khi lấy danh sách phường xã" });
   }
 };
-export const getAddressDetail = async (req, res) => {
-  try {
-    const { provinceCode, districtCode, wardCode } = req.params;
-    const provinceResponse = await axios.get(`https://provinces.open-api.vn/api/p/${provinceCode}`);
-    const districtResponse = await axios.get(`https://provinces.open-api.vn/api/d/${districtCode}`);
-    const wardResponse = await axios.get(`https://provinces.open-api.vn/api/w/${wardCode}`);
 
-    if (!provinceResponse.data || !districtResponse.data || !wardResponse.data) {
-      return res.status(404).json({ success: false, message: "Không tìm thấy địa chỉ" });
-    }
-
-    const addressDetail = {
-      province: provinceResponse.data,
-      district: districtResponse.data,
-      ward: wardResponse.data
-    };
-
-    res.status(200).json({ success: true, data: addressDetail });
-  } catch (error) {
-    res.status(500).json({ success: false, message: "Lỗi khi lấy thông tin chi tiết địa chỉ" });
-  }
-};
 
 const LOCATIONIQ_API_KEY = process.env.LOCATIONIQ_API_KEY;
 
@@ -67,24 +39,23 @@ export const geocodeAddress = async (req, res) => {
       });
     }
 
-    const { street, ward, district, province, country } = address;
-    // console.log("Geocoding request:", { street, ward, district, province, country });
+    const { street, ward, province, country } = address;
+    // console.log("Geocoding request:", { street, ward, province, country });
 
-    if (!street && !ward && !district && !province) {
+    if (!street && !ward && !province) {
       return res.status(400).json({
         success: false,
         message: "Vui lòng cung cấp đủ thông tin địa chỉ",
       });
     }
 
-    // Gọi structured search API
+    // Gọi structured search API (cập nhật cho cấu trúc mới)
     const response = await axios.get(
       `https://us1.locationiq.com/v1/search/structured`,
       {
         params: {
           key: LOCATIONIQ_API_KEY,
           street: street || "",
-          city: district || "",    // Quận/Huyện
           suburb: ward || "",      // Phường/Xã
           state: province || "",   // Tỉnh/TP
           country: country || "Vietnam",
@@ -137,5 +108,7 @@ export const geocodeAddress = async (req, res) => {
     });
   }
 };
+
+
 
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import PaymentAPI from '../../../services/PaymentPackageAPI.js';
 import PropertiesPackageAPI from '../../../services/PropertiesPackageAPI.js';
@@ -8,6 +8,7 @@ import './Payment.css';
 const Payment = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const paymentData = location.state;
   
   console.log('Location object:', location);
@@ -27,6 +28,43 @@ const Payment = () => {
   const successToastShownRef = useRef(false); // Ref để tránh duplicate toast thành công
 
   useEffect(() => {
+    // Kiểm tra nếu đây là return từ VNPay
+    const status = searchParams.get('status');
+    const paymentMethod = searchParams.get('paymentMethod');
+    const orderId = searchParams.get('orderId');
+    const transactionNo = searchParams.get('transactionNo');
+    const amount = searchParams.get('amount');
+    const responseCode = searchParams.get('responseCode');
+    const error = searchParams.get('error');
+
+    if (status && paymentMethod === 'vnpay') {
+      console.log('VNPay return detected:', { status, orderId, transactionNo, amount, responseCode, error });
+      
+      if (status === 'success') {
+        setPaymentStatus('success');
+        if (!successToastShownRef.current) {
+          successToastShownRef.current = true;
+         
+        }
+        
+        // Hiển thị UI success trong Payment.jsx, sau đó chuyển hướng sau 3 giây
+        setTimeout(() => {
+          navigate('/profile/my-posts');
+        }, 5000);
+        // KHÔNG return ở đây, để component tiếp tục render UI success
+      } else if (status === 'failed') {
+        setPaymentStatus('failed');
+        const errorMessage = error === 'invalid_signature' ? 'Chữ ký không hợp lệ' :
+                           error === 'system_error' ? 'Lỗi hệ thống' :
+                           responseCode ? `Lỗi thanh toán (${responseCode})` : 'Thanh toán thất bại';
+        toast.error(`Thanh toán VNPay thất bại: ${errorMessage}`);
+        // KHÔNG return ở đây, để component tiếp tục render UI failed
+      }
+      
+      // Không tạo order mới khi đây là VNPay return
+      return;
+    }
+
     if (!paymentData) {
       toast.error('Thông tin thanh toán không hợp lệ');
       navigate('/profile/properties-package');
@@ -50,7 +88,7 @@ const Payment = () => {
       orderCreationRef.current = true;
       createPaymentOrder();
     }
-  }, [paymentData, navigate, orderCreated]);
+  }, [searchParams, paymentData, navigate, orderCreated]);
 
   // Countdown timer
   useEffect(() => {
@@ -192,7 +230,7 @@ const Payment = () => {
         // Delay một chút rồi chuyển về trang quản lý tin
         setTimeout(() => {
           navigate('/profile/my-posts', { replace: true });
-        }, 3000);
+        }, 5000);
       } else if (paymentStatus !== 'success') {
         console.log('Success toast already shown, skipping...');
       }
@@ -231,11 +269,14 @@ const Payment = () => {
     });
   };
 
-  // Quay lại
+  // Quay lại trang chọn gói
   const handleBack = () => {
-    navigate('/profile/properties-package', { 
-      state: { propertyId: paymentData?.propertyId }
-    });
+    // Thanh toán gói tin cho toàn bộ tài khoản - không cần truyền propertyId cụ thể
+    navigate('/profile/properties-package');
+  };
+   const handleBackAgain = () => {
+    // Thanh toán gói tin cho toàn bộ tài khoản - không cần truyền propertyId cụ thể
+    navigate('/profile/my-posts');
   };
 
   if (loading) {
@@ -254,6 +295,10 @@ const Payment = () => {
   }
 
   if (paymentStatus === 'failed') {
+    const isVNPayFailed = searchParams.get('paymentMethod') === 'vnpay';
+    const vnpayError = searchParams.get('error');
+    const vnpayResponseCode = searchParams.get('responseCode');
+    
     return (
       <div className="payment-container">
         <div className="payment-failed">
@@ -261,8 +306,23 @@ const Payment = () => {
             <i className="fa fa-times-circle"></i>
           </div>
           <h2>Thanh toán không thành công</h2>
-          <p>Đã xảy ra lỗi trong quá trình thanh toán. Vui lòng thử lại.</p>
-          <button className="btn-retry" onClick={handleBack}>
+          {isVNPayFailed ? (
+            <div className="vnpay-failed-details">
+              <p>Thanh toán VNPay thất bại.</p>
+              {vnpayError && (
+                <p><strong>Lỗi:</strong> {
+                  vnpayError === 'invalid_signature' ? 'Chữ ký không hợp lệ' :
+                  vnpayError === 'system_error' ? 'Lỗi hệ thống' : vnpayError
+                }</p>
+              )}
+              {vnpayResponseCode && (
+                <p><strong>Mã lỗi VNPay:</strong> {vnpayResponseCode}</p>
+              )}
+            </div>
+          ) : (
+            <p>Đã xảy ra lỗi trong quá trình thanh toán. Vui lòng thử lại.</p>
+          )}
+          <button className="btn-retry" onClick={handleBackAgain}>
             Thử lại
           </button>
         </div>
@@ -281,7 +341,7 @@ const Payment = () => {
           <p>Đơn hàng đã được hủy tự động do quá thời gian thanh toán (15 phút).</p>
           <p>Bạn có thể xem lại trong lịch sử thanh toán hoặc tạo đơn hàng mới.</p>
           <div className="cancelled-actions">
-            <button className="btn-retry" onClick={handleBack}>
+            <button className="btn-retry" onClick={handleBackAgain}>
               Tạo đơn mới
             </button>
             <button className="btn-history" onClick={() => navigate('/profile/payment-history')}>
@@ -294,6 +354,10 @@ const Payment = () => {
   }
 
   if (paymentStatus === 'success') {
+    const isVNPaySuccess = searchParams.get('paymentMethod') === 'vnpay';
+    const vnpayTransactionNo = searchParams.get('transactionNo');
+    const vnpayAmount = searchParams.get('amount');
+    
     return (
       <div className="payment-container">
         <div className="payment-success">
@@ -301,7 +365,19 @@ const Payment = () => {
             <i className="fa fa-check-circle"></i>
           </div>
           <h2>Thanh toán thành công!</h2>
-          <p>Gói tin của bạn đã được giao dịch thành công.</p>
+          {isVNPaySuccess ? (
+            <div className="vnpay-success-details">
+              {vnpayTransactionNo && (
+                <p><strong>Mã giao dịch VNPay:</strong> {vnpayTransactionNo}</p>
+              )}
+              {vnpayAmount && (
+                <p className='vnpay-amount'><strong>Số tiền:</strong> {PropertiesPackageAPI.formatPrice(parseFloat(vnpayAmount))} VNĐ</p>
+              )}
+              <p>Gói tin của bạn đã được giao dịch thành công.</p>
+            </div>
+          ) : (
+            <p>Gói tin của bạn đã được giao dịch thành công.</p>
+          )}
           <p>Đang chuyển hướng về trang quản lý tin...</p>
         </div>
       </div>

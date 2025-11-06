@@ -1,7 +1,6 @@
 import Property from '../../../schemas/Property.js';
 import Comment from '../../../schemas/Comment.js';
 import mongoose from 'mongoose';
-import { fetchProvinces, fetchDistricts, fetchWards } from "../../shared/utils/locationService.js";
 
 const searchController = {
   // Tìm kiếm properties theo nhiều tiêu chí
@@ -14,11 +13,11 @@ const searchController = {
       const limit = parseInt(req.query.limit) || 12;
       const skip = (page - 1) * limit;
 
-      // Search params từ query string
+      // Search params từ query string (cập nhật cho cấu trúc mới)
       const {
         search,
-        provinceId,
-        districtId,
+        province,
+        ward,
         category,
         minPrice,
         maxPrice,
@@ -69,13 +68,13 @@ const searchController = {
         });
       }
 
-      // Location filters
-      if (provinceId) {
-        query.province = provinceId;
+      // Location filters (cập nhật cho cấu trúc mới)
+      if (province) {
+        query.province = province;
       }
-
-      if (districtId) {
-        query.district = districtId;
+      // Ward filter
+      if (ward) {
+        query.ward = ward;
       }
 
       // Category filter
@@ -118,12 +117,12 @@ const searchController = {
       // console.log('Final query:', JSON.stringify(query, null, 2));
 
       // Build sort object - Ưu tiên approvedAt nếu có, fallback về createdAt
-      let properties, total, provinces;
+      let properties, total;
 
       if (sortBy === 'createdAt') {
         // Sắp xếp theo thời gian: promoted first, sau đó approvedAt nếu có, fallback về createdAt
         // Sử dụng aggregation pipeline để handle logic: approvedAt nếu có, fallback về createdAt
-        [properties, total, provinces] = await Promise.all([
+        [properties, total] = await Promise.all([
           Property.aggregate([
             { $match: query },
             {
@@ -161,13 +160,38 @@ const searchController = {
               }
             },
             {
+              $lookup: {
+                from: 'packageplans',
+                localField: 'packageInfo.plan',
+                foreignField: '_id',
+                as: 'packageInfo.planData',
+                pipeline: [{ $project: { name: 1, displayName: 1, type: 1, priority: 1, color: 1, stars: 1, textStyle: 1 } }]
+              }
+            },
+            {
+              $lookup: {
+                from: 'propertiespackages',
+                localField: 'packageInfo.postType',
+                foreignField: '_id',
+                as: 'packageInfo.postTypeData',
+                pipeline: [{ $project: { name: 1, displayName: 1, priority: 1, color: 1, stars: 1, textStyle: 1 } }]
+              }
+            },
+            {
               $addFields: {
-                owner: { $arrayElemAt: ['$owner', 0] }
+                owner: { $arrayElemAt: ['$owner', 0] },
+                'packageInfo.plan': { $arrayElemAt: ['$packageInfo.planData', 0] },
+                'packageInfo.postType': { $arrayElemAt: ['$packageInfo.postTypeData', 0] }
+              }
+            },
+            {
+              $project: {
+                'packageInfo.planData': 0,
+                'packageInfo.postTypeData': 0
               }
             }
           ]),
-          Property.countDocuments(query),
-          fetchProvinces()
+          Property.countDocuments(query)
         ]);
       } else {
         // Các sort khác sử dụng find bình thường
@@ -188,46 +212,21 @@ const searchController = {
         }
 
         // Execute search với find bình thường
-        [properties, total, provinces] = await Promise.all([
+        [properties, total] = await Promise.all([
           Property.find(query)
             .sort(sortObj)
             .skip(skip)
             .limit(limit)
             .populate('owner', 'fullName email phone avatar')
             .populate('amenities', 'name icon')
+            .populate('packageInfo.plan', 'name displayName type priority color stars textStyle')
+            .populate('packageInfo.postType', 'name displayName priority color stars textStyle')
             .lean(),
-          Property.countDocuments(query),
-          fetchProvinces()
+          Property.countDocuments(query)
         ]);
       }
 
       // console.log(`Found ${total} properties matching criteria`);
-
-      // Map tỉnh
-      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-      // Lấy districts & wards theo properties tìm được
-      const districtMap = new Map();
-      const wardMap = new Map();
-
-      for (const property of properties) {
-        if (property.province && !districtMap.has(property.district)) {
-          try {
-            const districts = await fetchDistricts(property.province);
-            districts.forEach(d => districtMap.set(String(d.code), d.name));
-          } catch (error) {
-            console.error('Error fetching districts for province:', property.province, error);
-          }
-        }
-        if (property.district && !wardMap.has(property.ward)) {
-          try {
-            const wards = await fetchWards(property.district);
-            wards.forEach(w => wardMap.set(String(w.code), w.name));
-          } catch (error) {
-            console.error('Error fetching wards for district:', property.district, error);
-          }
-        }
-      }
 
       // Lấy số lượng comments cho mỗi property (chỉ đếm comments gốc, không đếm replies)
       const propertyIds = properties.map(p => p._id);
@@ -278,24 +277,31 @@ const searchController = {
         timeRules: property.timeRules,
         houseRules: property.houseRules,
         coordinates: property.coordinates,
+        // Add packageInfo field for post type styling
+        packageInfo: property.packageInfo ? {
+          plan: property.packageInfo.plan,
+          postType: property.packageInfo.postType,
+          isActive: property.packageInfo.isActive,
+          status: property.packageInfo.status,
+          expiryDate: property.packageInfo.expiryDate,
+          purchaseDate: property.packageInfo.purchaseDate
+        } : null,
         owner: {
           _id: property.owner._id,
           fullName: property.owner.fullName,
           email: property.owner.email,
           phone: property.owner.phone
         },
-        location: {
-          provinceName: provinceMap.get(String(property.province)) || "",
-          districtName: districtMap.get(String(property.district)) || "",
-          wardName: wardMap.get(String(property.ward)) || "",
-          detailAddress: property.detailAddress
-        },
+        province: property.province || "",
+        ward: property.ward || "",
+        detailAddress: property.detailAddress || "",
         views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         comments: commentsCountMap.get(property._id.toString()) || 0,
         createdAt: property.createdAt,
         updatedAt: property.updatedAt
       }));
+      console.log(`transformedProperties:`, transformedProperties);
 
       const totalPages = Math.ceil(total / limit);
 
@@ -313,8 +319,7 @@ const searchController = {
           },
           searchCriteria: {
             search: search || '',
-            provinceId: provinceId || '',
-            districtId: districtId || '',
+            province: province || '',
             category: category || '',
             priceRange: {
               min: minPrice ? parseInt(minPrice) : null,

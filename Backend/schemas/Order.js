@@ -87,6 +87,36 @@ const orderSchema = new mongoose.Schema({
     limitsUsage: mongoose.Schema.Types.Mixed // Object chứa thông tin giới hạn sử dụng
   },
   
+  // Thông tin thanh toán
+  paymentMethod: {
+    type: String,
+    enum: ['sepay', 'vnpay', 'manual'],
+    default: 'sepay'
+  },
+  paid_at: {
+    type: Date
+  },
+  expiryTime: {
+    type: Date
+  },
+  
+  // VNPay specific fields
+  vnpayRequestTime: {
+    type: Date
+  },
+  vnpayTransactionNo: {
+    type: String
+  },
+  vnpayResponseCode: {
+    type: String
+  },
+  vnpayBankCode: {
+    type: String
+  },
+  vnpayPayDate: {
+    type: String
+  },
+  
   // Thông tin hủy đơn hàng
   cancelReason: {
     type: String,

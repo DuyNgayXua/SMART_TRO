@@ -4,7 +4,6 @@ import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import './PropertySlider.css';
 
 const PropertySlider = ({ properties }) => {
-    console.log("PropertySlider properties:", properties);
     const navigate = useNavigate();
     const [currentIndex, setCurrentIndex] = useState(0);
     const sliderRef = useRef(null);
@@ -73,10 +72,9 @@ const PropertySlider = ({ properties }) => {
                         <div className="property-location">
                             <i className="fas fa-map-marker-alt"></i>
                             <span>
-                                {property.location?.detailAddress && `${property.location.detailAddress}, `}
-                                {property.location?.wardName && `${property.location.wardName}, `}
-                                {property.location?.districtName && `${property.location.districtName}, `}
-                                {property.location?.provinceName && `${property.location.provinceName}, `}
+                                {property.detailAddress && `${property.detailAddress}, `}
+                                {property.ward && `${property.ward}, `}
+                                {property.province && `${property.province}`}
                             </span>
                         </div>
 
@@ -178,10 +176,9 @@ const PropertySlider = ({ properties }) => {
                             <div className="property-location">
                                 <i className="fas fa-map-marker-alt"></i>
                                 <span>
-                                    {property.location?.detailAddress && `${property.location.detailAddress}, `}
-                                    {property.location?.wardName && `${property.location.wardName}, `}
-                                    {property.location?.districtName && `${property.location.districtName}, `}
-                                    {property.location?.provinceName && `${property.location.provinceName}, `}
+                                    {property.detailAddress && `${property.detailAddress}, `}
+                                    {property.ward && `${property.ward}, `}
+                                    {property.province && `${property.province}`}
                                 </span>
                             </div>
 

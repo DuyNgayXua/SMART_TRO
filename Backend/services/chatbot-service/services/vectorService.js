@@ -20,7 +20,7 @@ class VectorService {
     this.embeddingTimeout = 15000; // Reduced timeout to 15s for faster response
 
     // Cache settings - sử dụng cosine similarity trong Node.js
-    this.similarityThreshold = 0.95; // Ngưỡng cao để đảm bảo chỉ match khi rất tương đồng
+    this.similarityThreshold = 0.97; // Ngưỡng cao để đảm bảo chỉ match khi rất tương đồng
     this.maxCacheSize = 10000; // Giới hạn số lượng entries trong cache
     this.maxSearchDocs = 200; // Giới hạn số docs để tìm kiếm (tối ưu performance)
 
@@ -239,7 +239,7 @@ class VectorService {
   async findSimilarQuestion(question, threshold = null, userMetadata = null) {
     try {
       await this.connect();
-      const useThreshold = threshold || this.similarityThreshold;
+      const useThreshold = 0.97;
       // Kiểm tra collection có data không
       const totalCount = await ChatbotEmbedding.countDocuments({ isDeleted: false });
       if (totalCount === 0) {
@@ -397,7 +397,8 @@ class VectorService {
 
       // So sánh các tham số chính
       const comparisons = {
-        provinceId: this.compareParam(userParams.provinceId, cachedSearchParams.provinceId),
+        province: this.compareParam(userParams.province, cachedSearchParams.province),
+        ward: this.compareParam(userParams.ward, cachedSearchParams.ward),
         category: this.compareParam(userParams.category, cachedSearchParams.category),
         priceRange: this.comparePriceRange(userParams, cachedSearchParams),
         areaRange: this.compareAreaRange(userParams, cachedSearchParams),
@@ -458,8 +459,12 @@ class VectorService {
     Object.entries(comparisons).forEach(([field, compatible]) => {
       if (!compatible) {
         switch (field) {
-          case 'provinceId':
-            if (userParams.provinceId) merged.provinceId = userParams.provinceId;
+          case 'province':
+            if (userParams.province) merged.province = userParams.province;
+            break;
+
+          case 'ward':
+            if (userParams.ward) merged.ward = userParams.ward;
             break;
 
           case 'category':

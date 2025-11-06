@@ -15,7 +15,6 @@ class OllamaService {
 
     // Cache để tối ưu performance
     this.provinceCache = new Map();
-    this.districtCache = new Map();
     this.amenityCache = new Map();
     this.cacheExpiry = 24 * 60 * 60 * 1000; // 24 hours
   }
@@ -55,42 +54,7 @@ class OllamaService {
     }
   }
 
-  /**
-   * Lấy danh sách districts của một province từ API với cache
-   */
-  async getDistricts(provinceId) {
-    if (!provinceId) return [];
 
-    const cacheKey = `districts_${provinceId}`;
-    const cached = this.districtCache.get(cacheKey);
-
-    if (cached && (Date.now() - cached.timestamp < this.cacheExpiry)) {
-      return cached.data;
-    }
-
-    try {
-      const response = await axios.get(`https://provinces.open-api.vn/api/p/${provinceId}?depth=2`, { timeout: 5000 });
-      let districts = response.data.districts || [];
-      
-      // Đảm bảo districts là array
-      if (!Array.isArray(districts)) {
-        console.warn('Districts API returned non-array:', typeof districts);
-        districts = [];
-      }
-      
-      // console.log(`Loaded ${districts.length} districts for province ${provinceId} from API`);
-
-      this.districtCache.set(cacheKey, {
-        data: districts,
-        timestamp: Date.now()
-      });
-
-      return districts;
-    } catch (error) {
-      console.error(`Error fetching districts for province ${provinceId}:`, error.message);
-      return [];
-    }
-  }
 
   /**
    * Lấy danh sách amenities từ API với cache
@@ -160,81 +124,9 @@ class OllamaService {
     }
   }
 
-  /**
-   * Tìm provinceId từ tên province
-   */
-  findProvinceId(provinces, provinceName) {
-    if (!provinceName) return null;
 
-    const normalizedName = provinceName.toLowerCase();
-    const province = provinces.find(p => {
-      const pName = p.name.toLowerCase();
-      return pName.includes(normalizedName) ||
-        normalizedName.includes(pName) ||
-        (normalizedName.includes('hồ chí minh') && pName.includes('hồ chí minh')) ||
-        (normalizedName.includes('tp.hcm') && pName.includes('hồ chí minh')) ||
-        (normalizedName.includes('tphcm') && pName.includes('hồ chí minh'));
-    });
 
-    return province ? province.code.toString() : null;
-  }
 
-  /**
-   * Tìm districtId từ tên district
-   */
-  findDistrictId(districts, districtName) {
-    if (!districtName || !Array.isArray(districts)) return null;
-
-    const normalizedName = districtName.toLowerCase().trim();
-    
-    const district = districts.find(d => {
-      if (!d || !d.name) return false;
-      
-      const dName = d.name.toLowerCase();
-      
-      // Exact match hoặc chứa tên
-      if (dName === normalizedName || dName.includes(normalizedName) || normalizedName.includes(dName)) {
-        return true;
-      }
-      
-      // Special mappings cho các tên district phổ biến
-      const specialMappings = {
-        'quận 1': ['quận 1', 'q1', 'q.1'],
-        'quận 2': ['quận 2', 'q2', 'q.2'],
-        'quận 3': ['quận 3', 'q3', 'q.3'],
-        'quận 4': ['quận 4', 'q4', 'q.4'],
-        'quận 5': ['quận 5', 'q5', 'q.5'],
-        'quận 6': ['quận 6', 'q6', 'q.6'],
-        'quận 7': ['quận 7', 'q7', 'q.7'],
-        'quận 8': ['quận 8', 'q8', 'q.8'],
-        'quận 9': ['quận 9', 'q9', 'q.9'],
-        'quận 10': ['quận 10', 'q10', 'q.10'],
-        'quận 11': ['quận 11', 'q11', 'q.11'],
-        'quận 12': ['quận 12', 'q12', 'q.12'],
-        'gò vấp': ['gò vấp', 'go vap', 'govap'],
-        'tân bình': ['tân bình', 'tan binh', 'tanbinh'],
-        'bình thạnh': ['bình thạnh', 'binh thanh', 'binhthanh'],
-        'phú nhuận': ['phú nhuận', 'phu nhuan', 'phunhuan'],
-        'thủ đức': ['thủ đức', 'thu duc', 'thuduc'],
-        'bình tân': ['bình tân', 'binh tan', 'binhtan'],
-        'bình chánh': ['bình chánh', 'binh chanh', 'binhchanh'],
-        'củ chi': ['củ chi', 'cu chi', 'cuchi'],
-        'hóc môn': ['hóc môn', 'hoc mon', 'hocmon'],
-        'nhà bè': ['nhà bè', 'nha be', 'nhabe'],
-      };
-      
-      // Kiểm tra special mappings
-      for (const [standardName, variations] of Object.entries(specialMappings)) {
-        if (dName.includes(standardName)) {
-          return variations.some(variation => normalizedName.includes(variation));
-        }
-      }
-      
-      return false;
-    });
-
-    return district ? district.code.toString() : null;
-  }
 
   /**
    * Tìm amenity IDs từ tên amenities
@@ -391,11 +283,8 @@ class OllamaService {
         return nonRoomResponse;
       }
 
-      // Bước 3: Parallel loading provinces và amenities để tối ưu thời gian
-      const [provinces, amenities] = await Promise.all([
-        this.getProvinces(),
-        this.getAmenities()
-      ]);
+      // Bước 3: Load amenities (không cần provinces nữa vì dùng string trực tiếp)
+      const amenities = await this.getAmenities();
 
       // Bước 4: Phân tích tin nhắn - sử dụng userMetadata nếu có, nếu không thì gọi Ollama
       let extractedData;
@@ -444,7 +333,7 @@ class OllamaService {
         } else {
           // Raw data từ Ollama, cần enhance
         
-          searchParams = await this.enhanceWithRealIds(extractedData, provinces, amenities);
+          searchParams = await this.enhanceWithRealIds(extractedData, amenities);
         }
         
        
@@ -487,8 +376,8 @@ JSON format bắt buộc:
 { 
 "isRoomSearchQuery": true|false,
 "category": "phong_tro|can_ho|nha_nguyen_can|chung_cu_mini|homestay|null", 
- "provinceName": "tên_tỉnh_thành|null",
- "districtName": "tên_quận_huyện|null", 
+ "province": "tên_tỉnh_thành|null",
+ "ward": "tên_phường_xã|null", 
  "amenityNames": ["tên_tiện_ích1", "tên_tiện_ích2"] hoặc null, 
  "minPrice": "số_tiền_VND|null", 
  "maxPrice": "số_tiền_VND|null", 
@@ -514,13 +403,11 @@ PROVINCE:
 - "Đà Nẵng" gán "Thành phố Đà Nẵng"
 - Nếu là tỉnh/thành khác gán giữ nguyên tên.
 - Nếu không có thông tin gán null.
-DISTRICT:
-- "Quận 1", "Q1", "Q.1" gán "Quận 1"
-- "Gò Vấp", "Go Vap" gán "Quận Gò Vấp"
-- "Tân Bình" gán "Quận Tân Bình"
-- "Bình Thạnh" gán "Quận Bình Thạnh"
-- "Thủ Đức" gán "Thành phố Thủ Đức"
-- Nếu là quận/huyện khác gán giữ nguyên tên đầy đủ.
+WARD:
+- "Phường 1", "P1", "P.1" gán "Phường 1"
+- "Xã Tân Phú", "Xã Tân Phú" gán "Xã Tân Phú"
+- "Thị trấn Long Thành" gán "Thị trấn Long Thành"
+- Nếu có mention về quận/huyện thì extract phường/xã trong đó
 - Nếu không có thông tin gán null.
 AMENITIES:
 - Chỉ ghi nhận nếu nằm trong danh sách ["wifi", "máy lạnh", "ban công", "điều hòa", "tủ lạnh",  "thang máy", "bãi đỗ xe", "nhà bếp", "tủ quần áo", "máy giặt", "tivi"].
@@ -624,12 +511,20 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
   }
 
   /**
-   * Enhance extracted data với real IDs từ API
+   * Enhance extracted data với direct field values
    */
-  async enhanceWithRealIds(extractedData, provinces, amenities) {
+  async enhanceWithRealIds(extractedData, amenities) {
+    console.log('enhanceWithRealIds input extractedData:', {
+      province: extractedData.province,
+      provinceName: extractedData.provinceName,
+      ward: extractedData.ward,
+      wardName: extractedData.wardName,
+      category: extractedData.category
+    });
+
     const searchParams = {
-      provinceId: null,
-      districtId: null,
+      province: extractedData.province || extractedData.provinceName || null,
+      ward: extractedData.ward || extractedData.wardName || null,
       category: extractedData.category || null,
       minPrice: extractedData.minPrice ? extractedData.minPrice.toString() : null,
       maxPrice: extractedData.maxPrice ? extractedData.maxPrice.toString() : null,
@@ -642,20 +537,11 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
       limit: '8'
     };
 
-    // Map province name to ID
-    if (extractedData.provinceName) {
-      searchParams.provinceId = this.findProvinceId(provinces, extractedData.provinceName);
-    }
-
-    // Map district name to ID (cần provinceId trước)
-    if (extractedData.districtName && searchParams.provinceId) {
-      try {
-        const districts = await this.getDistricts(searchParams.provinceId);
-        searchParams.districtId = this.findDistrictId(districts, extractedData.districtName);
-      } catch (error) {
-        console.error('Error getting districts:', error.message);
-      }
-    }
+    console.log('enhanceWithRealIds searchParams before amenity processing:', {
+      province: searchParams.province,
+      ward: searchParams.ward,
+      category: searchParams.category
+    });
 
     // Map amenity names to IDs
     if (extractedData.amenityNames && Array.isArray(extractedData.amenityNames)) {
@@ -762,8 +648,8 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
     const criteria = {
       isRoomSearchQuery: false,
       category: null,
-      provinceName: null,
-      districtName: null,
+      province: null,
+      ward: null,
       amenityNames: [],
       minPrice: null,
       maxPrice: null,
@@ -797,52 +683,32 @@ Trả về duy nhất JSON hợp lệ, không thêm bất kỳ chữ nào khác,
 
     // Location mapping
     if (lowerMessage.includes('đh công nghiệp') || lowerMessage.includes('gò vấp')) {
-      criteria.provinceName = 'Thành phố Hồ Chí Minh';
+      criteria.province = 'Hồ Chí Minh';
     } else if (lowerMessage.includes('tp.hcm') || lowerMessage.includes('hồ chí minh')) {
-      criteria.provinceName = 'Thành phố Hồ Chí Minh';
+      criteria.province = 'Hồ Chí Minh';
     } else if (lowerMessage.includes('hà nội')) {
-      criteria.provinceName = 'Thành phố Hà Nội';
+      criteria.province = 'Hà Nội';
     } else if (lowerMessage.includes('đà nẵng')) {
-      criteria.provinceName = 'Thành phố Đà Nẵng';
+      criteria.province = 'Đà Nẵng';
     }
 
-    // District mapping for HCM
-    if (criteria.provinceName === 'Thành phố Hồ Chí Minh') {
-      if (lowerMessage.includes('gò vấp') || lowerMessage.includes('đh công nghiệp')) {
-        criteria.districtName = 'Quận Gò Vấp';
-      } else if (lowerMessage.includes('quận 1') || lowerMessage.includes('q1') || lowerMessage.includes('q.1')) {
-        criteria.districtName = 'Quận 1';
-      } else if (lowerMessage.includes('quận 2') || lowerMessage.includes('q2') || lowerMessage.includes('q.2')) {
-        criteria.districtName = 'Quận 2';
-      } else if (lowerMessage.includes('quận 3') || lowerMessage.includes('q3') || lowerMessage.includes('q.3')) {
-        criteria.districtName = 'Quận 3';
-      } else if (lowerMessage.includes('quận 4') || lowerMessage.includes('q4') || lowerMessage.includes('q.4')) {
-        criteria.districtName = 'Quận 4';
-      } else if (lowerMessage.includes('quận 5') || lowerMessage.includes('q5') || lowerMessage.includes('q.5')) {
-        criteria.districtName = 'Quận 5';
-      } else if (lowerMessage.includes('quận 6') || lowerMessage.includes('q6') || lowerMessage.includes('q.6')) {
-        criteria.districtName = 'Quận 6';
-      } else if (lowerMessage.includes('quận 7') || lowerMessage.includes('q7') || lowerMessage.includes('q.7')) {
-        criteria.districtName = 'Quận 7';
-      } else if (lowerMessage.includes('quận 8') || lowerMessage.includes('q8') || lowerMessage.includes('q.8')) {
-        criteria.districtName = 'Quận 8';
-      } else if (lowerMessage.includes('quận 9') || lowerMessage.includes('q9') || lowerMessage.includes('q.9')) {
-        criteria.districtName = 'Quận 9';
-      } else if (lowerMessage.includes('quận 10') || lowerMessage.includes('q10') || lowerMessage.includes('q.10')) {
-        criteria.districtName = 'Quận 10';
-      } else if (lowerMessage.includes('quận 11') || lowerMessage.includes('q11') || lowerMessage.includes('q.11')) {
-        criteria.districtName = 'Quận 11';
-      } else if (lowerMessage.includes('quận 12') || lowerMessage.includes('q12') || lowerMessage.includes('q.12')) {
-        criteria.districtName = 'Quận 12';
-      } else if (lowerMessage.includes('tân bình')) {
-        criteria.districtName = 'Quận Tân Bình';
-      } else if (lowerMessage.includes('bình thạnh')) {
-        criteria.districtName = 'Quận Bình Thạnh';
-      } else if (lowerMessage.includes('phú nhuận')) {
-        criteria.districtName = 'Quận Phú Nhuận';
-      } else if (lowerMessage.includes('thủ đức')) {
-        criteria.districtName = 'Thành phố Thủ Đức';
-      }
+    // Ward mapping (extract common ward patterns)
+    if (lowerMessage.includes('phường 1') || lowerMessage.includes('p1') || lowerMessage.includes('p.1')) {
+      criteria.ward = 'Phường 1';
+    } else if (lowerMessage.includes('phường 2') || lowerMessage.includes('p2') || lowerMessage.includes('p.2')) {
+      criteria.ward = 'Phường 2';
+    } else if (lowerMessage.includes('phường 3') || lowerMessage.includes('p3') || lowerMessage.includes('p.3')) {
+      criteria.ward = 'Phường 3';
+    } else if (lowerMessage.includes('phường 4') || lowerMessage.includes('p4') || lowerMessage.includes('p.4')) {
+      criteria.ward = 'Phường 4';
+    } else if (lowerMessage.includes('phường 5') || lowerMessage.includes('p5') || lowerMessage.includes('p.5')) {
+      criteria.ward = 'Phường 5';
+    } else if (lowerMessage.includes('phường tân định')) {
+      criteria.ward = 'Phường Tân Định';
+    } else if (lowerMessage.includes('phường bến nghé')) {
+      criteria.ward = 'Phường Bến Nghé';
+    } else if (lowerMessage.includes('phường nguyễn thái bình')) {
+      criteria.ward = 'Phường Nguyễn Thái Bình';
     }
 
     // Amenities mapping

@@ -34,12 +34,14 @@ class ChatResponse(BaseModel):
 class SmartTroMCP:
     def __init__(self):
         self.property_search_url = "http://localhost:5000/api/search-properties/properties"
-        self.location_api_url = "https://provinces.open-api.vn/api"
+        self.location_api_url = "https://vietnamlabs.com/api"
         self.amenities_api_url = "http://localhost:5000/api/amenities/all"
+        
+        # Cache cho wards data
+        self.wards_cache = None
         
         # Cache để tránh gọi API nhiều lần
         self.provinces_cache = None
-        self.districts_cache = {}
         self.amenities_cache = None
         
         # Session storage (trong production nên dùng Redis hoặc database)
@@ -100,12 +102,19 @@ class SmartTroMCP:
     def _load_initial_data(self):
         """Load provinces và amenities vào cache"""
         try:
-            # Load provinces
-            response = requests.get(f"{self.location_api_url}/p/")
+            # Load provinces từ vietnamlabs.com API
+            response = requests.get(f"{self.location_api_url}/vietnamprovince")
             if response.status_code == 200:
-                self.provinces_cache = response.json()
-
-                print(f"Loaded {len(self.provinces_cache)} provinces")
+                provinces_data = response.json()
+                # Chuyển đổi format để tương thích với code hiện tại
+                self.provinces_cache = []
+                if isinstance(provinces_data, list):
+                    for province in provinces_data:
+                        self.provinces_cache.append({
+                            'name': province.get('name', ''),
+                            'code': province.get('name', '').lower().replace(' ', '_')
+                        })
+                print(f"Loaded {len(self.provinces_cache)} provinces from vietnamlabs.com")
             
             # Load amenities
             response = requests.get(self.amenities_api_url)
@@ -123,36 +132,15 @@ class SmartTroMCP:
         except Exception as e:
             print(f"Error loading initial data: {e}")
     
-    def _get_province_id_by_name(self, province_name: str) -> Optional[str]:
-        """Tìm province ID từ tên tỉnh"""
+    def _get_province_name_by_keyword(self, keyword: str) -> Optional[str]:
+        """Tìm tên tỉnh từ keyword"""
         if not self.provinces_cache:
             return None
         
-        province_name = province_name.lower().strip()
+        keyword = keyword.lower().strip()
         for province in self.provinces_cache:
-            if province_name in province['name'].lower():
-                return str(province['code'])
-        return None
-    
-    def _get_district_id_by_name(self, province_code: str, district_name: str) -> Optional[str]:
-        """Tìm district ID từ tên quận/huyện"""
-        try:
-            # Check cache trước
-            cache_key = f"{province_code}"
-            if cache_key not in self.districts_cache:
-                response = requests.get(f"{self.location_api_url}/p/{province_code}?depth=2")
-                if response.status_code == 200:
-                    data = response.json()
-                    self.districts_cache[cache_key] = data.get('districts', [])
-            
-            districts = self.districts_cache.get(cache_key, [])
-            district_name = district_name.lower().strip()
-            
-            for district in districts:
-                if district_name in district['name'].lower():
-                    return str(district['code'])
-        except Exception as e:
-            print(f"Error getting district ID: {e}")
+            if keyword in province['name'].lower():
+                return province['name']
         return None
     
     def _get_amenity_ids_by_names(self, amenity_names: List[str]) -> List[str]:
@@ -186,35 +174,233 @@ class SmartTroMCP:
         print(f"Final amenity IDs: {amenity_ids}")
         return amenity_ids
     
-    def _extract_location_from_text(self, text: str) -> Dict[str, Optional[str]]:
-        """Trích xuất thông tin location từ text"""
-        result = {'province_id': None, 'district_id': None}
+    def _fetch_wards_from_vietnamlabs(self, province_name: str = None) -> List[Dict[str, Any]]:
+        """
+        Fetch wards từ vietnamlabs.com API tương tự fetchWards trong locationService.js
+        """
+        if self.wards_cache:
+            return self.wards_cache
+            
+        try:
+            all_wards = []
+            
+            if province_name:
+                # Fetch wards cho một tỉnh cụ thể
+                encoded_province = requests.utils.quote(province_name)
+                url = f"{self.location_api_url}/vietnamprovince?province={encoded_province}&limit=1000&offset=0"
+                response = requests.get(url, timeout=5)
+                
+                if response.status_code == 200:
+                    wards_data = response.json()
+                    if isinstance(wards_data, list):
+                        for ward in wards_data:
+                            all_wards.append(ward)
+            else:
+                # Fetch wards từ tất cả các tỉnh
+                if self.provinces_cache:
+                    for province in self.provinces_cache:
+                        try:
+                            encoded_province = requests.utils.quote(province['name'])
+                            url = f"{self.location_api_url}/vietnamprovince?province={encoded_province}&limit=1000&offset=0"
+                            response = requests.get(url, timeout=5)
+                            
+                            if response.status_code == 200:
+                                wards_data = response.json()
+                                if isinstance(wards_data, list):
+                                    for ward in wards_data:
+                                        all_wards.append(ward)
+                        except Exception as e:
+                            print(f"Error fetching wards for province {province['name']}: {e}")
+                            continue
+            
+            # Chuyển đổi theo format yêu cầu (giống fetchWards trong locationService.js)
+            formatted_wards = []
+            for index, ward in enumerate(all_wards):
+                formatted_wards.append({
+                    'id': index,  # Simple index cho frontend
+                    'code': ward.get('name', ''),  # Sử dụng tên ward làm code để match với schema
+                    'name': ward.get('name', ''),  # Tên ward để hiển thị và lưu vào DB
+                    'province': ward.get('province', ''),
+                    'mergedFrom': ward.get('mergedFrom', [])  # Đảm bảo luôn có array, không undefined
+                })
+            
+            # Cache kết quả
+            self.wards_cache = formatted_wards
+            print(f"Loaded {len(formatted_wards)} wards from vietnamlabs.com")
+            return formatted_wards
+            
+        except Exception as e:
+            print(f"Error fetching wards from vietnamlabs.com: {e}")
+            return []
+    
+    def _fuzzy_match_ward_name(self, keyword: str, wards_list: List[Dict]) -> Optional[str]:
+        """
+        So sánh chuỗi gần đúng để tìm ward name từ keyword
+        """
+        if not keyword or not wards_list:
+            return None
         
-        # Patterns để tìm địa điểm
-        location_patterns = [
-            r'(?:tỉnh|thành phố|tp)\s*([^\s,]+)',
-            r'(?:quận|huyện|q\.?)\s*([^\s,]+)',
-            r'(?:phường|xã|p\.?)\s*([^\s,]+)',
-        ]
+        keyword_lower = keyword.lower().strip()
+        
+        # Chỉ loại bỏ các prefix không phải "phường" và "xã" đầy đủ
+        prefixes_to_remove = ['thị trấn', 'p.', 'p', 'ward', 'commune']
+        cleaned_keyword = keyword_lower
+        
+        for prefix in prefixes_to_remove:
+            if cleaned_keyword.startswith(prefix + ' '):
+                cleaned_keyword = cleaned_keyword[len(prefix + ' '):].strip()
+                break
+            elif cleaned_keyword.startswith(prefix):
+                cleaned_keyword = cleaned_keyword[len(prefix):].strip()
+                break
+        
+        best_match = None
+        best_score = 0
+        
+        for ward in wards_list:
+            ward_name = ward['name'].lower().strip()
+            
+            # Loại bỏ prefix từ ward name để so sánh (trừ "phường" và "xã" đầy đủ)
+            cleaned_ward_name = ward_name
+            for prefix in prefixes_to_remove:
+                if cleaned_ward_name.startswith(prefix + ' '):
+                    cleaned_ward_name = cleaned_ward_name[len(prefix + ' '):].strip()
+                    break
+                elif cleaned_ward_name.startswith(prefix):
+                    cleaned_ward_name = cleaned_ward_name[len(prefix):].strip()
+                    break
+            
+            # 1. Exact match - ưu tiên cao nhất
+            if cleaned_keyword == cleaned_ward_name or keyword_lower == ward_name:
+                return ward['name']
+            
+            # 2. Substring match
+            if cleaned_keyword in cleaned_ward_name or cleaned_ward_name in cleaned_keyword:
+                score = min(len(cleaned_keyword), len(cleaned_ward_name)) / max(len(cleaned_keyword), len(cleaned_ward_name))
+                if score > best_score:
+                    best_score = score
+                    best_match = ward['name']
+            
+            # 3. Word-based matching cho tên compound
+            keyword_words = set(cleaned_keyword.split())
+            ward_words = set(cleaned_ward_name.split())
+            
+            if keyword_words and ward_words:
+                common_words = keyword_words.intersection(ward_words)
+                if common_words:
+                    word_score = len(common_words) / max(len(keyword_words), len(ward_words))
+                    if word_score > best_score and word_score >= 0.5:  # Threshold cho word matching
+                        best_score = word_score
+                        best_match = ward['name']
+            
+            # 4. Character similarity (Levenshtein-like approach đơn giản)
+            if len(cleaned_keyword) >= 3 and len(cleaned_ward_name) >= 3:
+                similarity = self._calculate_string_similarity(cleaned_keyword, cleaned_ward_name)
+                if similarity > best_score and similarity >= 0.7:  # Threshold cho character similarity
+                    best_score = similarity
+                    best_match = ward['name']
+        
+        # Chỉ return nếu match score đủ cao
+        if best_score >= 0.6:  # Threshold tổng quát
+            print(f"Ward fuzzy matched: '{keyword}' -> '{best_match}' (score: {best_score:.2f})")
+            return best_match
+        
+        return None
+    
+    def _calculate_string_similarity(self, str1: str, str2: str) -> float:
+        """
+        Tính độ tương tự giữa hai chuỗi (đơn giản hóa Levenshtein distance)
+        """
+        if not str1 or not str2:
+            return 0.0
+        
+        if str1 == str2:
+            return 1.0
+        
+        # Tính số ký tự chung
+        str1_chars = set(str1.lower())
+        str2_chars = set(str2.lower())
+        
+        common_chars = str1_chars.intersection(str2_chars)
+        total_chars = str1_chars.union(str2_chars)
+        
+        if not total_chars:
+            return 0.0
+        
+        return len(common_chars) / len(total_chars)
+    
+    def _extract_location_from_text(self, text: str) -> Dict[str, Optional[str]]:
+        """Trích xuất thông tin location từ text (province và ward)"""
+        result = {'province_name': None, 'ward_name': None}
         
         text_lower = text.lower()
         
-        # Tìm tỉnh/thành phố
-        for pattern in [r'(?:tp|thành phố)\s*(\w+)', r'(?:tỉnh)\s*(\w+)', r'(\w+(?:\s+\w+)?)\s*(?:province|city)']:
+        # Ưu tiên tìm phường/xã trước để tránh nhầm lẫn với province
+        ward_patterns = [
+            (r'(phường)\s+([a-zA-ZÀ-ỹ0-9\s]+?)(?:\s*[,.]|$)', 'phường'),     # "phường tân định" -> giữ nguyên "Phường Tân Định"
+            (r'(xã)\s+([a-zA-ZÀ-ỹ\s]+?)(?:\s*[,.]|$)', 'xã'),               # "xã tân phú" -> giữ nguyên "Xã Tân Phú"
+            (r'(thị trấn)\s+([a-zA-ZÀ-ỹ\s]+?)(?:\s*[,.]|$)', 'thị trấn'),   # "thị trấn long thành" -> "Thị Trấn Long Thành"
+            (r'(?:p\.?)\s+([a-zA-Z0-9\s]+?)(?:\s*[,.]|$)', None),            # "p. tân định" -> chỉ lấy tên không có prefix
+            (r'(?:ward)\s+([a-zA-Z0-9\s]+?)(?:\s*[,.]|$)', None)             # "ward tan dinh" -> chỉ lấy tên không có prefix
+        ]
+        
+        for pattern_info in ward_patterns:
+            if isinstance(pattern_info, tuple):
+                pattern, prefix_to_keep = pattern_info
+                matches = re.findall(pattern, text_lower)
+                if matches:
+                    if len(matches[0]) == 2 and prefix_to_keep:  # Có prefix để giữ
+                        prefix, ward_name = matches[0]
+                        result['ward_name'] = f"{prefix_to_keep.title()} {ward_name.strip().title()}"
+                    else:  # Không giữ prefix hoặc chỉ có tên
+                        ward_name = matches[0][1] if len(matches[0]) == 2 else matches[0]
+                        result['ward_name'] = ward_name.strip().title()
+                    break
+            else:  # Backward compatibility cho pattern cũ
+                matches = re.findall(pattern_info, text_lower)
+                if matches:
+                    ward_name = matches[0].strip()
+                    result['ward_name'] = ward_name.title()
+                    break
+        
+        # Chỉ tìm province nếu có prefix rõ ràng hoặc tên thành phố lớn
+        # Patterns cụ thể cho province (không dùng pattern tổng quát gây nhầm lẫn)
+        province_patterns = [
+            r'(?:tp|thành phố)\s+([a-zA-ZÀ-ỹ\s]+?)(?:\s*[,.]|$)',  # "tp hồ chí minh" or "thành phố hồ chí minh"
+            r'(?:tỉnh)\s+([a-zA-ZÀ-ỹ\s]+?)(?:\s*[,.]|$)',         # "tỉnh an giang"
+            r'([a-zA-ZÀ-ỹ\s]+?)\s+(?:province|city)',              # "ho chi minh city"
+            r'(hồ chí minh|hà nội|đà nẵng|cần thơ|hải phòng|an giang|bà rịa|bắc giang|bắc kạn|bạc liêu|bắc ninh|bến tre|bình định|bình dương|bình phước|bình thuận|cà mau|cao bằng|đắk lắk|đắk nông|điện biên|đồng nai|đồng tháp|gia lai|hà giang|hà nam|hà tĩnh|hải dương|hậu giang|hòa bình|hưng yên|khánh hòa|kiên giang|kon tum|lai châu|lâm đồng|lạng sơn|lào cai|long an|nam định|nghệ an|ninh bình|ninh thuận|phú thọ|phú yên|quảng bình|quảng nam|quảng ngãi|quảng ninh|quảng trị|sóc trăng|sơn la|tây ninh|thái bình|thái nguyên|thanh hóa|thừa thiên|tiền giang|trà vinh|tuyên quang|vĩnh long|vĩnh phúc|yên bái)(?=\s|$|[,.])',  # Tên tỉnh/thành phố cụ thể
+        ]
+        
+        for pattern in province_patterns:
             matches = re.findall(pattern, text_lower)
             if matches:
                 province_name = matches[0].strip()
-                result['province_id'] = self._get_province_id_by_name(province_name)
+                # Normalize common city names
+                if 'hồ chí minh' in province_name or 'hcm' in province_name or 'sài gòn' in province_name:
+                    result['province_name'] = 'Hồ Chí Minh'
+                elif 'hà nội' in province_name:
+                    result['province_name'] = 'Hà Nội'
+                elif 'đà nẵng' in province_name:
+                    result['province_name'] = 'Đà Nẵng'
+                elif 'cần thơ' in province_name:
+                    result['province_name'] = 'Cần Thơ'
+                elif 'hải phòng' in province_name:
+                    result['province_name'] = 'Hải Phòng'
+                else:
+                    result['province_name'] = province_name.title()
                 break
         
-        # Tìm quận/huyện
-        if result['province_id']:
-            for pattern in [r'(?:quận|q\.?|huyện)\s*(\w+)', r'(\w+)\s*(?:district)']:
-                matches = re.findall(pattern, text_lower)
-                if matches:
-                    district_name = matches[0].strip()
-                    result['district_id'] = self._get_district_id_by_name(result['province_id'], district_name)
-                    break
+        # Fallback: Tìm province bằng cache nếu chưa có ward và có prefix rõ ràng
+        if not result['province_name'] and not result['ward_name'] and self.provinces_cache:
+            # Chỉ tìm trong cache nếu có prefix "tỉnh" hoặc "thành phố"
+            if any(prefix in text_lower for prefix in ['tỉnh ', 'thành phố ', 'tp ']):
+                for province in self.provinces_cache:
+                    province_name_lower = province['name'].lower()
+                    # Tìm exact match hoặc substring trong text có prefix
+                    if province_name_lower in text_lower:
+                        result['province_name'] = province['name']
+                        break
         
         return result
     
@@ -335,10 +521,10 @@ class SmartTroMCP:
         if 'khu vực' in choice:
             state['current_step'] = 'location_input'
             response = {
-                'message': "Vui lòng cho biết khu vực cụ thể (tỉnh, thành phố) mà bạn muốn tìm?",
+                'message': "Vui lòng cho biết khu vực cụ thể (tỉnh, thành phố, phường/xã) mà bạn muốn tìm ?",
                 'conversation_state': state,
                 'step': 'location_input',
-                'placeholder': 'Ví dụ: Quận Gò Vấp, Huyện Hóc Môn, TP HCM'
+                'placeholder': 'Ví dụ: Phường An Nhơn, Gò Vấp'
             }
         elif 'diện tích' in choice:
             state['current_step'] = 'area_input'
@@ -432,15 +618,13 @@ class SmartTroMCP:
         properties = self.search_properties_fast(criteria)
         print('Found properties:', properties)
 
-        # Giới hạn số lượng properties trả về
-        limited_properties = properties[:8]
+        # Trả về tất cả properties không giới hạn
         total_found = len(properties)
-        displayed_count = len(limited_properties)
 
         # Tạo response với kết quả
         response = {
-            'message': f"Tuyệt vời! Tôi đã tìm thấy {displayed_count} bài đăng phù hợp với yêu cầu của bạn.",
-            'properties': limited_properties,
+            'message': f"Tuyệt vời! Tôi đã tìm thấy {total_found} bài đăng phù hợp với yêu cầu của bạn.",
+            'properties': properties,
             'total_found': total_found,
             'search_criteria': criteria,
             'conversation_state': state,
@@ -542,22 +726,23 @@ class SmartTroMCP:
         return 0
     
     def _extract_location_details(self, message: str) -> Dict[str, Any]:
-        """Extract thông tin location chi tiết và map sang ID"""
+        """Extract thông tin location chi tiết (province và ward)"""
         location_info = self._extract_location_from_text(message)
         
         result = {
             'text': message.strip(),
-            'province_id': location_info.get('province_id'),
-            'district_id': location_info.get('district_id'),
+            'province_name': location_info.get('province_name'),
+            'ward_name': location_info.get('ward_name'),
             'keywords': []
         }
         
-        # Thêm các keywords không map được ID vào search text
-        if not location_info.get('province_id'):
+        # Thêm các keywords không map được province hoặc ward vào search text
+        if not location_info.get('province_name') or not location_info.get('ward_name'):
             # Extract location keywords từ message
             location_patterns = [
                 r'(?:quận|q\.?|huyện)\s+([^,\.\s]+(?:\s+[^,\.\s]+)*)',
                 r'(?:tỉnh|thành phố|tp\.?)\s+([^,\.\s]+(?:\s+[^,\.\s]+)*)',
+                r'(?:phường|p\.?|xã|thị trấn)\s+([^,\.\s]+(?:\s+[^,\.\s]+)*)',
                 r'([a-zA-ZÀ-ỹ\s]+)(?=\s*[,\.]|$)'
             ]
             
@@ -565,7 +750,11 @@ class SmartTroMCP:
                 matches = re.findall(pattern, message, re.IGNORECASE)
                 for match in matches:
                     if match.strip():
-                        result['keywords'].append(match.strip())
+                        # Chỉ thêm vào keywords nếu chưa được extract thành province/ward
+                        match_text = match.strip()
+                        if (match_text != location_info.get('province_name') and 
+                            match_text != location_info.get('ward_name')):
+                            result['keywords'].append(match_text)
         
         return result
     
@@ -684,20 +873,20 @@ class SmartTroMCP:
             "confidence": 0.9,
             "category": collected_data.get('property_type'),
             "priceRange": collected_data.get('budget', {}),
-            "location": {"keywords": [], "province": "", "district": ""},
+            "location": {"keywords": [], "province": "", "ward": ""},
             "area": {},
             "amenities": [],
             "maxOccupants": "",
             "extractedKeywords": []
         }
         
-        # Xử lý location details (có province/district ID)
+        # Xử lý location details (có province name và ward name)
         if collected_data.get('location_details'):
             location_details = collected_data['location_details']
-            if location_details.get('province_id'):
-                criteria["location"]["province"] = location_details['province_id']
-            if location_details.get('district_id'):
-                criteria["location"]["district"] = location_details['district_id']
+            if location_details.get('province_name'):
+                criteria["location"]["province"] = location_details['province_name']
+            if location_details.get('ward_name'):
+                criteria["location"]["ward"] = location_details['ward_name']
             if location_details.get('keywords'):
                 criteria["location"]["keywords"].extend(location_details['keywords'])
         
@@ -763,6 +952,7 @@ class SmartTroMCP:
     def search_properties_fast(self, criteria: Dict[str, Any]) -> List[Dict]:
         """
         Tìm kiếm properties nhanh qua API (sync version)
+        Returns properties với direct fields: province, ward, detailAddress (đồng nhất với API search)
         """
         # Chuyển đổi criteria thành search params
         params = {
@@ -788,19 +978,51 @@ class SmartTroMCP:
         if criteria["maxOccupants"]:
             params["maxOccupants"] = criteria["maxOccupants"]
         
-        # Use mapped province/district IDs if available
+        # Use province name directly (no more IDs)
         if criteria["location"].get("province"):
-            params["provinceId"] = criteria["location"]["province"]
-        if criteria["location"].get("district"):
-            params["districtId"] = criteria["location"]["district"]
+            params["province"] = criteria["location"]["province"]
+            
+        # Use ward name directly
+        if criteria["location"].get("ward"):
+            params["ward"] = criteria["location"]["ward"]
         
-        # Fallback: Map location keywords to provinceId and districtId if not already mapped
-        if not params.get("provinceId") and criteria["location"]["keywords"]:
-            location_info = self._extract_location_from_text(" ".join(criteria["location"]["keywords"]))
-            if location_info['province_id']:
-                params["provinceId"] = location_info['province_id']
-            if location_info['district_id']:
-                params["districtId"] = location_info['district_id']
+        # Fallback: Extract province and ward names from location keywords
+        if not params.get("province") or not params.get("ward"):
+            if criteria["location"]["keywords"]:
+                keywords_text = " ".join(criteria["location"]["keywords"])
+                location_info = self._extract_location_from_text(keywords_text)
+                
+                # Set province if not already set
+                if not params.get("province") and location_info.get('province_name'):
+                    params["province"] = location_info['province_name']
+                
+                # Set ward if not already set
+                if not params.get("ward") and location_info.get('ward_name'):
+                    params["ward"] = location_info['ward_name']
+                
+                # Fallback: Try to find province name in individual keywords
+                if not params.get("province") and self.provinces_cache:
+                    for keyword in criteria["location"]["keywords"]:
+                        for province in self.provinces_cache:
+                            if keyword.lower() in province['name'].lower():
+                                params["province"] = province['name']
+                                break
+                        if params.get("province"):
+                            break
+                
+                # Enhanced ward matching sử dụng vietnamlabs.com API
+                if not params.get("ward"):
+                    # Fetch wards data từ vietnamlabs.com
+                    wards_list = self._fetch_wards_from_vietnamlabs()
+                    
+                    if wards_list:
+                        for keyword in criteria["location"]["keywords"]:
+                            # Thử fuzzy matching với từng keyword
+                            matched_ward = self._fuzzy_match_ward_name(keyword, wards_list)
+                            if matched_ward:
+                                params["ward"] = matched_ward
+                                print(f"Ward matched: '{keyword}' -> '{matched_ward}'")
+                                break
         
         # Use amenity IDs if already mapped, otherwise try to map from text
         amenity_ids = []
@@ -817,16 +1039,73 @@ class SmartTroMCP:
                     if amenity_ids:
                         params["amenities"] = ",".join(amenity_ids)
         
-        # Search text từ location keywords (nếu không map được ID) và other keywords
+        # Search text từ location keywords (nếu không map được province/ward name) và other keywords
         search_terms = []
         
         # Get location_info first
-        location_info = {'province_id': None, 'district_id': None}
+        location_info = {'province_name': None, 'ward_name': None}
         if criteria["location"]["keywords"]:
             location_info = self._extract_location_from_text(" ".join(criteria["location"]["keywords"]))
         
-        if not location_info.get('province_id') and criteria["location"]["keywords"]:
-            search_terms.extend(criteria["location"]["keywords"])
+        # Chỉ thêm keywords chưa được map thành province hoặc ward
+        if criteria["location"]["keywords"]:
+            for keyword in criteria["location"]["keywords"]:
+                keyword_lower = keyword.lower().strip()
+                
+                # Skip nếu keyword chứa trong province name đã map
+                skip_keyword = False
+                if params.get("province"):
+                    province_lower = params["province"].lower()
+                    # Kiểm tra nếu keyword là substring của province hoặc ngược lại
+                    if (keyword_lower in province_lower or 
+                        province_lower in keyword_lower or
+                        keyword_lower == province_lower):
+                        skip_keyword = True
+                
+                # Skip nếu keyword chứa trong ward name đã map (enhanced matching)
+                if params.get("ward"):
+                    ward_lower = params["ward"].lower()
+                    
+                    # Chỉ loại bỏ prefix không phải "phường" và "xã" đầy đủ để so sánh chính xác hơn
+                    cleaned_keyword = keyword_lower
+                    prefixes = ['thị trấn', 'p.', 'p', 'ward', 'commune']
+                    for prefix in prefixes:
+                        if cleaned_keyword.startswith(prefix + ' '):
+                            cleaned_keyword = cleaned_keyword[len(prefix + ' '):].strip()
+                            break
+                        elif cleaned_keyword.startswith(prefix):
+                            cleaned_keyword = cleaned_keyword[len(prefix):].strip()
+                            break
+                    
+                    # Loại bỏ prefix từ ward name (trừ "phường" và "xã" đầy đủ)
+                    cleaned_ward = ward_lower
+                    for prefix in prefixes:
+                        if cleaned_ward.startswith(prefix + ' '):
+                            cleaned_ward = cleaned_ward[len(prefix + ' '):].strip()
+                            break
+                        elif cleaned_ward.startswith(prefix):
+                            cleaned_ward = cleaned_ward[len(prefix):].strip()
+                            break
+                    
+                    # So sánh cả original và cleaned versions
+                    if (keyword_lower in ward_lower or 
+                        ward_lower in keyword_lower or
+                        keyword_lower == ward_lower or
+                        cleaned_keyword in cleaned_ward or
+                        cleaned_ward in cleaned_keyword or
+                        cleaned_keyword == cleaned_ward):
+                        skip_keyword = True
+                
+                # Skip common province variations
+                province_variations = [
+                    'hồ chí minh', 'thành phố hồ chí minh', 'tp hcm', 'sài gòn',
+                    'hà nội', 'thành phố hà nội', 'đà nẵng', 'thành phố đà nẵng'
+                ]
+                if keyword_lower in province_variations:
+                    skip_keyword = True
+                
+                if not skip_keyword:
+                    search_terms.append(keyword)
         if criteria["amenities"] and not amenity_ids:
             search_terms.extend(criteria["amenities"])
         
@@ -842,82 +1121,9 @@ class SmartTroMCP:
                 properties = data.get("data", {}).get("properties", [])
               
                 
-                # Process properties để đảm bảo có location object đầy đủ
-                if properties:
-                    # Xử lý location object cho mỗi property
-                    for prop in properties:
-                        # Ưu tiên sử dụng location có sẵn từ API trước
-                        existing_location = prop.get('location', {})
-                        if existing_location and any(existing_location.values()):
-                            # Đảm bảo location có đủ các field cần thiết
-                            if not existing_location.get('provinceName'):
-                                existing_location['provinceName'] = ''
-                            if not existing_location.get('districtName'):
-                                existing_location['districtName'] = ''
-                            if not existing_location.get('wardName'):
-                                existing_location['wardName'] = ''
-                            if not existing_location.get('detailAddress'):
-                                existing_location['detailAddress'] = ''
-                            prop['location'] = existing_location
-                            continue
-                        # Nếu không có location sẵn, tạo mới từ raw data
-                        location = {}
-                        # Load provinces cache để map (chỉ khi cần)
-                        province_map = {}
-                        if self.provinces_cache:
-                            province_map = {str(p['code']): p['name'] for p in self.provinces_cache}
-                        # Map province từ raw data
-                        province_value = prop.get('province')
-                        if province_value:
-                            mapped_province = province_map.get(str(province_value), str(province_value))
-                            location['provinceName'] = mapped_province
-                        # Map district từ raw data
-                        district_value = prop.get('district')
-                        if district_value:
-                            try:
-                                if province_value:
-                                    # Load districts nếu chưa có trong cache
-                                    cache_key = str(province_value)
-                                    if cache_key not in self.districts_cache:
-                                        try:
-                                            districts_response = requests.get(f"{self.location_api_url}/p/{province_value}?depth=2", timeout=5)
-                                            if districts_response.status_code == 200:
-                                                districts_data = districts_response.json()
-                                                self.districts_cache[cache_key] = districts_data.get('districts', [])
-                                        except Exception as e:
-                                            print(f"   Error loading districts: {e}")
-                                            self.districts_cache[cache_key] = []
-                                    # Map district name
-                                    districts = self.districts_cache.get(cache_key, [])
-                                    if districts:
-                                        district_map = {str(d['code']): d['name'] for d in districts}
-                                        mapped_district = district_map.get(str(district_value), str(district_value))
-                                        location['districtName'] = mapped_district
-                                    else:
-                                        location['districtName'] = str(district_value)  
-                                else:
-                                    location['districtName'] = str(district_value)
-                            except Exception as e:
-                                location['districtName'] = str(district_value)
-                                print(f"   Error mapping district: {e}")
-                        
-                        # Map ward từ raw data
-                        ward_value = prop.get('ward')
-                        if ward_value:
-                            location['wardName'] = str(ward_value)
-                        # Map detailAddress từ raw data
-                        detail_address = prop.get('detailAddress')
-                        if detail_address:
-                            location['detailAddress'] = str(detail_address)
-                        # Fallback: tìm trong các trường khác có chứa "address"
-                        if not detail_address:
-                            for key, value in prop.items():
-                                if 'address' in key.lower() and value:
-                                    location['detailAddress'] = str(value)
-                                    break
-                        # Gán location object đã tạo vào property
-                        prop['location'] = location
-                print("Final properties", properties)
+                # Properties đã có sẵn các trường province, ward, detailAddress từ API
+                # Không cần tạo nested location object - đồng nhất với API search property
+                print(f"Final properties (direct fields): {len(properties)} items")
                 return properties
             else:
                 print(f"API Error: {response.status_code} - {response.text}")

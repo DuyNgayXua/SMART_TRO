@@ -358,14 +358,10 @@
     background: var(--border-color, #e2e8f0);
 }
 
-.properties-table tbody tr {
-    border-bottom: 1px solid var(--border-light, #f1f5f9);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
 
 .properties-table tbody tr:hover {
     background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-    transform: scale(1.001);
+   
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
 }
 
@@ -511,19 +507,19 @@
     padding-left: 16px;
 }
 
-.price-section {
+.price-section-property-management {
     text-align: left;
     margin-left: 12px;
 }
 
-.price-section .main-price {
+.price-section-property-management .main-price {
     font-size: 14px;
     font-weight: 600;
     color: var(--success-600, #059669);
     margin-bottom: 2px;
 }
 
-.price-section .promo-price {
+.price-section-property-management {
     font-size: 13px;
     color: var(--orange-600, #ea580c);
     font-weight: 500;
@@ -625,9 +621,9 @@
 }
 
 .promo-price {
-    font-size: 13px;
+    font-size: 14px;
     color: #f59e0b;
-    font-weight: 500;
+    font-weight: bold;
 }
 
 /* Address Cell */

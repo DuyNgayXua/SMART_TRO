@@ -14,7 +14,7 @@ const validateWarning = [
     .isLength({ min: 10, max: 500 })
     .withMessage('Lý do cảnh báo phải có từ 10-500 ký tự')
     .trim()
-    .escape()
+    // .escape() - Tạm thời bỏ escape để test
 ];
 
 const validateHide = [

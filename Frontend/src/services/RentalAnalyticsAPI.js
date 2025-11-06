@@ -8,12 +8,12 @@ class RentalAnalyticsAPI {
     try {
       const params = {};
       
-      // Add location parameters if provided - backend expects province, district, category, areaRange
+      // Add location parameters if provided - backend expects province, ward, category, areaRange, amenities
       if (locationParam?.province) {
         params.province = locationParam.province;
       }
-      if (locationParam?.district) {
-        params.district = locationParam.district;
+      if (locationParam?.ward) {
+        params.ward = locationParam.ward;
       }
       if (locationParam?.category) {
         params.category = locationParam.category;
@@ -21,6 +21,16 @@ class RentalAnalyticsAPI {
       if (locationParam?.areaRange) {
         params.areaRange = locationParam.areaRange;
       }
+      if (locationParam?.amenities && Array.isArray(locationParam.amenities) && locationParam.amenities.length > 0) {
+        // Convert array to comma-separated string for URL query params
+        params.amenities = locationParam.amenities.join(',');
+        console.log('RentalAnalyticsAPI: Amenities being sent to backend:', params.amenities);
+      }
+      if (locationParam?.months) {
+        params.months = locationParam.months;
+      }
+      
+      console.log('RentalAnalyticsAPI: Final params object:', params);
       
       const response = await axios.get(`${API_BASE_URL}/analytics/price-trends`, {
         params
@@ -37,18 +47,22 @@ class RentalAnalyticsAPI {
     try {
       const params = {};
       
-      // Add location parameters if provided - backend expects province, district, category, areaRange
+      // Add location parameters if provided - backend expects province, ward, category, areaRange, amenities
       if (locationParam?.province) {
         params.province = locationParam.province;
       }
-      if (locationParam?.district) {
-        params.district = locationParam.district;
+      if (locationParam?.ward) {
+        params.ward = locationParam.ward;
       }
       if (locationParam?.category) {
         params.category = locationParam.category;
       }
       if (locationParam?.areaRange) {
         params.areaRange = locationParam.areaRange;
+      }
+      if (locationParam?.amenities && Array.isArray(locationParam.amenities) && locationParam.amenities.length > 0) {
+        // Convert array to comma-separated string for URL query params
+        params.amenities = locationParam.amenities.join(',');
       }
       
       const response = await axios.get(`${API_BASE_URL}/analytics/price-ranges`, {
@@ -80,18 +94,22 @@ class RentalAnalyticsAPI {
     try {
       const params = {};
       
-      // Add location parameters if provided
+      // Add location parameters if provided - updated schema: province, ward, category, areaRange, amenities
       if (locationParam?.province) {
-        params.province = locationParam.province;  // Sửa từ params.region thành params.province
+        params.province = locationParam.province;
       }
-      if (locationParam?.district) {
-        params.district = locationParam.district;
+      if (locationParam?.ward) {
+        params.ward = locationParam.ward;
       }
       if (locationParam?.category) {
         params.category = locationParam.category;
       }
       if (locationParam?.areaRange) {
         params.areaRange = locationParam.areaRange;
+      }
+      if (locationParam?.amenities && Array.isArray(locationParam.amenities) && locationParam.amenities.length > 0) {
+        // Convert array to comma-separated string for URL query params
+        params.amenities = locationParam.amenities.join(',');
       }
       
       const response = await axios.get(`${API_BASE_URL}/analytics/price-summary`, {

@@ -55,10 +55,10 @@ const PaymentHistory = () => {
       console.log('Calling API with params:', params);
       const response = await PaymentHistoryAPI.getPaymentHistory(params);
       console.log('API Response:', response);
-      
+
       if (response.success) {
         console.log('Setting payments:', response.data.orders || []);
-        
+
         // Xử lý dữ liệu orders để convert các field đặc biệt
         const processedOrders = (response.data.orders || []).map(order => ({
           ...order,
@@ -71,7 +71,7 @@ const PaymentHistory = () => {
             _id: order.propertyId._id?.toString ? order.propertyId._id.toString() : order.propertyId._id
           } : null
         }));
-        
+
         console.log('Processed orders:', processedOrders);
         setPayments(processedOrders);
         setPagination(prev => ({
@@ -134,7 +134,7 @@ const PaymentHistory = () => {
       // Kiểm tra từ tên gói hoặc description để xác định
       const name = payment.name || '';
       const packageName = payment.packageInfo?.name || '';
-      
+
       if (name.toLowerCase().includes('gia hạn') || name.toLowerCase().includes('renewal')) {
         return 'renewal';
       } else if (name.toLowerCase().includes('nâng cấp') || name.toLowerCase().includes('upgrade')) {
@@ -144,25 +144,25 @@ const PaymentHistory = () => {
         return 'upgrade';
       }
     };
-    
+
     const paymentAction = getPaymentAction(payment);
     const isRenewal = paymentAction === 'renewal';
     const isUpgrade = paymentAction === 'upgrade';
-    
+
     // Calculate pricing information for existing order
-    const totalAmount = typeof payment.total === 'object' && payment.total?.$numberDecimal ? 
-      parseFloat(payment.total.$numberDecimal) : 
+    const totalAmount = typeof payment.total === 'object' && payment.total?.$numberDecimal ?
+      parseFloat(payment.total.$numberDecimal) :
       (typeof payment.total === 'number' ? payment.total : 0);
-    
+
     // Reverse calculate VAT (assuming 8% VAT was included)
     const subtotalAmount = Math.round(totalAmount / 1.08);
     const vatAmount = totalAmount - subtotalAmount;
-    
+
     // Calculate expiry date based on duration
     const duration = payment.packageInfo?.duration || 1;
     const durationUnit = payment.packageInfo?.durationUnit || 'month';
     let expiryDate = new Date();
-    
+
     if (durationUnit === 'day') {
       expiryDate.setDate(expiryDate.getDate() + duration);
     } else if (durationUnit === 'month') {
@@ -170,7 +170,7 @@ const PaymentHistory = () => {
     } else if (durationUnit === 'year') {
       expiryDate.setFullYear(expiryDate.getFullYear() + duration);
     }
-    
+
     // Prepare payment data for direct navigation to payment page
     // QUAN TRỌNG: Đây là đơn hàng ĐÃ TỒN TẠI, không tạo mới
     const paymentData = {
@@ -228,14 +228,14 @@ const PaymentHistory = () => {
       skipOrderCreation: true,
       resumeExistingOrder: true
     };
-    
+
     console.log('Tiếp tục thanh toán đơn hàng cũ:', {
       orderId: payment._id,
       orderCode: payment.orderCode,
       totalAmount: totalAmount,
       paymentData
     });
-    
+
     // Navigate directly to payment page with state
     navigate('/profile/payment', { state: paymentData });
   };
@@ -300,13 +300,13 @@ const PaymentHistory = () => {
   const getPackageStyle = (packageInfo, packageId, packagePlanId) => {
     // Tìm package từ danh sách packages đã load
     const packageDisplayName = packageInfo?.displayName || packageId?.displayName || packageInfo?.name || '';
-    const packageFromList = packages.find(pkg => 
-      pkg.displayName === packageDisplayName || 
+    const packageFromList = packages.find(pkg =>
+      pkg.displayName === packageDisplayName ||
       pkg.displayName === packageId?.displayName ||
       pkg._id === packageId?._id ||
       pkg._id === packagePlanId
     );
-    
+
     if (packageFromList) {
       return {
         color: packageFromList.color || '#6c757d',
@@ -315,7 +315,7 @@ const PaymentHistory = () => {
         textStyle: packageFromList.textStyle || 'normal'
       };
     }
-    
+
     // Fallback nếu không tìm thấy trong danh sách
     const nameToCheck = (packageInfo?.name || packageDisplayName || '').toLowerCase();
     if (nameToCheck.includes('vip_dac_biet') || nameToCheck.includes('vip đặc biệt')) {
@@ -388,7 +388,7 @@ const PaymentHistory = () => {
         <div className="filter-row">
           <div className="filter-group-payment-history">
             <label>Trạng thái thanh toán</label>
-            <select 
+            <select
               className="filter-select"
               value={filters.payment_status}
               onChange={(e) => handleFilterChange('payment_status', e.target.value)}
@@ -403,7 +403,7 @@ const PaymentHistory = () => {
 
           <div className="filter-group-payment-history">
             <label>Thứ tự</label>
-            <select 
+            <select
               className="filter-select"
               value={filters.sortOrder}
               onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
@@ -424,6 +424,7 @@ const PaymentHistory = () => {
                 <th className="stt-column">STT</th>
                 <th>Phí Thanh Toán</th>
                 <th>Gói</th>
+                <th>Phương thức</th>
                 <th>Thời hạn</th>
                 <th>Trạng Thái</th>
                 <th>Ngày Tạo Hóa Đơn</th>
@@ -434,12 +435,12 @@ const PaymentHistory = () => {
               {loading ? (
                 <tr>
                   <td colSpan="8">
-                    
-                      <div className="spinner-container">
-                        <div className="spinner"></div>
-                        <span className="loading-text">Đang tải dữ liệu...</span>
-                      </div>
-                  
+
+                    <div className="spinner-container">
+                      <div className="spinner"></div>
+                      <span className="loading-text">Đang tải dữ liệu...</span>
+                    </div>
+
                   </td>
                 </tr>
               ) : payments.length > 0 ? (
@@ -449,20 +450,26 @@ const PaymentHistory = () => {
                       {(pagination.page - 1) * pagination.limit + index + 1}
                     </td>
                     <td className="total-cell">
-                      {formatPrice(typeof payment.total === 'object' && payment.total?.$numberDecimal ? 
-                        parseFloat(payment.total.$numberDecimal) : 
+                      {formatPrice(typeof payment.total === 'object' && payment.total?.$numberDecimal ?
+                        parseFloat(payment.total.$numberDecimal) :
                         (typeof payment.total === 'number' ? payment.total : 0))}
                     </td>
+
+
                     <td>
                       <div className="package-info">
+                        <div className="property-title-payment-history">
+                          {payment.propertyId?.title || payment.name || (payment.packagePlanId ? 'Nâng cấp tài khoản' : 'Không có thông tin')}
+
+                        </div>
                         {(() => {
                           const packageStyle = getPackageStyle(payment.packageInfo, payment.packageId, payment.packagePlanId);
                           return (
-                            <div 
-                              className="package-name-payment-history" 
-                              style={{ 
+                            <div
+                              className="package-name-payment-history"
+                              style={{
                                 color: packageStyle.color,
-                                textTransform: packageStyle.textStyle 
+                                textTransform: packageStyle.textStyle
                               }}
                             >
                               {packageStyle.displayName}
@@ -474,11 +481,14 @@ const PaymentHistory = () => {
                             </div>
                           );
                         })()}
-                        <div className="property-title-payment-history">
-                          {payment.propertyId?.title || payment.name || (payment.packagePlanId ? 'Nâng cấp tài khoản' : 'Không có thông tin')}
-                     
-                        </div>
+
                       </div>
+                    </td>
+
+                    <td className="method-cell">
+                      <span className={`payment-badge ${payment.paymentMethod.toLowerCase()}`}>
+                        {payment.paymentMethod}
+                      </span>
                     </td>
                     <td className="duration-cell">
                       <span className="duration-badge">
@@ -488,13 +498,13 @@ const PaymentHistory = () => {
                     <td>
                       {getStatusBadge(payment.payment_status)}
                     </td>
-    
+
                     <td className="time-cell">
                       {formatDate(payment.created_at)}
                     </td>
                     <td className="action-cell">
                       {payment.payment_status === 'Unpaid' ? (
-                        <button 
+                        <button
                           className="btn-payment-action"
                           onClick={() => handlePayment(payment)}
                           title="Thanh toán ngay"
@@ -527,7 +537,7 @@ const PaymentHistory = () => {
       {/* Pagination */}
       {payments.length > 0 && (
         <div className="payment-history-pagination">
-          <button 
+          <button
             className="pagination-btn-payment-history"
             disabled={pagination.page <= 1}
             onClick={() => handlePageChange(pagination.page - 1)}
@@ -548,7 +558,7 @@ const PaymentHistory = () => {
             ))}
           </div>
 
-          <button 
+          <button
             className="pagination-btn-payment-history"
             disabled={pagination.page >= pagination.totalPages}
             onClick={() => handlePageChange(pagination.page + 1)}
@@ -558,7 +568,7 @@ const PaymentHistory = () => {
           </button>
 
           <div className="pagination-info">
-            Trang {pagination.page} / {pagination.totalPages} - 
+            Trang {pagination.page} / {pagination.totalPages} -
             Tổng {pagination.total} giao dịch
           </div>
         </div>

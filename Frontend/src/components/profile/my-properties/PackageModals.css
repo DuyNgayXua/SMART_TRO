@@ -429,7 +429,7 @@
   align-items: center;
   margin-bottom: 25px;
   padding: 20px;
-  background: #0056b3;
+  background: linear-gradient(135deg, #1088ff, #1088ff);
   border-radius: 10px;
 }
 
@@ -440,18 +440,16 @@
   font-weight: 600;
   display: flex;
   align-items: center;
+  text-align: center;
   gap: 8px;
+  font-size: 12px;
 }
 
 .package-price {
   text-align: right;
 }
 
-.price-amount {
-  font-size: 20px;
-  font-weight: 700;
-  color: #333;
-}
+
 
 
 .package-timeline-current {
@@ -1045,15 +1043,15 @@
   margin-bottom: 20px;
 }
 
-.price-amount {
-  font-size: 20px;
+.price-amount-my-properties {
+  font-size: 16px;
   font-weight: 700;
   color: #ffffff;
   display: block;
   white-space: nowrap;
 }
 
-.price-period {
+.price-period-my-properties {
   font-size: 14px;
   color: #ffffff;
 }
@@ -1492,7 +1490,7 @@
   background-color: #000000;
   color: white;
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 10px;
   font-size: 16px;
 }
 
@@ -1504,6 +1502,9 @@
   font-size: 12px;
   font-weight: 600;
   margin-bottom: 10px;
+}
+.package-history-name i {
+  margin-right: 6px;
 }
 
 /* Tag tổng quan về tin đăng đã chuyển gói */
@@ -1972,6 +1973,14 @@
     transform: translateY(0);
   }
 }
+.history-item-details .package-limits-package-history::before {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 0 0 14px 14px;
+    padding: 2px;
+    z-index: 100000;
+}
 
 .package-history-item {
   background: #f8f9fa;
@@ -2147,6 +2156,86 @@
   transition: all 0.2s ease;
 }
 
+/* Expired Package Styles */
+.package-history-item.expired {
+  background: linear-gradient(135deg, #f8e8e8 0%, #fdf0f0 100%);
+  border: 2px solid #dc3545;
+  box-shadow: 0 3px 12px rgba(220, 53, 69, 0.15);
+  position: relative;
+  overflow: visible;
+  border-radius: 12px;
+}
+
+/* Khi có extended details, tạo container bao bọc toàn bộ */
+.package-history-item.expired.expanded {
+  border-radius: 12px 12px 0 0;
+  margin-bottom: 0;
+}
+
+/* Container wrapper cho expired item và details */
+.package-history-item.expired .history-item-wrapper {
+  position: relative;
+  z-index: 1;
+}
+
+/* Extended details cho expired package được bao bọc trong cùng style */
+.package-history-item.expired .history-item-details {
+  background: linear-gradient(135deg, #ffffff 0%, #fffafa 100%);
+  border: 2px solid #dc3545;
+  border-top: none;
+  border-radius: 0 0 12px 12px;
+  margin-top: 0;
+  margin-left: -16px;
+  margin-right: -16px;
+  margin-bottom: -16px;
+  padding: 20px;
+  position: relative;
+  z-index: 1;
+  box-shadow:
+    inset 0 2px 8px rgba(220, 53, 69, 0.05),
+    0 3px 12px rgba(220, 53, 69, 0.15);
+}
+
+/* Tạo hiệu ứng liên tục cho border glow */
+.package-history-item.expired .history-item-details::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: 0 0 14px 14px;
+  padding: 2px;
+  z-index: 100000;
+}
+
+/* Style đặc biệt cho nội dung trong expired package details */
+.package-history-item.expired .package-limits-package-history {
+  background: linear-gradient(135deg, #fdf0f0 0%, #fce6e6 100%);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.08);
+}
+
+.package-history-item.expired .package-features-history {
+  background: linear-gradient(135deg, #fdf0f0 0%, #fce6e6 100%);
+  border: 1px solid rgba(220, 53, 69, 0.2);
+  box-shadow: 0 2px 8px rgba(220, 53, 69, 0.08);
+}
+
+.package-history-item.expired .package-limits-package-history h5,
+.package-history-item.expired .package-features-history h5 {
+  color: #721c24;
+  background: rgba(220, 53, 69, 0.05);
+  padding: 8px 12px;
+  border-radius: 6px;
+  margin: -15px -15px 15px -15px;
+}
+
+.package-history-item.expired .feature-row {
+  background: rgba(255, 255, 255, 0.6);
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+  transition: all 0.2s ease;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .package-plan-using {
@@ -2220,6 +2309,19 @@
   }
 
   .package-history-item.renewed .history-item-details::before {
+    border-radius: 0 0 12px 12px;
+  }
+
+  /* Mobile responsive cho expired package */
+  .package-history-item.expired .history-item-details {
+    margin-left: -16px;
+    margin-right: -16px;
+    margin-bottom: -16px;
+    padding: 15px;
+    border-radius: 0 0 10px 10px;
+  }
+
+  .package-history-item.expired .history-item-details::before {
     border-radius: 0 0 12px 12px;
   }
 

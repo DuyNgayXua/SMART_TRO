@@ -4,7 +4,6 @@ import PackagePlan from '../../../schemas/PackagePlan.js';
 import User from '../../../schemas/User.js';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
-import { fetchProvinces, fetchDistricts, fetchWards } from "../../shared/utils/locationService.js";
 import propertyRepository from '../repositories/propertyRepository.js';
 import { uploadToCloudinary, deleteFromCloudinary } from '../../shared/utils/cloudinary.js';
 import { format } from 'path';
@@ -68,7 +67,7 @@ const myPropertiesController = {
       sortObj[sortBy] = sortOrder;
 
       // Lấy data
-      const [properties, total, provinces] = await Promise.all([
+      const [properties, total] = await Promise.all([
         Property.find(query)
           .sort(sortObj)
           .skip(skip)
@@ -78,28 +77,8 @@ const myPropertiesController = {
           .populate('packageInfo.plan', 'name displayName type')
           .populate('packageInfo.postType', 'name displayName priority color stars textStyle')
           .lean(),
-        Property.countDocuments(query),
-        fetchProvinces(),
-
+        Property.countDocuments(query)
       ]);
-
-      // Map tỉnh
-      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-      // Lấy districts & wards phụ thuộc provinceCode, districtCode
-      const districtMap = new Map();
-      const wardMap = new Map();
-
-      for (const property of properties) {
-        if (property.province && !districtMap.has(property.district)) {
-          const districts = await fetchDistricts(property.province);
-          districts.forEach(d => districtMap.set(String(d.code), d.name));
-        }
-        if (property.district && !wardMap.has(property.ward)) {
-          const wards = await fetchWards(property.district);
-          wards.forEach(w => wardMap.set(String(w.code), w.name));
-        }
-      }
 
 
       // Lấy số lượng comments cho mỗi property (chỉ đếm comments gốc, không đếm replies)
@@ -139,12 +118,9 @@ const myPropertiesController = {
         approvalStatus: property.approvalStatus,
         status: property.status,
         rejectionReason: property.rejectionReason, // Thêm lý do từ chối
-        location: {
-          provinceName: provinceMap.get(String(property.province)) || "",
-          districtName: districtMap.get(String(property.district)) || "",
-          wardName: wardMap.get(String(property.ward)) || "",
-          detailAddress: property.detailAddress
-        },
+        province: property.province,
+        ward: property.ward,
+        detailAddress: property.detailAddress,
         views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         comments: commentsCountMap.get(property._id.toString()) || 0,
@@ -242,7 +218,6 @@ const myPropertiesController = {
         status: property.status, // Thay isForRent bằng status
         approvalStatus: property.approvalStatus,
         province: property.province || '',
-        district: property.district || '',
         ward: property.ward || '',
         packageInfo: property.packageInfo || null
       };
@@ -368,10 +343,9 @@ const myPropertiesController = {
       ];
 
       // Lấy data bằng aggregation
-      const [propertiesResult, total, provinces] = await Promise.all([
+      const [propertiesResult, total] = await Promise.all([
         Property.aggregate(aggregationPipeline),
-        Property.countDocuments(query),
-        fetchProvinces(),
+        Property.countDocuments(query)
       ]);
 
       // Populate các fields cần thiết cho kết quả aggregation
@@ -389,24 +363,6 @@ const myPropertiesController = {
       });
 
       console.log("Approved properties fetched:", properties.length);
-
-      // Map tỉnh
-      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-      // Lấy districts & wards phụ thuộc provinceCode, districtCode
-      const districtMap = new Map();
-      const wardMap = new Map();
-
-      for (const property of properties) {
-        if (property.province && !districtMap.has(property.district)) {
-          const districts = await fetchDistricts(property.province);
-          districts.forEach(d => districtMap.set(String(d.code), d.name));
-        }
-        if (property.district && !wardMap.has(property.ward)) {
-          const wards = await fetchWards(property.district);
-          wards.forEach(w => wardMap.set(String(w.code), w.name));
-        }
-      }
 
       // Transform data for frontend
       const transformedProperties = properties.map(property => ({
@@ -441,12 +397,9 @@ const myPropertiesController = {
           phone: property.owner.phone,
           avatar: property.owner.avatar
         },
-        location: {
-          provinceName: provinceMap.get(String(property.province)) || "",
-          districtName: districtMap.get(String(property.district)) || "",
-          wardName: wardMap.get(String(property.ward)) || "",
-          detailAddress: property.detailAddress
-        },
+        province: property.province,
+        ward: property.ward,
+        detailAddress: property.detailAddress,
         views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         createdAt: property.createdAt,
@@ -492,7 +445,7 @@ const myPropertiesController = {
     }
   },
 
-  // Lấy danh sách tin đăng đã được duyệt theo district và ward
+  // Lấy danh sách tin đăng đã được duyệt theo ward
   getMyApprovedPropertiesByLocation: async (req, res) => {
     try {
 
@@ -507,8 +460,7 @@ const myPropertiesController = {
       const sortOrder = req.query.sortOrder === 'asc' ? 1 : -1;
       const search = req.query.search || '';
 
-      // Location filter params - THÊM MỚI
-      const district = req.query.district || '';
+      // Location filter params - CHỈ SỬ DỤNG WARD
       const ward = req.query.ward || '';
 
       // Build query với điều kiện approvalStatus = 'approved' và isDeleted = false
@@ -538,10 +490,7 @@ const myPropertiesController = {
         }
       ];
 
-      // Location filters - THÊM MỚI
-      if (district.trim()) {
-        query.district = district;
-      }
+      // Location filters - CHỈ SỬ DỤNG WARD
       if (ward.trim()) {
         query.ward = ward;
       }
@@ -565,7 +514,7 @@ const myPropertiesController = {
       sortObj[sortBy] = sortOrder;
 
       // Lấy data
-      const [properties, total, provinces] = await Promise.all([
+      const [properties, total] = await Promise.all([
         Property.find(query)
           .sort(sortObj)
           .skip(skip)
@@ -575,27 +524,8 @@ const myPropertiesController = {
           .populate('packageInfo.plan', 'name displayName type priority color stars')
           .populate('packageInfo.postType', 'name displayName priority color stars textStyle')
           .lean(),
-        Property.countDocuments(query),
-        fetchProvinces(),
+        Property.countDocuments(query)
       ]);
-
-      // Map tỉnh
-      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-      // Lấy districts & wards phụ thuộc provinceCode, districtCode
-      const districtMap = new Map();
-      const wardMap = new Map();
-
-      for (const property of properties) {
-        if (property.province && !districtMap.has(property.district)) {
-          const districts = await fetchDistricts(property.province);
-          districts.forEach(d => districtMap.set(String(d.code), d.name));
-        }
-        if (property.district && !wardMap.has(property.ward)) {
-          const wards = await fetchWards(property.district);
-          wards.forEach(w => wardMap.set(String(w.code), w.name));
-        }
-      }
 
       // Transform data for frontend
       const transformedProperties = properties.map(property => ({
@@ -630,14 +560,9 @@ const myPropertiesController = {
           phone: property.owner.phone,
           avatar: property.owner.avatar
         },
-        location: {
-          provinceName: provinceMap.get(String(property.province)) || "",
-          districtName: districtMap.get(String(property.district)) || "",
-          wardName: wardMap.get(String(property.ward)) || "",
-          detailAddress: property.detailAddress,
-          district: property.district, // THÊM MỚI
-          ward: property.ward // THÊM MỚI
-        },
+        province: property.province,
+        ward: property.ward,
+        detailAddress: property.detailAddress,
         views: property.views || 0,
         favorites: property.stats?.favorites || 0,
         createdAt: property.createdAt,
@@ -671,7 +596,6 @@ const myPropertiesController = {
             totalPages
           },
           filters: {
-            district,
             ward
           }
         }
@@ -1001,7 +925,6 @@ const myPropertiesController = {
         fullAmenities: req.body.fullAmenities === 'true',
         category: req.body.category ? JSON.parse(req.body.category) : existingProperty.category,
         province: req.body.province || existingProperty.province,
-        district: req.body.district || existingProperty.district,
         ward: req.body.ward || existingProperty.ward,
         detailAddress: req.body.detailAddress,
         coordinates: coords,
@@ -1296,6 +1219,7 @@ const myPropertiesController = {
     try {
       const { propertyId } = req.params;
       const userId = req.user.userId;
+      console.log(`propertyId to promote: ${propertyId} by user: ${userId}`);
 
       // Tìm property với populate để lấy thông tin plan
       const property = await Property.findOne({
@@ -1334,33 +1258,63 @@ const myPropertiesController = {
           message: 'Gói của tin đăng này đã hết hạn'
         });
       }
-
       // Lấy thông tin gói của tin đăng
       const propertyPlan = property.packageInfo.plan;
-      
+     
       // Lấy thông tin user để kiểm tra lượt đẩy tin
       const user = await User.findById(userId).lean();
-
       // Xác định gói nào đang được sử dụng để đếm lượt đẩy tin
       let packageForPushCount;
-      
-      // Nếu tin đăng sử dụng gói hiện tại của user
-      if (user.currentPackagePlan && 
-          user.currentPackagePlan.packagePlanId.toString() === propertyPlan._id.toString()) {
-        packageForPushCount = user.currentPackagePlan;
-      } else {
-        // Nếu tin đăng sử dụng gói cũ, cần tìm trong packageHistory
-        const historyPackage = user.packageHistory?.find(pkg => 
-          pkg.packagePlanId.toString() === propertyPlan._id.toString()
-        );
+      // Nếu tin đăng có packageInstanceId (ưu tiên tìm theo packageInstanceId)
+      if (property.packageInfo.packageInstanceId) {
+
         
-        if (historyPackage) {
-          packageForPushCount = historyPackage;
+        // Tìm theo packageInstanceId trong currentPackagePlan
+        if (user.currentPackagePlan && 
+            user.currentPackagePlan.packageInstanceId?.toString() === property.packageInfo.packageInstanceId?.toString()) {
+        
+          packageForPushCount = user.currentPackagePlan;
         } else {
-          return res.status(400).json({
-            success: false,
-            message: 'Không tìm thấy thông tin gói của tin đăng này'
+          console.log('Not found in currentPackagePlan, searching in packageHistory...');
+          console.log('PackageHistory array:', user.packageHistory);
+          
+          // Tìm trong packageHistory theo packageInstanceId
+          const historyPackage = user.packageHistory?.find(pkg => {
+            return pkg.packageInstanceId?.toString() === property.packageInfo.packageInstanceId?.toString();
           });
+          
+        
+          
+          if (historyPackage) {
+            packageForPushCount = historyPackage;
+          } else {
+            console.log('No match found in packageHistory');
+            return res.status(400).json({
+              success: false,
+              message: 'Không tìm thấy thông tin gói của tin đăng này (packageInstanceId không hợp lệ)'
+            });
+          }
+        }
+      } else {
+        // Fallback: Nếu tin đăng chưa có packageInstanceId, tìm theo packagePlanId (legacy)
+        // Nếu tin đăng sử dụng gói hiện tại của user
+        if (user.currentPackagePlan && 
+            user.currentPackagePlan.packagePlanId.toString() === propertyPlan._id.toString()) {
+          packageForPushCount = user.currentPackagePlan;
+        } else {
+          // Nếu tin đăng sử dụng gói cũ, cần tìm trong packageHistory
+          const historyPackage = user.packageHistory?.find(pkg => 
+            pkg.packagePlanId.toString() === propertyPlan._id.toString()
+          );
+          
+          if (historyPackage) {
+            packageForPushCount = historyPackage;
+          } else {
+            return res.status(400).json({
+              success: false,
+              message: 'Không tìm thấy thông tin gói của tin đăng này'
+            });
+          }
         }
       }
 
@@ -1396,32 +1350,66 @@ const myPropertiesController = {
 
       // Cập nhật usedPushCount của gói phù hợp (+1)
       let updatedUser;
-      if (user.currentPackagePlan && 
-          user.currentPackagePlan.packagePlanId.toString() === propertyPlan._id.toString()) {
-        // Cập nhật gói hiện tại
-        updatedUser = await User.findByIdAndUpdate(
-          userId,
-          {
-            $inc: { 'currentPackagePlan.usedPushCount': 1 },
-            $set: { 'currentPackagePlan.updatedAt': new Date() }
-          },
-          { new: true }
-        );
-      } else {
-        // Cập nhật gói trong packageHistory
-        const historyIndex = user.packageHistory?.findIndex(pkg => 
-          pkg.packagePlanId.toString() === propertyPlan._id.toString()
-        );
-        
-        if (historyIndex !== -1) {
+      
+      // Nếu tin đăng có packageInstanceId, cập nhật theo packageInstanceId (chính xác hơn)
+      if (property.packageInfo.packageInstanceId) {
+        if (user.currentPackagePlan && 
+            user.currentPackagePlan.packageInstanceId?.toString() === property.packageInfo.packageInstanceId?.toString()) {
+          // Cập nhật gói hiện tại theo packageInstanceId
           updatedUser = await User.findByIdAndUpdate(
             userId,
             {
-              $inc: { [`packageHistory.${historyIndex}.usedPushCount`]: 1 },
-              $set: { [`packageHistory.${historyIndex}.updatedAt`]: new Date() }
+              $inc: { 'currentPackagePlan.usedPushCount': 1 },
+              $set: { 'currentPackagePlan.updatedAt': new Date() }
             },
             { new: true }
           );
+        } else {
+          // Cập nhật gói trong packageHistory theo packageInstanceId
+          const historyIndex = user.packageHistory?.findIndex(pkg => 
+            pkg.packageInstanceId?.toString() === property.packageInfo.packageInstanceId?.toString()
+          );
+          
+          if (historyIndex !== -1) {
+            updatedUser = await User.findByIdAndUpdate(
+              userId,
+              {
+                $inc: { [`packageHistory.${historyIndex}.usedPushCount`]: 1 },
+                $set: { [`packageHistory.${historyIndex}.updatedAt`]: new Date() }
+              },
+              { new: true }
+            );
+          }
+        }
+      } else {
+        // Fallback: Cập nhật theo packagePlanId (legacy support)
+        if (user.currentPackagePlan && 
+            user.currentPackagePlan.packagePlanId.toString() === propertyPlan._id.toString()) {
+          // Cập nhật gói hiện tại
+          updatedUser = await User.findByIdAndUpdate(
+            userId,
+            {
+              $inc: { 'currentPackagePlan.usedPushCount': 1 },
+              $set: { 'currentPackagePlan.updatedAt': new Date() }
+            },
+            { new: true }
+          );
+        } else {
+          // Cập nhật gói trong packageHistory
+          const historyIndex = user.packageHistory?.findIndex(pkg => 
+            pkg.packagePlanId.toString() === propertyPlan._id.toString()
+          );
+          
+          if (historyIndex !== -1) {
+            updatedUser = await User.findByIdAndUpdate(
+              userId,
+              {
+                $inc: { [`packageHistory.${historyIndex}.usedPushCount`]: 1 },
+                $set: { [`packageHistory.${historyIndex}.updatedAt`]: new Date() }
+              },
+              { new: true }
+            );
+          }
         }
       }
 
@@ -1701,28 +1689,7 @@ const myPropertiesController = {
         .sort({ 'stats.lastFavoritedAt': -1 })
         .lean();
 
-      // Lấy provinces, districts, wards để map tên
-      const [provinces] = await Promise.all([
-        fetchProvinces()
-      ]);
-
-      // Map tỉnh
-      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-      // Lấy districts & wards phụ thuộc provinceCode, districtCode
-      const districtMap = new Map();
-      const wardMap = new Map();
-
-      for (const property of favoriteProperties) {
-        if (property.province && !districtMap.has(property.district)) {
-          const districts = await fetchDistricts(property.province);
-          districts.forEach(d => districtMap.set(String(d.code), d.name));
-        }
-        if (property.district && !wardMap.has(property.ward)) {
-          const wards = await fetchWards(property.district);
-          wards.forEach(w => wardMap.set(String(w.code), w.name));
-        }
-      }
+      // Không cần map provinces, wards nữa vì schema đã đơn giản hóa
       // Format response như getMyApprovedProperties
       const formattedProperties = favoriteProperties.map(property => ({
         _id: property._id,
@@ -1756,12 +1723,9 @@ const myPropertiesController = {
           phone: property.owner.phone,
           avatar: property.owner.avatar
         },
-        location: {
-          provinceName: provinceMap.get(String(property.province)) || "",
-          districtName: districtMap.get(String(property.district)) || "",
-          wardName: wardMap.get(String(property.ward)) || "",
-          detailAddress: property.detailAddress
-        },
+        province: property.province,
+        ward: property.ward,
+        detailAddress: property.detailAddress,
         views: property.stats?.views || 0,
         favorites: property.stats?.favorites || 0,
         isFavorited: true,
@@ -2685,33 +2649,12 @@ const myPropertiesController = {
         'packageInfo.postType': { $exists: true }
       })
         .populate('packageInfo.postType', 'name displayName color priority stars')
-        .select('_id title rentPrice area images packageInfo createdAt province district ward detailAddress')
+        .select('_id title rentPrice area images packageInfo createdAt province ward detailAddress')
         .sort({ createdAt: -1 })
         .lean();
       
 
-      // Lấy provinces, districts, wards để map tên
-      const [provinces] = await Promise.all([
-        fetchProvinces()
-      ]);
-
-      // Map tỉnh
-      const provinceMap = new Map(provinces.map(p => [String(p.code), p.name]));
-
-      // Lấy districts & wards phụ thuộc provinceCode, districtCode
-      const districtMap = new Map();
-      const wardMap = new Map();
-
-      for (const property of properties) {
-        if (property.province && !districtMap.has(property.district)) {
-          const districts = await fetchDistricts(property.province);
-          districts.forEach(d => districtMap.set(String(d.code), d.name));
-        }
-        if (property.district && !wardMap.has(property.ward)) {
-          const wards = await fetchWards(property.district);
-          wards.forEach(w => wardMap.set(String(w.code), w.name));
-        }
-      }
+      // Schema mới không cần load provinces nữa
 
       // Transform data for frontend
       const transformedProperties = properties.map(property => ({
@@ -2732,12 +2675,9 @@ const myPropertiesController = {
           expiryDate: property.packageInfo?.expiryDate,
           isActive: property.packageInfo?.isActive
         },
-        location: {
-          provinceName: provinceMap.get(String(property.province)) || "",
-          districtName: districtMap.get(String(property.district)) || "",
-          wardName: wardMap.get(String(property.ward)) || "",
-          detailAddress: property.detailAddress
-        },
+        province: property.province,
+        ward: property.ward,
+        detailAddress: property.detailAddress,
         createdAt: property.createdAt
       }));
       console.log(`Fetched ${transformedProperties.length} properties for migration for user ${userId}`);

@@ -3,7 +3,6 @@
  * Khởi động các service cần thiết cho payment module
  */
 import orderAutoCancelService from './services/orderAutoCancelService.js';
-import packageExpiryService from './services/packageExpiryService.js';
 
 /**
  * Khởi động tất cả payment services
@@ -15,8 +14,7 @@ export const initPaymentServices = () => {
         // Khởi động order auto-cancel service
         orderAutoCancelService.start();
         
-        // Khởi động package expiry service
-        packageExpiryService.start();
+       
         
         console.log('Payment Services initialized successfully');
         
@@ -36,9 +34,7 @@ export const stopPaymentServices = () => {
         // Dừng order auto-cancel service
         orderAutoCancelService.stop();
         
-        // Dừng package expiry service
-        packageExpiryService.stop();
-        
+       
         console.log('Payment Services stopped successfully');
         
     } catch (error) {

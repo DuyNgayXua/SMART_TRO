@@ -12,7 +12,8 @@ import {
 import './PropertyCard.css';
 
 const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn }) => {
-    console.log('Rendering property :', property);
+   console.log('Rendering Property:', property);
+
     const navigate = useNavigate();
     const { isFavorited } = useFavorites();
 
@@ -94,10 +95,12 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
         const postType = property.packageInfo?.postType;
         if (!postType) return {};
 
+        const priority = postType.priority || 10;
+        
         return {
             color: postType.color || '#000000',
             textTransform: postType.textStyle || 'none',
-            fontWeight: postType.priority <= 2 ? 'bold' : 'normal'
+            fontWeight: priority <= 2 ? 'bold' : 'normal'
         };
     };
 
@@ -106,13 +109,15 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
         const postType = property.packageInfo?.postType;
         if (!postType) return null;
 
-        const stars = postType.stars || 0;
+        // Tính số sao từ priority trực tiếp từ API
+        const priority = postType.priority || 10;
+        const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
         const starIcons = Array.from({ length: stars }, (_, i) => (
             <FaStar key={i} className="star-icon" />
         ));
 
         return (
-            <div className="post-type-badge-property-card" style={{ color: postType.color }}>
+            <div className="post-type-badge-property-card" style={{ color: postType.color || '#6c757d' }}>
                 
                 {stars > 0 && (
                     <div className="post-type-stars">
@@ -317,18 +322,19 @@ const PropertyCard = ({ property, onPropertyClick, onFavoriteToggle, isLoggedIn 
                         {property.deposit && (
                             <div className="detail-item-card">
                                 <span style={{ color: '#e08600ff', fontWeight: '700' }}>
-                                    Cọc: {formatPrice(property.deposit)}
+                                    Cọc: {formatPrice(property.deposit)} VNĐ
                                 </span>
                             </div>
                         )}
                     </div>
 
                     <div className="property-location">
+                        
                         <FaMapMarkerAlt />
-                        <span title={`${property.location?.detailAddress}, ${property.location?.wardName}, ${property.location?.districtName}, ${property.location?.provinceName}`}>
-                            {property.location?.detailAddress ?
-                                `${property.location.detailAddress}, ${property.location?.wardName}, ${property.location?.districtName}, ${property.location?.provinceName}` :
-                                `${property.location?.wardName}, ${property.location?.districtName}, ${property.location?.provinceName}`
+                        <span title={`${property.detailAddress}, ${property.ward}, ${property.province}`}>
+                            {property.detailAddress ?
+                                `${property.detailAddress}, ${property.ward}, ${property.province}` :
+                                `${property.ward}, ${property.province}`
                             }
                         </span>
                     </div>

@@ -103,12 +103,8 @@ const propertySchema = new mongoose.Schema({
         default: []
     },
 
-    // Địa chỉ
+    // Địa chỉ (sử dụng API vietnamlabs.com)
     province: {
-        type: String,
-        required: true
-    },
-    district: {
         type: String,
         required: true
     },
@@ -215,6 +211,16 @@ const propertySchema = new mongoose.Schema({
             type: String,
             enum: ['active', 'cancelled', 'expired'],
             default: 'active'
+        },
+        //Theo dõi nguồn gói gốc (khi migrate)
+        sourcePackageId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'PackagePlan', // Gói mà tin này được chuyển từ
+            default: null
+        },
+        sourcePackageName: {
+            type: String,
+            default: null
         }
     },
 
@@ -238,7 +244,8 @@ function arrayLimit(val) {
 propertySchema.index({ owner: 1 });
 propertySchema.index({ category: 1 });
 propertySchema.index({ approvalStatus: 1 });
-propertySchema.index({ province: 1, district: 1 });
+propertySchema.index({ provinceId: 1 }); // Cập nhật index cho provinceId
+propertySchema.index({ province: 1, ward: 1 }); // Index mới cho province và ward
 propertySchema.index({ rentPrice: 1 });
 propertySchema.index({ createdAt: -1 });
 propertySchema.index({ promotedAt: -1 }); // Index for promoted properties

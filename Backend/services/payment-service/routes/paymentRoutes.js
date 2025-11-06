@@ -23,6 +23,14 @@ router.get('/order/:orderId', authMiddleware, paymentController.getOrderInfo);
 // Webhook SePay (yêu cầu xác thực API key)
 router.post('/sepay/webhook', sepayAuth, paymentController.sepayWebhook);
 
+// =================== VNPay Routes ===================
+
+// Tạo URL thanh toán VNPay cho đơn hàng đã tồn tại (yêu cầu auth)
+router.post('/vnpay/create-payment-url', authMiddleware, paymentController.createVnpayPaymentUrl);
+
+// Xử lý return URL từ VNPay và cập nhật trạng thái đơn hàng
+router.get('/vnpay/return', paymentController.vnpayReturn);
+
 // Lấy lịch sử gói của user (yêu cầu auth)
 router.get('/package-history', authMiddleware, paymentController.getUserPackageHistory);
 

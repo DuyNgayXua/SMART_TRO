@@ -9,6 +9,7 @@ import schemas from './schemas/index.js';
 import serviceRoutes from './services/index.js';
 import EmbeddingMigration from './services/chatbot-service/scripts/migrateChatbotEmbeddings.js';
 import { initPaymentServices, stopPaymentServices } from './services/payment-service/init.js';
+import { initPackageExpiryCron } from './services/packageExpiryService.js';
 
 
 // Load environment variables
@@ -202,6 +203,10 @@ async function startServer() {
         // Initialize Payment Services
         console.log('\nInitializing payment services...');
         initPaymentServices();
+
+        // Initialize Package Expiry Cron Jobs
+        console.log('\nInitializing package expiry cron jobs...');
+        initPackageExpiryCron();
 
         // Start server
         app.listen(PORT, () => {

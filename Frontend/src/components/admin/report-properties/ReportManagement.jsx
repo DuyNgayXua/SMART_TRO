@@ -66,6 +66,31 @@ const ReportManagement = () => {
     const handleReportAction = async () => {
         if (!selectedReport || !actionType || processingReportId) return;
 
+        // Client-side validation trước khi gửi request
+        if (actionType !== 'dismiss' && actionReason.trim()) {
+            const reasonLength = actionReason.trim().length;
+            
+            if (actionType === 'warning') {
+                if (reasonLength < 10) {
+                    toast.error('Lý do cảnh báo phải có ít nhất 10 ký tự');
+                    return;
+                }
+                if (reasonLength > 500) {
+                    toast.error('Lý do cảnh báo không được quá 500 ký tự');
+                    return;
+                }
+            } else if (actionType === 'hide') {
+                if (reasonLength < 3) {
+                    toast.error('Lý do ẩn bài đăng phải có ít nhất 3 ký tự');
+                    return;
+                }
+                if (reasonLength > 500) {
+                    toast.error('Lý do ẩn bài đăng không được quá 500 ký tự');
+                    return;
+                }
+            }
+        }
+
         try {
             setProcessingReportId(selectedReport._id);
 
@@ -109,13 +134,21 @@ const ReportManagement = () => {
             console.error('Error handling report:', error);
             
             // Hiển thị thông báo lỗi chi tiết từ backend
-            let errorMessage = 'Lỗi khi xử lý báo cáo';
-            
-            if (error.message) {
-                errorMessage = error.message;
+            if (error.validationErrors && Array.isArray(error.validationErrors)) {
+                // Hiển thị từng lỗi validation riêng biệt
+                error.validationErrors.forEach(validationError => {
+                    toast.error(validationError.msg || validationError.message || 'Lỗi validation');
+                });
+            } else if (error.detailedMessage) {
+                // Hiển thị chi tiết lỗi validation
+                toast.error(`Lỗi validation: ${error.detailedMessage}`);
+            } else if (error.message) {
+                // Lỗi thông thường
+                toast.error(error.message);
+            } else {
+                // Lỗi mặc định
+                toast.error('Lỗi khi xử lý báo cáo');
             }
-            
-            toast.error(errorMessage);
         } finally {
             setProcessingReportId(null);
         }
@@ -713,6 +746,15 @@ const ReportManagement = () => {
                                                 placeholder={actionType === 'warning' ? 'Nhập lý do cảnh báo...' : 'Nhập lý do xóa bài đăng...'}
                                                 rows="4"
                                             />
+                                            <div style={{ 
+                                                fontSize: '12px', 
+                                                color: actionReason.trim().length < (actionType === 'warning' ? 10 : 3) || actionReason.trim().length > 500 ? '#d00' : '#666',
+                                                marginTop: '5px'
+                                            }}>
+                                                {actionReason.trim().length}/500 ký tự 
+                                                {actionType === 'warning' && ' (tối thiểu 10 ký tự)'}
+                                                {actionType === 'hide' && ' (tối thiểu 3 ký tự)'}
+                                            </div>
                                         </>
                                     )}
 

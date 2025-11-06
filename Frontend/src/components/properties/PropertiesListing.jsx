@@ -21,9 +21,13 @@ import {
   FaMoneyBillWave,
   FaExpand,
   FaClock,
-  FaArrowUp
+  FaArrowUp,
+  FaPhone,
+  FaEnvelope
 } from 'react-icons/fa';
 import './PropertiesListing.css';
+import './HeroCanvas.css';
+import HeroCanvasBackground from './HeroCanvasBackground';
 
 /**
  * Component PropertiesListing - Trang danh sách bất động sản
@@ -40,20 +44,22 @@ const PropertiesListing = ({ searchResults = null, searchParams: externalSearchP
   const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth();
   const { toggleFavorite, isFavorited } = useFavorites();
+  const { t, i18n } = useTranslation();
 
   // States
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchInput, setSearchInput] = useState(searchParams.get('search') || '');
 
+
+
   // Location data
   const [provinces, setProvinces] = useState([]);
-  const [districts, setDistricts] = useState([]);
   const [wards, setWards] = useState([]);
+  const [loadingWards, setLoadingWards] = useState(false);
 
   // Hero search states
   const [amenities, setAmenities] = useState([]);
-  const [loadingDistricts, setLoadingDistricts] = useState(false);
   const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
   const [tempSelectedAmenities, setTempSelectedAmenities] = useState([]);
   
@@ -63,11 +69,16 @@ const PropertiesListing = ({ searchResults = null, searchParams: externalSearchP
   const [selectedAreaIndex, setSelectedAreaIndex] = useState(0);
   const [searching, setSearching] = useState(false);
 
+  // Typing effect for placeholder
+  const [currentPlaceholder, setCurrentPlaceholder] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isTyping, setIsTyping] = useState(true);
+
   // Search data for Hero form
   const [searchData, setSearchData] = useState({
     search: '',
-    provinceId: '',
-    districtId: '',
+    province: '',
+    ward: '',
     category: '',
     minPrice: '',
     maxPrice: '',
@@ -103,9 +114,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   // Filters state
   const [filters, setFilters] = useState({
     search: searchParams.get('search') || '',
-    provinceId: searchParams.get('province') || '',
-    districtId: searchParams.get('district') || '',
-    wardId: searchParams.get('ward') || '',
+    province: searchParams.get('province') || '',
+    ward: searchParams.get('ward') || '',
     category: searchParams.get('category') || '',
     minPrice: searchParams.get('minPrice') || '',
     maxPrice: searchParams.get('maxPrice') || '',
@@ -116,90 +126,60 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     sortOrder: searchParams.get('sortOrder') || 'desc'
   });
 
-  // Price ranges
-  const priceRanges = [
-    { label: 'Dưới 1 triệu', min: 0, max: 1000000 },
-    { label: '1 - 2 triệu', min: 1000000, max: 2000000 },
-    { label: '2 - 3 triệu', min: 2000000, max: 3000000 },
-    { label: '3 - 5 triệu', min: 3000000, max: 5000000 },
-    { label: '5 - 7 triệu', min: 5000000, max: 7000000 },
-    { label: '7 - 10 triệu', min: 7000000, max: 10000000 },
-    { label: 'Trên 10 triệu', min: 10000000, max: null }
-  ];
 
-  // Area ranges - Updated
-  const areaRanges = [
-    { label: 'Dưới 20m²', min: 0, max: 20 },
-    { label: '20 - 30m²', min: 20, max: 30 },
-    { label: '30 - 50m²', min: 30, max: 50 },
-    { label: '50 - 70m²', min: 50, max: 70 },
-    { label: '70 - 90m²', min: 70, max: 90 },
-    { label: 'Trên 90m²', min: 90, max: null }
-  ];
+
 
   // Right sidebar price ranges (sync with Hero price ranges)
   const rightSidebarPriceRanges = [
-    { label: 'Dưới 1 triệu', min: 0, max: 1000000 },
-    { label: '1 - 2 triệu', min: 1000000, max: 2000000 },
-    { label: '2 - 3 triệu', min: 2000000, max: 3000000 },
-    { label: '3 - 5 triệu', min: 3000000, max: 5000000 },
-    { label: '5 - 7 triệu', min: 5000000, max: 7000000 },
-    { label: '7 - 10 triệu', min: 7000000, max: 10000000 },
-    { label: 'Trên 10 triệu', min: 10000000, max: null }
+    { label: t('propertiesListing.priceRanges.under1M'), min: 0, max: 1000000 },
+    { label: t('propertiesListing.priceRanges.1to2M'), min: 1000000, max: 2000000 },
+    { label: t('propertiesListing.priceRanges.2to3M'), min: 2000000, max: 3000000 },
+    { label: t('propertiesListing.priceRanges.3to5M'), min: 3000000, max: 5000000 },
+    { label: t('propertiesListing.priceRanges.5to7M'), min: 5000000, max: 7000000 },
+    { label: t('propertiesListing.priceRanges.7to10M'), min: 7000000, max: 10000000 },
+    { label: t('propertiesListing.priceRanges.over10M'), min: 10000000, max: null }
   ];
 
   // Right sidebar area ranges (sync with Hero area ranges)
   const rightSidebarAreaRanges = [
-    { label: 'Dưới 20m²', min: 0, max: 20 },
-    { label: '20 - 30m²', min: 20, max: 30 },
-    { label: '30 - 50m²', min: 30, max: 50 },
-    { label: '50 - 70m²', min: 50, max: 70 },
-    { label: '70 - 100m²', min: 70, max: 100 },
-    { label: 'Trên 100m²', min: 100, max: null }
+    { label: t('propertiesListing.areaRanges.under20'), min: 0, max: 20 },
+    { label: t('propertiesListing.areaRanges.20to30'), min: 20, max: 30 },
+    { label: t('propertiesListing.areaRanges.30to50'), min: 30, max: 50 },
+    { label: t('propertiesListing.areaRanges.50to70'), min: 50, max: 70 },
+    { label: t('propertiesListing.areaRanges.70to100'), min: 70, max: 100 },
+    { label: t('propertiesListing.areaRanges.over100'), min: 100, max: null }
   ];
 
-  // Hero search categories
-  const heroCategories = [
-    { value: '', label: 'Tất cả loại hình' },
-    { value: 'phong_tro', label: 'Phòng trọ' },
-    { value: 'can_ho', label: 'Căn hộ' },
-    { value: 'nha_nguyen_can', label: 'Nhà nguyên căn' },
-    { value: 'chung_cu_mini', label: 'Chung cư mini' },
-    { value: 'homestay', label: 'Homestay' }
-  ];
+
 
   // Hero search price ranges
   const heroPriceRanges = [
-    { label: 'Chọn mức giá', min: '', max: '' },
-    { label: 'Dưới 1 triệu', min: 0, max: 1000000 },
-    { label: '1 - 2 triệu', min: 1000000, max: 2000000 },
-    { label: '2 - 3 triệu', min: 2000000, max: 3000000 },
-    { label: '3 - 5 triệu', min: 3000000, max: 5000000 },
-    { label: '5 - 7 triệu', min: 5000000, max: 7000000 },
-    { label: '7 - 10 triệu', min: 7000000, max: 10000000 },
-    { label: 'Trên 10 triệu', min: 10000000, max: '' }
+    { label: t('propertiesListing.priceRanges.choose'), min: '', max: '' },
+    { label: t('propertiesListing.priceRanges.under1M'), min: 0, max: 1000000 },
+    { label: t('propertiesListing.priceRanges.1to2M'), min: 1000000, max: 2000000 },
+    { label: t('propertiesListing.priceRanges.2to3M'), min: 2000000, max: 3000000 },
+    { label: t('propertiesListing.priceRanges.3to5M'), min: 3000000, max: 5000000 },
+    { label: t('propertiesListing.priceRanges.5to7M'), min: 5000000, max: 7000000 },
+    { label: t('propertiesListing.priceRanges.7to10M'), min: 7000000, max: 10000000 },
+    { label: t('propertiesListing.priceRanges.over10M'), min: 10000000, max: '' }
   ];
 
   // Hero search area ranges
   const heroAreaRanges = [
-    { label: 'Chọn diện tích', min: '', max: '' },
-    { label: 'Dưới 20m²', min: 0, max: 20 },
-    { label: '20 - 30m²', min: 20, max: 30 },
-    { label: '30 - 50m²', min: 30, max: 50 },
-    { label: '50 - 70m²', min: 50, max: 70 },
-    { label: '70 - 100m²', min: 70, max: 100 },
-    { label: 'Trên 100m²', min: 100, max: '' }
+    { label: t('propertiesListing.areaRanges.choose'), min: '', max: '' },
+    { label: t('propertiesListing.areaRanges.under20'), min: 0, max: 20 },
+    { label: t('propertiesListing.areaRanges.20to30'), min: 20, max: 30 },
+    { label: t('propertiesListing.areaRanges.30to50'), min: 30, max: 50 },
+    { label: t('propertiesListing.areaRanges.50to70'), min: 50, max: 70 },
+    { label: t('propertiesListing.areaRanges.70to100'), min: 70, max: 100 },
+    { label: t('propertiesListing.areaRanges.over100'), min: 100, max: '' }
   ];
 
-  // Sort options
-  const sortOptions = [
-    { value: 'createdAt_desc', label: 'Tin mới nhất' },
-    { value: 'createdAt_asc', label: 'Tin cũ nhất' },
-    { value: 'rentPrice_asc', label: 'Giá thấp nhất' },
-    { value: 'rentPrice_desc', label: 'Giá cao nhất' },
-    { value: 'area_desc', label: 'Diện tích lớn nhất' },
-    { value: 'area_asc', label: 'Diện tích nhỏ nhất' },
-    { value: 'views_desc', label: 'Xem nhiều nhất' }
+
+
+  // Typing effect placeholders
+  const placeholderTexts = [
+    t('propertiesListing.searchPlaceholder')
   ];
 
   // Load initial data
@@ -227,6 +207,48 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Typing effect for placeholder
+  useEffect(() => {
+    let timeout;
+    
+    const typeText = () => {
+      const currentText = placeholderTexts[placeholderIndex];
+      
+      if (isTyping) {
+        // Typing phase
+        if (currentPlaceholder.length < currentText.length) {
+          timeout = setTimeout(() => {
+            setCurrentPlaceholder(currentText.slice(0, currentPlaceholder.length + 1));
+          }, 100); // Typing speed
+        } else {
+          // Wait before erasing
+          timeout = setTimeout(() => {
+            setIsTyping(false);
+          }, 2000); // Wait time
+        }
+      } else {
+        // Erasing phase
+        if (currentPlaceholder.length > 0) {
+          timeout = setTimeout(() => {
+            setCurrentPlaceholder(currentText.slice(0, currentPlaceholder.length - 1));
+          }, 50); // Erasing speed
+        } else {
+          // Move to next placeholder
+          setPlaceholderIndex((prev) => (prev + 1) % placeholderTexts.length);
+          setIsTyping(true);
+        }
+      }
+    };
+
+    // Only run typing effect when searchInput is empty
+    if (!searchInput) {
+      typeText();
+        } else {
+          // Reset when user starts typing
+          setCurrentPlaceholder(t('propertiesListing.searchPlaceholder'));
+        }    return () => clearTimeout(timeout);
+  }, [currentPlaceholder, placeholderIndex, isTyping, searchInput, placeholderTexts]);
+
 
 
   // Xử lý kết quả tìm kiếm từ bên ngoài (từ Hero search hoặc các component khác)
@@ -235,6 +257,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
      
       // Cập nhật danh sách tin đăng từ kết quả tìm kiếm bên ngoài
       setProperties(searchResults.properties || []);
+     
       setPagination(prev => ({
         ...prev,
         total: searchResults.pagination?.total || 0,
@@ -301,8 +324,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
       let response;
       // Kiểm tra xem có bộ lọc nào được áp dụng không
-      const hasFilters = searchFilters.search || searchFilters.provinceId || searchFilters.districtId || 
-                        searchFilters.wardId || searchFilters.category || searchFilters.minPrice || 
+      const hasFilters = searchFilters.search || searchFilters.province || 
+                        searchFilters.ward || searchFilters.category || searchFilters.minPrice || 
                         searchFilters.maxPrice || searchFilters.minArea || searchFilters.maxArea || 
                         (searchFilters.amenities && searchFilters.amenities.length > 0);
 
@@ -341,56 +364,17 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     }
   };
 
-  // Load districts when province changes in Hero
-  const loadDistrictsHero = async (provinceId) => {
-    
-    try {
-      setLoadingDistricts(true);
-      const districtsRes = await locationAPI.getDistricts(provinceId);
-    
-      
-      if (districtsRes.success) {
-        setDistricts(districtsRes.data || []);
-      } else {
-        setDistricts([]);
-      }
-    } catch (error) {
-      console.error('Error loading districts:', error);
-      setDistricts([]);
-    } finally {
-      setLoadingDistricts(false);
-    }
-  };
-
-  // Load districts when province changes (for filters)
-  const loadDistricts = async (provinceId) => {
-    if (!provinceId) {
-      setDistricts([]);
-      return;
-    }
-    
-    try {
-      const districtsRes = await locationAPI.getDistricts(provinceId);
-      if (districtsRes.success) {
-        setDistricts(districtsRes.data || []);
-      } else {
-        setDistricts([]);
-      }
-    } catch (error) {
-      console.error('Error loading districts:', error);
-      setDistricts([]);
-    }
-  };
-
-  // Load wards when district changes (for filters)
-  const loadWards = async (districtId) => {
-    if (!districtId) {
+  // Load wards when province changes
+  const loadWards = async (provinceName) => {
+    if (!provinceName) {
       setWards([]);
       return;
     }
     
     try {
-      const wardsRes = await locationAPI.getWards(districtId);
+      setLoadingWards(true);
+      const wardsRes = await locationAPI.getWards(provinceName);
+      
       if (wardsRes.success) {
         setWards(wardsRes.data || []);
       } else {
@@ -399,15 +383,24 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     } catch (error) {
       console.error('Error loading wards:', error);
       setWards([]);
+    } finally {
+      setLoadingWards(false);
     }
   };
 
   // Hero search handlers
   const handleHeroInputChange = (field, value) => {
-    setSearchData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    setSearchData(prev => {
+      const newData = { ...prev, [field]: value };
+      
+      // Reset ward when province changes
+      if (field === 'province') {
+        newData.ward = '';
+        loadWards(value);
+      }
+      
+      return newData;
+    });
   };
 
   const handleHeroPriceRangeChange = (e) => {
@@ -486,8 +479,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     // Reset searchData (Hero form)
     const resetSearchData = {
       search: '',
-      provinceId: '',
-      districtId: '',
+      province: '',
+      ward: '',
       category: '',
       minPrice: '',
       maxPrice: '',
@@ -501,14 +494,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     // Reset Hero select indices
     setSelectedPriceIndex(0);
     setSelectedAreaIndex(0);
-    setDistricts([]);
+    setWards([]);
     
     // Reset filters (for sidebar and general filtering)
     const resetFilters = {
       search: '',
-      provinceId: '',
-      districtId: '',
-      wardId: '',
+      province: '',
+      ward: '',
       category: '',
       minPrice: '',
       maxPrice: '',
@@ -534,8 +526,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     
     const searchParams = {
       search: searchData.search || '',
-      provinceId: searchData.provinceId || '',
-      districtId: searchData.districtId || '',
+      province: searchData.province || '',
+      ward: searchData.ward || '',
       category: searchData.category || '',
       minPrice: searchData.minPrice || '',
       maxPrice: searchData.maxPrice || '',
@@ -565,9 +557,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         // Update filters state to match search data
         const newFilters = {
           search: searchData.search || '',
-          provinceId: searchData.provinceId || '',
-          districtId: searchData.districtId || '',
-          wardId: '',
+          province: searchData.province || '',
+          ward: searchData.ward || '',
           category: searchData.category || '',
           minPrice: searchData.minPrice || '',
           maxPrice: searchData.maxPrice || '',
@@ -612,15 +603,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     setFilters(prev => {
       const newFilters = { ...prev, [key]: value };
 
-      // Reset dependent filters
-      if (key === 'provinceId') {
-        newFilters.districtId = '';
-        newFilters.wardId = '';
-        loadDistricts(value);
-      } else if (key === 'districtId') {
-        newFilters.wardId = '';
-        loadWards(value);
-      }
+      // No dependent filters needed for new schema
 
       // Update URL immediately for some key filters
       if (key !== 'search') { // Search is handled by debounced effect
@@ -660,14 +643,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   };
 
 
-  useEffect(() => {
-    if (searchData.provinceId) {
-      loadDistrictsHero(searchData.provinceId);
-    } else {
-      setDistricts([]);
-      setSearchData(prev => ({ ...prev, districtId: '' }));
-    }
-  }, [searchData.provinceId]);
+
 
   // Handle search input key press
   const handleSearchInputKeyPress = async (e) => {
@@ -734,9 +710,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     // Call search API immediately with updated params
     const searchParams = {
       search: filters.search || '',
-      provinceId: filters.provinceId || '',
-      districtId: filters.districtId || '',
-      wardId: filters.wardId || '',
+      province: filters.province || '',
+      ward: filters.ward || '',
       category: filters.category || '',
       minPrice: range.min || '',
       maxPrice: range.max || '',
@@ -828,9 +803,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     // Call search API immediately with updated params
     const searchParams = {
       search: filters.search || '',
-      provinceId: filters.provinceId || '',
-      districtId: filters.districtId || '',
-      wardId: filters.wardId || '',
+      province: filters.province || '',
+      ward: filters.ward || '',
       category: filters.category || '',
       minPrice: filters.minPrice || '',
       maxPrice: filters.maxPrice || '',
@@ -905,12 +879,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         setSearchInput(''); // Reset search input state
         break;
       case 'location':
-        newFilters.provinceId = '';
-        newFilters.districtId = '';
-        newFilters.wardId = '';
-        resetSearchData.provinceId = '';
-        resetSearchData.districtId = '';
-        setDistricts([]);
+        newFilters.province = '';
+        newFilters.ward = '';
+        resetSearchData.province = '';
+        resetSearchData.ward = '';
         break;
       case 'category':
         newFilters.category = '';
@@ -972,77 +944,69 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     if (filters.search) {
       activeFilters.push({
         type: 'search',
-        label: `Từ khóa: "${filters.search}"`,
+        label: t('propertiesListing.filters.search', { keyword: filters.search }),
         value: filters.search
       });
      
     }
 
-    if (filters.provinceId || filters.districtId || filters.wardId) {
+    if (filters.province || filters.ward) {
       const locationParts = [];
-      if (filters.wardId) {
-        const ward = wards.find(w => w._id === filters.wardId);
-        if (ward) locationParts.push(ward.name);
+      if (filters.ward) {
+        locationParts.push(filters.ward);
       }
-      if (filters.districtId) {
-        const district = districts.find(d => d._id === filters.districtId);
-        if (district) locationParts.push(district.name);
-      }
-      if (filters.provinceId) {
-        const province = provinces.find(p => p._id === filters.provinceId);
-        if (province) locationParts.push(province.name);
+      if (filters.province) {
+        locationParts.push(filters.province);
       }
       
       if (locationParts.length > 0) {
         activeFilters.push({
           type: 'location',
-          label: `Khu vực: ${locationParts.join(', ')}`,
+          label: t('propertiesListing.filters.location', { location: locationParts.join(', ') }),
           value: locationParts.join(', ')
         });
       }
     }
 
     if (filters.category) {
-      const category = heroCategories.find(c => c.value === filters.category);
-      if (category) {
-        activeFilters.push({
-          type: 'category',
-          label: `Loại: ${category.label}`,
-          value: category.label
-        });
-      }
+      const categoryLabel = t(`propertiesListing.categories.${filters.category}`);
+      activeFilters.push({
+        type: 'category',
+        label: t('propertiesListing.filters.category', { category: categoryLabel }),
+        value: categoryLabel
+      });
     }
 
     if (filters.minPrice || filters.maxPrice) {
-      let priceLabel = 'Giá: ';
+      let priceRange = '';
       if (filters.minPrice && filters.maxPrice) {
-        priceLabel += `${formatPrice(filters.minPrice)} - ${formatPrice(filters.maxPrice)}`;
+        priceRange = `${formatPrice(filters.minPrice)} - ${formatPrice(filters.maxPrice)}`;
       } else if (filters.minPrice) {
-        priceLabel += `Từ ${formatPrice(filters.minPrice)}`;
+        priceRange = `${t('propertiesListing.filters.from')} ${formatPrice(filters.minPrice)}`;
       } else if (filters.maxPrice) {
-        priceLabel += `Đến ${formatPrice(filters.maxPrice)}`;
+        priceRange = `${t('propertiesListing.filters.to')} ${formatPrice(filters.maxPrice)}`;
       }
       
       activeFilters.push({
         type: 'price',
-        label: priceLabel,
+        label: t('propertiesListing.filters.priceRange', { range: priceRange }),
         value: `${filters.minPrice}-${filters.maxPrice}`
       });
     }
 
     if (filters.minArea || filters.maxArea) {
-      let areaLabel = 'Diện tích: ';
+      let areaRange = '';
       if (filters.minArea && filters.maxArea) {
-        areaLabel += `${filters.minArea}m² - ${filters.maxArea}m²`;
+        areaRange = `${filters.minArea}m² - ${filters.maxArea}m²`;
       } else if (filters.minArea) {
-        areaLabel += `Từ ${filters.minArea}m²`;
+        areaRange = `${t('propertiesListing.filters.from')} ${filters.minArea}m²`;
       } else if (filters.maxArea) {
-        areaLabel += `Đến ${filters.maxArea}m²`;
+        areaRange = `${t('propertiesListing.filters.to')} ${filters.maxArea}m²`;
       }
       
       activeFilters.push({
         type: 'area',
-        label: areaLabel,
+        label: t('propertiesListing.filters.areaRange', { range: areaRange }),
         value: `${filters.minArea}-${filters.maxArea}`
       });
     }
@@ -1050,7 +1014,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     if (filters.amenities && filters.amenities.length > 0) {
       activeFilters.push({
         type: 'amenities',
-        label: `Tiện ích: ${filters.amenities.length} mục`,
+        label: t('propertiesListing.filters.amenities', { count: filters.amenities.length }),
         value: filters.amenities.join(',')
       });
     }
@@ -1131,63 +1095,48 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       {/* Phần Hero Search - Form tìm kiếm chính */}
       {!searchResults && (
         <section className='hero'>
-            {/* Left Decorative Image */}
-      <div className="left-decoration-listing">
-        <img 
-          src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757584703/Screenshot_2025-09-11_165739_feoml8.png" 
-          alt="Decoration" 
-          className="decoration-image-listing"
-        />
-      </div>
-
-      {/* Right Decorative Image */}
-      <div className="right-decoration-listing">
-        <img 
-          src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757584703/Screenshot_2025-09-11_165739_feoml8.png" 
-          alt="Decoration" 
-          className="decoration-image-listing"
-        />
-
-      </div>
+          {/* Canvas Background Animation - Nằm phía sau tất cả */}
+          <HeroCanvasBackground />
+          
           <div className='container'>
             {/* Form tìm kiếm Hero - Cho phép tìm kiếm theo địa điểm, loại hình, giá, diện tích */}
             <form className='hero-search-form' onSubmit={handleHeroSearch}>
               <div className='search-grid'>
                 {/* Chọn tỉnh/thành phố */}
                 <div className='search-box-hero'>
-                  <label>Tỉnh/Thành phố</label>
+                  <label>{t('propertiesListing.heroSearch.province')}</label>
                   <select
-                    value={searchData.provinceId}
-                    onChange={(e) => handleHeroInputChange('provinceId', e.target.value)}
+                    value={searchData.province}
+                    onChange={(e) => handleHeroInputChange('province', e.target.value)}
                   >
-                    <option key="default-province" value="">Chọn tỉnh/thành phố</option>
+                    <option key="default-province" value="">{t('propertiesListing.heroSearch.selectProvince')}</option>
                     {provinces.map((province, index) => (
-                      <option key={`province-${province._id || province.code || index}`} value={province.code || province._id}>
+                      <option key={`province-${province._id || province.code || index}`} value={province.name}>
                         {province.name}
                       </option>
                     ))}
                   </select>
                 </div>
 
-                {/* Chọn quận/huyện */}
+                {/* Chọn phường/xã */}
                 <div className='search-box-hero'>
-                  <label>Quận/Huyện</label>
+                  <label>{t('propertiesListing.heroSearch.ward')}</label>
                   <select
-                    value={searchData.districtId}
-                    onChange={(e) => handleHeroInputChange('districtId', e.target.value)}
-                    disabled={!searchData.provinceId || loadingDistricts}
+                    value={searchData.ward}
+                    onChange={(e) => handleHeroInputChange('ward', e.target.value)}
+                    disabled={!searchData.province || loadingWards}
                   >
-                    <option key="default-district" value="">
-                      {!searchData.provinceId 
-                        ? "Chọn tỉnh/thành phố trước" 
-                        : loadingDistricts 
-                        ? "Đang tải..." 
-                        : "Chọn quận/huyện"
+                    <option key="default-ward" value="">
+                      {!searchData.province 
+                        ? t('propertiesListing.heroSearch.selectWardFirst')
+                        : loadingWards 
+                        ? t('propertiesListing.heroSearch.loading')
+                        : t('propertiesListing.heroSearch.selectWard')
                       }
                     </option>
-                    {districts.map((district, index) => (
-                      <option key={`district-${district._id || district.code || index}`} value={district.code || district._id}>
-                        {district.name}
+                    {wards.map((ward, index) => (
+                      <option key={`ward-${ward._id || ward.code || index}`} value={ward.name}>
+                        {ward.name}
                       </option>
                     ))}
                   </select>
@@ -1195,46 +1144,52 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
                 {/* Chọn loại hình bất động sản */}
                 <div className='search-box-hero'>
-                  <label>Loại hình</label>
+                  <label>{t('propertiesListing.heroSearch.category')}</label>
                   <select
                     value={searchData.category}
                     onChange={(e) => handleHeroInputChange('category', e.target.value)}
                   >
-                    {heroCategories.map((category, index) => (
-                      <option key={`category-${category.value || index}`} value={category.value}>
-                        {category.label}
-                      </option>
-                    ))}
+                    <option value="">{t('propertiesListing.categories.all')}</option>
+                    <option value="phong_tro">{t('propertiesListing.categories.phong_tro')}</option>
+                    <option value="can_ho">{t('propertiesListing.categories.can_ho')}</option>
+                    <option value="nha_nguyen_can">{t('propertiesListing.categories.nha_nguyen_can')}</option>
+                    <option value="chung_cu_mini">{t('propertiesListing.categories.chung_cu_mini')}</option>
+                    <option value="homestay">{t('propertiesListing.categories.homestay')}</option>
                   </select>
                 </div>
 
                 {/* Chọn khoảng giá thuê */}
                 <div className='search-box-hero'>
-                  <label>Mức giá</label>
+                  <label>{t('propertiesListing.heroSearch.price')}</label>
                   <select value={selectedPriceIndex} onChange={handleHeroPriceRangeChange}>
-                    {heroPriceRanges.map((range, index) => (
-                      <option key={`price-range-${index}`} value={index}>
-                        {range.label}
-                      </option>
-                    ))}
+                    <option value={0}>{t('propertiesListing.priceRanges.choose')}</option>
+                    <option value={1}>{t('propertiesListing.priceRanges.under1M')}</option>
+                    <option value={2}>{t('propertiesListing.priceRanges.1to2M')}</option>
+                    <option value={3}>{t('propertiesListing.priceRanges.2to3M')}</option>
+                    <option value={4}>{t('propertiesListing.priceRanges.3to5M')}</option>
+                    <option value={5}>{t('propertiesListing.priceRanges.5to7M')}</option>
+                    <option value={6}>{t('propertiesListing.priceRanges.7to10M')}</option>
+                    <option value={7}>{t('propertiesListing.priceRanges.over10M')}</option>
                   </select>
                 </div>
 
                 {/* Chọn khoảng diện tích */}
                 <div className='search-box-hero'>
-                  <label>Diện tích</label>
+                  <label>{t('propertiesListing.heroSearch.area')}</label>
                   <select value={selectedAreaIndex} onChange={handleHeroAreaRangeChange}>
-                    {heroAreaRanges.map((range, index) => (
-                      <option key={`area-range-${index}`} value={index}>
-                        {range.label}
-                      </option>
-                    ))}
+                    <option value={0}>{t('propertiesListing.areaRanges.choose')}</option>
+                    <option value={1}>{t('propertiesListing.areaRanges.under20')}</option>
+                    <option value={2}>{t('propertiesListing.areaRanges.20to30')}</option>
+                    <option value={3}>{t('propertiesListing.areaRanges.30to50')}</option>
+                    <option value={4}>{t('propertiesListing.areaRanges.50to70')}</option>
+                    <option value={5}>{t('propertiesListing.areaRanges.70to100')}</option>
+                    <option value={6}>{t('propertiesListing.areaRanges.over100')}</option>
                   </select>
                 </div>
 
                 {/* Nút mở modal chọn tiện ích */}
                 <div className='search-box-hero'>
-                  <label>Tiện ích</label>
+                  <label>{t('propertiesListing.heroSearch.amenities')}</label>
                   <button 
                     type="button"
                     className="amenities-modal-btn-hero"
@@ -1242,8 +1197,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   >
                     <i className="fa fa-sliders"></i>
                     {searchData.amenities.length > 0 
-                      ? `Đã chọn ${searchData.amenities.length} tiện ích`
-                      : 'Chọn tiện ích'
+                      ? t('propertiesListing.heroSearch.selectedAmenities', { count: searchData.amenities.length })
+                      : t('propertiesListing.heroSearch.selectAmenities')
                     }
                   </button>
                 </div>
@@ -1255,24 +1210,22 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   {searching ? (
                     <>
                       <LoadingSpinner size="small" />
-                      Đang tìm kiếm...
+                      {t('propertiesListing.heroSearch.searching')}
                     </>
                   ) : (
                     <>
                       <i className='fa fa-search'></i>
-                      Tìm kiếm
+                      {t('propertiesListing.heroSearch.search')}
                     </>
                   )}
                 </button>
                 <button type='button' className='btn-reset-hero' onClick={handleResetFilters} disabled={searching}>
                   <i className='fa fa-refresh'></i>
-                  Đặt lại
+                  {t('propertiesListing.heroSearch.reset')}
                 </button>
               </div>
             </form>
-            <div className='hero-heading'>
-              <h2>Khám phá hàng nghìn căn phòng trọ chất lượng tại các khu vực hot nhất</h2>
-            </div>
+           
           </div>
         </section>
       )}
@@ -1280,20 +1233,27 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       <div className="container properties-listing-container">
         <div className="properties-wrapper">
           <div className="quick-search-listing">
+            <div className="search-header">
+              <h3 className="search-title">
+                <i className="fa fa-home search-title-icon"></i>
+                {t('propertiesListing.searchTitle')}
+              </h3>
+            </div>
             <div className="search-input-group-listing">
               <i className="fa fa-search"></i>
               <input
                 type="text"
-                placeholder="Tìm kiếm theo tiêu đề, mô tả, hẻm, tên đường..."
+                placeholder={searchInput ? t('propertiesListing.searchPlaceholder') : `${currentPlaceholder}|`}
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyPress={handleSearchInputKeyPress}
+                className="typing-placeholder"
               />
               
               
               {searchInput && (
                 <button
-                  className="clear-search"
+                  className="clear-search-properties-listing"
                   onClick={async () => {
                     setSearchInput('');
                     const newFilters = { ...filters, search: '' };
@@ -1332,21 +1292,21 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           <div className="main-content">
             {/* Results Header */}
             <div className="results-header">
-              <div className="results-info">
-                <h3>
-                  <FaMapMarkerAlt className="results-icon" />
+              <div className="results-info-properties-listing">
+                <span>
+                  <FaMapMarkerAlt className="results-icon-properties-listing" />
                   {loading ? (
-                    'Đang tìm kiếm...'
+                    t('propertiesListing.results.searching')
                   ) : (
-                    `Tìm thấy ${pagination.total} tin đăng`
+                    t('propertiesListing.results.found', { count: pagination.total })
                   )}
-                </h3>
+                </span>
               </div>
 
               <div className="sort-controls">
                 <label>
                   <FaSync className="sort-icon" />
-                  Sắp xếp:
+                  {t('propertiesListing.results.sortBy')}
                 </label>
                 <select
                   value={`${filters.sortBy}_${filters.sortOrder}`}
@@ -1355,11 +1315,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     setFilters(prev => ({ ...prev, sortBy, sortOrder }));
                   }}
                 >
-                  {sortOptions.map((option, index) => (
-                    <option key={`sort-${option.value || index}`} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
+                  <option value="createdAt_desc">{t('propertiesListing.results.newest')}</option>
+                  <option value="createdAt_asc">{t('propertiesListing.results.oldest')}</option>
+                  <option value="rentPrice_asc">{t('propertiesListing.results.priceAsc')}</option>
+                  <option value="rentPrice_desc">{t('propertiesListing.results.priceDesc')}</option>
+                  <option value="area_desc">{t('propertiesListing.results.areaDesc')}</option>
+                  <option value="area_asc">{t('propertiesListing.results.areaAsc')}</option>
+                  <option value="views_desc">{t('propertiesListing.results.mostViewed')}</option>
                 </select>
               </div>
             </div>
@@ -1388,7 +1350,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     fontSize: '14px'
                   }}>
                     <i className="fa fa-filter" style={{ marginRight: '8px', color: '#00b095ff' }}></i>
-                    Đang lọc theo:
+                    {t('propertiesListing.filters.activeFilters')}
                   </span>
                   <button 
                     style={{
@@ -1407,9 +1369,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                       // Reset filters
                       const resetFilters = {
                         search: '',
-                        provinceId: '',
-                        districtId: '',
-                        wardId: '',
+                        province: '',
+                        ward: '',
                         category: '',
                         minPrice: '',
                         maxPrice: '',
@@ -1423,8 +1384,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                       // Reset Hero search data
                       setSearchData({
                         search: '',
-                        provinceId: '',
-                        districtId: '',
+                        province: '',
+                        ward: '',
                         category: '',
                         minPrice: '',
                         maxPrice: '',
@@ -1436,7 +1397,6 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                       // Reset Hero select indices
                       setSelectedPriceIndex(0);
                       setSelectedAreaIndex(0);
-                      setDistricts([]);
                       
                       setPagination(prev => ({ ...prev, page: 1 }));
                       
@@ -1448,7 +1408,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     }}
                   >
                     <i className="fa fa-refresh"></i>
-                    Xóa tất cả
+                    {t('propertiesListing.filters.clearAll')}
                   </button>
                 </div>
                 <div style={{
@@ -1488,15 +1448,15 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
               {loading ? (
                 <div className="loading-state">
                   <LoadingSpinner size="large" />
-                  <p>Đang tìm kiếm tin đăng...</p>
+                  <p>{t('propertiesListing.loading.searching')}</p>
                 </div>
               ) : properties.length === 0 ? (
                 <div className="empty-state">
                   <div className="empty-icon">
                     <i className="fa fa-search"></i>
                   </div>
-                  <h3>Không tìm thấy tin đăng nào</h3>
-                  <p>Hãy thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm</p>
+                  <h3>{t('propertiesListing.empty.noResults')}</h3>
+                  <p>{t('propertiesListing.empty.adjustFilters')}</p>
                 </div>
               ) : (
                 <>
@@ -1514,7 +1474,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
                   {/* Pagination Controls */}
                   {pagination.totalPages > 1 && (
-                    <div className="pagination-container">
+                    <div className="pagination-container-properties-listing">
                  
                       <div className="pagination-controls">
                         {/* Previous Button */}
@@ -1522,10 +1482,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                           className="pagination-btn-my-properties prev-btn-my-properties"
                           onClick={() => handlePageChange(pagination.page - 1)}
                           disabled={!pagination.hasPrev || loading}
-                          title="Trang trước"
+                          title={t('propertiesListing.pagination.previous')}
                         >
                           <i className="fa fa-chevron-left"></i>
-                          Trước
+                          {t('propertiesListing.pagination.previous')}
                         </button>
 
                         {/* Page Numbers */}
@@ -1591,9 +1551,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                           className="pagination-btn-my-properties next-btn-my-properties"
                           onClick={() => handlePageChange(pagination.page + 1)}
                           disabled={!pagination.hasNext || loading}
-                          title="Trang sau"
+                          title={t('propertiesListing.pagination.next')}
                         >
-                          Sau
+                          {t('propertiesListing.pagination.next')}
                           <i className="fa fa-chevron-right"></i>
                         </button>
                       </div>
@@ -1610,7 +1570,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             <div className="sidebar-widget">
               <h4 className="widget-title">
                 <FaMoneyBillWave />
-                Xem theo khoảng giá
+                {t('propertiesListing.sidebar.priceFilter')}
               </h4>
               <div className="price-quick-links">
                 {rightSidebarPriceRanges.map((range, index) => {
@@ -1643,7 +1603,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             <div className="sidebar-widget">
               <h4 className="widget-title">
                 <FaExpand />
-                Xem theo diện tích
+                {t('propertiesListing.sidebar.areaFilter')}
               </h4>
               <div className="area-quick-links">
                 {rightSidebarAreaRanges.map((range, index) => {
@@ -1676,7 +1636,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             <div className="sidebar-widget">
               <h4 className="widget-title">
                 <FaClock />
-                Tin mới đăng
+                {t('propertiesListing.sidebar.recentPosts')}
               </h4>
               <div className="recent-posts">
                 {properties.slice(0, 5).map((property) => (
@@ -1706,7 +1666,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                       <p className="recent-post-price">{formatPrice(property.rentPrice)} VNĐ/tháng</p>
                       <p className="recent-post-location">
                         <i className="fa fa-map-marker"></i>
-                        {property.location?.districtName}, {property.location?.provinceName}
+                        {property.ward}, {property.province}
                       </p>
                     </div>
                   </div>
@@ -1718,28 +1678,28 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             <div className="sidebar-widget">
               <h4 className="widget-title">
                 <FaNewspaper />
-                Bài viết mới
+                {t('propertiesListing.sidebar.blogPosts')}
               </h4>
               <div className="blog-posts">
                 <div className="blog-post-item">
-                  <h5>5 Tips để tìm phòng trọ giá rẻ</h5>
+                  <h5>{t('propertiesListing.sidebar.blog.tip1')}</h5>
                   <p className="blog-post-date">
                     <FaCalendarAlt />
-                    2 ngày trước
+                    {t('propertiesListing.sidebar.blog.daysAgo', { days: 2 })}
                   </p>
                 </div>
                 <div className="blog-post-item">
-                  <h5>Hướng dẫn thuê phòng trọ an toàn</h5>
+                  <h5>{t('propertiesListing.sidebar.blog.tip2')}</h5>
                   <p className="blog-post-date">
                     <FaCalendarAlt />
-                    1 tuần trước
+                    {t('propertiesListing.sidebar.blog.weekAgo')}
                   </p>
                 </div>
                 <div className="blog-post-item">
-                  <h5>Quyền lợi của người thuê trọ</h5>
+                  <h5>{t('propertiesListing.sidebar.blog.tip3')}</h5>
                   <p className="blog-post-date">
                     <FaCalendarAlt />
-                    2 tuần trước
+                    {t('propertiesListing.sidebar.blog.weeksAgo', { weeks: 2 })}
                   </p>
                 </div>
               </div>
@@ -1749,7 +1709,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             <div className="sidebar-widget">
               <h4 className="widget-title">
                 <FaHeart />
-                Có thể bạn quan tâm
+                {t('propertiesListing.sidebar.recommended')}
               </h4>
               <div className="recommended-properties">
                 {properties.slice(0, 4).map((property) => (
@@ -1788,6 +1748,41 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             </div>
           </div>
         </div>
+           {/* Support Staff Section */}
+              <div className="support-staff-section-fotter">
+                <div className="support-staff-container">
+                  <div className="support-staff-image">
+                    <img
+                      src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757675058/contact-us-pana-orange_hfmwec.svg"
+                      alt="Nhân viên hỗ trợ"
+                      className="staff-avatar"
+                    />
+                  </div>
+                  <div className="support-staff-content">
+                    <h3>{t('propertiesListing.sidebar.support.title')}</h3>
+                    <p>{t('propertiesListing.sidebar.support.description')}</p>
+                    <div className="support-contact">
+
+
+                      <a
+                        href={`tel:0355958399`}
+                        className="contact-btn phone-btn"
+                      >
+                        <FaPhone />
+                        0355958399
+                      </a>
+
+                      <a
+                        href={`https://zalo.me/0355958399`}
+                        className="contact-btn email-btn"
+                      >
+                        <FaEnvelope />
+                        ZALO: 0355958399
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </div>
       </div>
 
       {/* Amenities Modal */}
@@ -1803,12 +1798,12 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             <div className="modal-header-hero">
               <h3>
                 <i className="fa fa-star"></i>
-                Chọn tiện ích
+                {t('propertiesListing.amenitiesModal.title')}
               </h3>
               <button 
                 className="close-btn-hero"
                 onClick={handleCancelAmenities}
-                title="Đóng mà không lưu thay đổi"
+                title={t('propertiesListing.amenitiesModal.close')}
               >
                 <i className="fa fa-times"></i>
               </button>
@@ -1848,14 +1843,14 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 onClick={handleCancelAmenities}
               >
                 <i className="fa fa-times"></i>
-                Hủy
+                {t('propertiesListing.amenitiesModal.cancel')}
               </button>
               <button 
                 className="btn btn-primary-hero"
                 onClick={handleApplyAmenities}
               >
                 <i className="fa fa-check"></i>
-                Áp dụng ({tempSelectedAmenities.length})
+                {t('propertiesListing.amenitiesModal.apply', { count: tempSelectedAmenities.length })}
               </button>
             </div>
           </div>

@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import L from 'leaflet';
+import trackasiagl from 'trackasia-gl';
+import 'trackasia-gl/dist/trackasia-gl.css';
+import './TrackAsiaMap.css';
+
+
+
 import { propertyDetailAPI } from '../../services/propertyDetailAPI';
 import { myPropertiesAPI } from '../../services/myPropertiesAPI';
 import propertiesAPI from '../../services/propertiesAPI';
@@ -43,20 +46,13 @@ import {
   FaNewspaper,
   FaUserPlus,
   FaArrowUp,
-  FaSync
+  FaSync,
+  FaStar
 } from 'react-icons/fa';
 import Comments from './Comments';
 
 import './PropertyDetail.css';
 import './PropertiesListing.css'; // Import cho LoadingSpinner styles
-
-// Fix Leaflet default marker icon issue
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png'
-});
 
 const PropertyDetail = () => {
   const { id } = useParams();
@@ -75,11 +71,7 @@ const PropertyDetail = () => {
   const [isTabChanging, setIsTabChanging] = useState(false);
   const [relatedProperties, setRelatedProperties] = useState([]);
   const [featuredProperties, setFeaturedProperties] = useState([]);
-  const [addressInfo, setAddressInfo] = useState({
-    provinceName: '',
-    districtName: '',
-    wardName: ''
-  });
+
   const [localIsFavorited, setLocalIsFavorited] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
@@ -98,6 +90,18 @@ const PropertyDetail = () => {
   const [currentCarouselIndex, setCurrentCarouselIndex] = useState(0);
   const [suggestedSearches, setSuggestedSearches] = useState([]);
   const [showGoToTop, setShowGoToTop] = useState(false);
+
+  // TrackAsia Maps refs
+  const mapContainerRef = useRef(null);
+  const mapRef = useRef(null);
+  const markerRef = useRef(null);
+  const modalMapContainerRef = useRef(null);
+  const modalMapRef = useRef(null);
+  const modalMarkerRef = useRef(null);
+
+  // TrackAsia Maps configuration
+const TRACKASIA_API_KEY = process.env.REACT_APP_TRACKASIA_API_KEY || 'public_key';
+const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
 
   // Load property detail
   useEffect(() => {
@@ -127,11 +131,11 @@ const PropertyDetail = () => {
 
   // Load nearby properties và tạo gợi ý tìm kiếm
   useEffect(() => {
-    if (property && addressInfo.districtName) {
+    if (property && property.ward) {
       loadNearbyProperties();
       generateSuggestedSearches();
     }
-  }, [property, addressInfo]);
+  }, [property]);
 
   // Update meta tags for social sharing
   useEffect(() => {
@@ -197,6 +201,29 @@ const PropertyDetail = () => {
       generateCaptcha();
     }
   }, [showReportModal]);
+
+  // Initialize maps when property is loaded
+  useEffect(() => {
+    if (property?.coordinates?.lat && property?.coordinates?.lng) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        initializeMap();
+      }, 100);
+    }
+
+    return () => {
+      cleanupMaps();
+    };
+  }, [property]);
+
+  // Initialize modal map when map tab is active
+  useEffect(() => {
+    if (showImageModal && modalActiveTab === 'map' && property?.coordinates?.lat && property?.coordinates?.lng) {
+      setTimeout(() => {
+        initializeModalMap();
+      }, 300);
+    }
+  }, [showImageModal, modalActiveTab, property]);
 
   const scrollToTop = () => {
     window.scrollTo({
@@ -317,10 +344,7 @@ const PropertyDetail = () => {
         setProperty(response.data);
 
 
-        // Load address info if we have location codes
-        if (response.data.province && response.data.district && response.data.ward) {
-          await loadAddressInfo(response.data.province, response.data.district, response.data.ward);
-        }
+
 
         // Load all related data
         await Promise.all([
@@ -341,59 +365,10 @@ const PropertyDetail = () => {
     }
   };
 
-  const loadAddressInfo = async (provinceCode, districtCode, wardCode) => {
-    try {
-
-      // Step 1: Load provinces and find province name
-      const provincesRes = await locationAPI.getProvinces();
-      if (provincesRes.success && provincesRes.data) {
-        const foundProvince = provincesRes.data.find(p => p.code == provinceCode);
-        if (foundProvince) {
-
-          setAddressInfo(prev => ({ ...prev, provinceName: foundProvince.name }));
-
-          // Step 2: Load districts for this province and find district name
-          const districtsRes = await locationAPI.getDistricts(provinceCode);
-          if (districtsRes.success && districtsRes.data) {
-            const foundDistrict = districtsRes.data.find(d => d.code == districtCode);
-            if (foundDistrict) {
-              setAddressInfo(prev => ({ ...prev, districtName: foundDistrict.name }));
-
-              // Step 3: Load wards for this district and find ward name
-              const wardsRes = await locationAPI.getWards(districtCode);
-              if (wardsRes.success && wardsRes.data) {
-                const foundWard = wardsRes.data.find(w => w.code == wardCode);
-                if (foundWard) {
-
-                  setAddressInfo(prev => ({ ...prev, wardName: foundWard.name }));
-                } else {
-                  console.log('Ward not found for code:', wardCode);
-                }
-              } else {
-                console.log('Failed to load wards for district:', districtCode);
-              }
-            } else {
-              console.log('District not found for code:', districtCode);
-            }
-          } else {
-            console.log('Failed to load districts for province:', provinceCode);
-          }
-        } else {
-          console.log('Province not found for code:', provinceCode);
-        }
-      } else {
-        console.log('Failed to load provinces');
-      }
-    } catch (error) {
-      console.error('Error loading address info:', error);
-    }
-  };
-
-
 
   const loadRelatedProperties = async () => {
     try {
-      // Load properties from same district
+      // Load properties from same area
       const response = await myPropertiesAPI.getMyApprovedProperties({
         limit: 8, // Tăng limit để có đủ sau khi filter
         page: 1
@@ -430,14 +405,13 @@ const PropertyDetail = () => {
 
   // Load tin đăng cùng khu vực
   const loadNearbyProperties = async () => {
-    if (!property || !addressInfo.districtName) return;
+    if (!property || !property.ward) return;
 
     try {
-      // Tìm kiếm theo district và ward
+      // Tìm kiếm theo ward
       const response = await myPropertiesAPI.getMyApprovedPropertiesLocation({
         limit: 12,
         page: 1,
-        district: property.district,
         ward: property.ward
       });
 
@@ -475,15 +449,15 @@ const PropertyDetail = () => {
 
   // Tạo gợi ý tìm kiếm
   const generateSuggestedSearches = () => {
-    if (!property || !addressInfo.districtName) return;
+    if (!property || !property.province) return;
 
     const suggestions = [
-      `Cho thuê phòng trọ ${addressInfo.districtName}`,
-      `Căn hộ ${addressInfo.districtName}`,
-      `Phòng trọ ${addressInfo.wardName}`,
-      `Nhà trọ ${addressInfo.districtName}`,
-      `Homestay ${addressInfo.districtName}`,
-      `Studio ${addressInfo.districtName}`
+      `Cho thuê phòng trọ ${property.province}`,
+      `Căn hộ ${property.province}`,
+      `Phòng trọ ${property.ward}`,
+      `Nhà trọ ${property.province}`,
+      `Homestay ${property.province}`,
+      `Studio ${property.ward}`
     ];
 
     setSuggestedSearches(suggestions);
@@ -689,6 +663,113 @@ Xem chi tiết tại: ${window.location.href}`;
     }
   };
 
+  // Initialize TrackAsia map
+  const initializeMap = () => {
+    if (!mapContainerRef.current || mapRef.current) return;
+    if (!property?.coordinates?.lat || !property?.coordinates?.lng) return;
+
+    const map = new trackasiagl.Map({
+      container: mapContainerRef.current,
+      style: `${TRACKASIA_BASE_URL}/styles/v2/streets.json?key=${TRACKASIA_API_KEY}`,
+      center: [property.coordinates.lng, property.coordinates.lat],
+      zoom: 15,
+      attributionControl: true,
+      logoPosition: 'bottom-left'
+    });
+
+    mapRef.current = map;
+
+    // Add navigation controls
+    map.addControl(new trackasiagl.NavigationControl(), 'top-right');
+
+    // Add marker
+    const marker = new trackasiagl.Marker({
+      color: '#FF0000',
+      scale: 1.2
+    })
+      .setLngLat([property.coordinates.lng, property.coordinates.lat])
+      .addTo(map);
+
+    markerRef.current = marker;
+
+    // Add popup
+    const popup = new trackasiagl.Popup({ offset: 25 })
+      .setHTML(`
+        <div style="padding: 10px; max-width: 200px;">
+          <h4 style="margin: 0 0 5px 0; font-size: 14px;">${property.title}</h4>
+          <p style="margin: 0; font-size: 12px; color: #666;">
+            <i class="fa fa-map-marker-alt" style="color: #ff0000; margin-right: 5px;"></i>
+            ${property.detailAddress}
+          </p>
+        </div>
+      `);
+
+    marker.setPopup(popup);
+  };
+
+  // Initialize modal map
+  const initializeModalMap = () => {
+    if (!modalMapContainerRef.current || modalMapRef.current) return;
+    if (!property?.coordinates?.lat || !property?.coordinates?.lng) return;
+
+    const map = new trackasiagl.Map({
+      container: modalMapContainerRef.current,
+      style: `${TRACKASIA_BASE_URL}/styles/v2/streets.json?key=${TRACKASIA_API_KEY}`,
+      center: [property.coordinates.lng, property.coordinates.lat],
+      zoom: 16,
+      attributionControl: true,
+      logoPosition: 'bottom-left'
+    });
+
+    modalMapRef.current = map;
+
+    // Add navigation controls
+    map.addControl(new trackasiagl.NavigationControl(), 'top-right');
+    
+    // Add fullscreen control
+    map.addControl(new trackasiagl.FullscreenControl(), 'top-right');
+
+    // Add marker
+    const marker = new trackasiagl.Marker({
+      color: '#FF0000',
+      scale: 1.5
+    })
+      .setLngLat([property.coordinates.lng, property.coordinates.lat])
+      .addTo(map);
+
+    modalMarkerRef.current = marker;
+
+    // Add popup
+    const popup = new trackasiagl.Popup({ offset: 25 })
+      .setHTML(`
+        <div style="padding: 15px; max-width: 300px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 16px;">${property.title}</h4>
+          <p style="margin: 0 0 8px 0; font-size: 14px; color: #333;">
+            <i class="fa fa-map-marker-alt" style="color: #ff0000; margin-right: 8px;"></i>
+            ${property.detailAddress}
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #007bff; font-weight: bold;">
+            <i class="fa fa-money-bill-wave" style="margin-right: 8px;"></i>
+            ${formatPrice(property.rentPrice)}/tháng
+          </p>
+        </div>
+      `);
+
+    marker.setPopup(popup);
+  };
+
+  // Cleanup maps
+  const cleanupMaps = () => {
+    if (mapRef.current) {
+      mapRef.current.remove();
+      mapRef.current = null;
+    }
+    if (modalMapRef.current) {
+      modalMapRef.current.remove();
+      modalMapRef.current = null;
+    }
+  };
+
   // Format price
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price);
@@ -712,33 +793,44 @@ Xem chi tiết tại: ${window.location.href}`;
     return categoryMap[category] || category;
   };
 
-  // Get post type info with priority and styling
-  const getPostTypeInfo = (postType) => {
-    if (!postType) return null;
+  // Get post type styling từ packageInfo.postType
+    const getPostTypeStyle = () => {
+        const postType = property?.packageInfo?.postType;
+        if (!postType) return {};
 
-    // Map priority to CSS class and star count
-    const getPriorityInfo = (priority) => {
-      console.log('Getting priority info for priority:', priority);
-      if (priority <= 1) return { class: 'post-type-vip-dac-biet-property-detail' };
-      if (priority <= 2) return { class: 'post-type-vip-noi-bat-property-detail' };
-      if (priority <= 3) return { class: 'post-type-vip-1-property-detail' };
-      if (priority <= 4) return { class: 'post-type-vip-2-property-detail' };
-      if (priority <= 5) return { class: 'post-type-vip-3-property-detail' };
-      return { class: 'post-type-thuong-property-detail' };
+        const priority = postType.priority || 10;
+        
+        return {
+            color: postType.color || '#000000',
+            textTransform: postType.textStyle || 'none',
+            fontWeight: priority <= 2 ? 'bold' : 'normal'
+        };
     };
 
-    const priorityInfo = getPriorityInfo(postType.priority || 5);
+    // Get post type badge với stars
+    const getPostTypeBadge = () => {
+        const postType = property?.packageInfo?.postType;
+        if (!postType) return null;
 
-    return {
-      displayName: postType.displayName || postType.name,
-      name: postType.name,
-      priority: postType.priority || 5,
-      color: postType.color || '#6c757d',
-      cssClass: priorityInfo.class,
-      stars: postType.stars,
-      _id: postType._id
+        // Tính số sao từ priority trực tiếp từ API
+        const priority = postType.priority || 10;
+        const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+        const starIcons = Array.from({ length: stars }, (_, i) => (
+            <FaStar key={i} className="star-icon" />
+        ));
+
+        return (
+            <div className="post-type-badge-property-card" style={{ color: postType.color || '#6c757d' }}>
+                
+                {stars > 0 && (
+                    <div className="post-type-stars">
+                        {starIcons}
+                    </div>
+                )}
+            </div>
+        );
     };
-  };
+
 
   if (loading) {
 
@@ -903,37 +995,42 @@ Xem chi tiết tại: ${window.location.href}`;
             <div className="property-info">
               <div className="property-header-detail">
                 <div className="post-type-badge-property-detail">
-                  {property.packageInfo && property.packageInfo.postType && (
-                    (() => {
-                      const postTypeInfo = getPostTypeInfo(property.packageInfo.postType);
-                      console.log('Post type info for property detail:', postTypeInfo);
-                      if (!postTypeInfo) return null;
-
-                      return (
-                        <div 
-                          className={`post-type-container-detail ${postTypeInfo.cssClass}`}
-                          style={{
-                            backgroundColor: postTypeInfo.color,
-                            color: '#fff',
-                            textTransform: property.packageInfo.postType.textStyle || 'none'
-                          }}
-                        >
-                          {postTypeInfo.stars > 1 && (
-                            <div className="post-type-stars-property-detail">
-                              {[...Array(postTypeInfo.stars)].map((_, index) => (
-                                <i key={index} className="fa fa-star post-type-star"></i>
-                              ))}
-                            </div>
-                          )}
-                          <span className="post-type-label-property-detail">
-                            {postTypeInfo.displayName}
-                          </span>
-                        </div>
-                      );
-                    })()
-                  )}
+                  {property.packageInfo && property.packageInfo.postType && (() => {
+                    const postType = property.packageInfo.postType;
+                    // Tính số sao từ priority trực tiếp từ API
+                    const priority = postType.priority || 10;
+                    const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
+                    
+                    return (
+                      <div 
+                        className="post-type-container-detail"
+                        style={{
+                          backgroundColor: postType.color || '#6c757d',
+                          color: '#fff',
+                          textTransform: postType.textStyle || 'none',
+                          padding: '4px 16px',
+                          borderRadius: '6px',
+                          display: 'inline-block',
+                          fontWeight: 'bold',
+                          fontSize: '14px',
+                          marginBottom: '4px'
+                        }}
+                      >
+                        {stars > 0 && (
+                          <div className="post-type-stars-property-detail">
+                            {[...Array(stars)].map((_, index) => (
+                              <i key={index} className="fa fa-star post-type-star"></i>
+                            ))}
+                          </div>
+                        )}
+                        <span className="post-type-label-property-detail">
+                          {postType.displayName || postType.name}
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
-                <h1 className={`property-title-detail ${property.packageInfo?.postType ? getPostTypeInfo(property.packageInfo.postType)?.cssClass || '' : ''}`}>
+                <h1 className="property-title-detail" style={getPostTypeStyle()}>
                   {property.title}
                 </h1>
               </div>
@@ -971,10 +1068,21 @@ Xem chi tiết tại: ${window.location.href}`;
                   <FaMapMarkerAlt />
                   <span>
                     {property.detailAddress}
-                    {addressInfo.wardName && `, ${addressInfo.wardName}`}
-                    {addressInfo.districtName && `, ${addressInfo.districtName}`}
-                    {addressInfo.provinceName && `, ${addressInfo.provinceName}`}
+                    {property.ward && `, ${property.ward}`}
+                    {property.province && `, ${property.province}`}
                   </span>
+                  {property.coordinates?.lat && property.coordinates?.lng && (
+                    <a 
+                      href={`https://www.google.com/maps?q=${property.coordinates.lat},${property.coordinates.lng}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="directions-link"
+                      title="Xem chỉ đường trên Google Maps"
+                    >
+                      <i className="fa fa-route"></i>
+                      Xem chỉ đường
+                    </a>
+                  )}
                 </div>
 
 
@@ -982,32 +1090,10 @@ Xem chi tiết tại: ${window.location.href}`;
                 {property.coordinates?.lat && property.coordinates?.lng && (
                   <div className="property-mini-map">
                     <div className="mini-map-container">
-                      <MapContainer
-                        center={[property.coordinates.lat, property.coordinates.lng]}
-                        zoom={15}
-                        style={{ height: '200px', width: '100%' }}
-                        zoomControl={false}
-                        dragging={false}
-                        touchZoom={false}
-                        doubleClickZoom={false}
-                        scrollWheelZoom={false}
-                      >
-                        <TileLayer
-                          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <Marker position={[property.coordinates.lat, property.coordinates.lng]}>
-                          <Popup>
-                            <div className="map-popup">
-                              <h4>{property.title}</h4>
-                              <p>
-                                <FaMapMarkerAlt />
-                                {property.detailAddress}
-                              </p>
-                            </div>
-                          </Popup>
-                        </Marker>
-                      </MapContainer>
+                      <div 
+                        ref={mapContainerRef}
+                        style={{ height: '200px', width: '100%', borderRadius: '8px' }}
+                      />
                       <div className="map-overlay" onClick={() => {
                         setModalActiveTab('map');
                         setShowImageModal(true);
@@ -1038,14 +1124,14 @@ Xem chi tiết tại: ${window.location.href}`;
                           <span className="price-value promotion-price-detail">
                             {formatPrice(property.promotionPrice)}
                           </span>
-                          <span className="per-month">VNĐ/tháng</span>
+                          <span className="per-month-property-detail">VNĐ/tháng</span>
                         </>
                       ) : (
                         <>
                           <span className="price-value">
                             {formatPrice(property.rentPrice)}
                           </span>
-                          <span className="per-month">VNĐ/tháng</span>
+                          <span className="per-month-property-detail">VNĐ/tháng</span>
                         </>
                       )}
                     </div>
@@ -1227,11 +1313,11 @@ Xem chi tiết tại: ${window.location.href}`;
                       <h5 className="featured-title">{featuredProperty.title}</h5>
                       <p className="featured-price">
                         <span className="value">{formatPrice(featuredProperty.rentPrice)}</span>
-                        <span className="per-month">VNĐ/tháng</span>
+                        <span className="per-month-property-detail">VNĐ/tháng</span>
                       </p>
                       <p className="featured-location">
                         <FaMapMarkerAlt />
-                        {featuredProperty.location?.districtName}, {featuredProperty.location?.provinceName}
+                        {featuredProperty.ward}, {featuredProperty.province}
                       </p>
                     </div>
                   </div>
@@ -1262,7 +1348,7 @@ Xem chi tiết tại: ${window.location.href}`;
                       <h5 className="related-title">{relatedProperty.title}</h5>
                       <p className="related-price">
                         <span className="value">{formatPrice(relatedProperty.rentPrice)}</span>
-                        <span className="per-month">VNĐ/tháng</span>
+                        <span className="per-month-property-detail">VNĐ/tháng</span>
                       </p>
                       <div className="related-meta">
                         <span><FaRuler /> {relatedProperty.area}m²</span>
@@ -1308,7 +1394,7 @@ Xem chi tiết tại: ${window.location.href}`;
               <div className="nearby-header">
                 <h3>
                   <FaMapMarkerAlt />
-                  Tin đăng cùng khu vực {addressInfo.wardName}, {addressInfo.districtName}
+                  Tin đăng cùng khu vực {property.ward}
                   <span className="nearby-count">({nearbyProperties.length} tin)</span>
                 </h3>
 
@@ -1363,11 +1449,11 @@ Xem chi tiết tại: ${window.location.href}`;
                       <div className="nearby-card-content">
                         <h4 className="nearby-card-title">{nearbyProperty.title}</h4>
                         <p className="nearby-card-price">
-                          {formatPrice(nearbyProperty.rentPrice)}/tháng
+                          {formatPrice(nearbyProperty.rentPrice)} VNĐ/tháng
                         </p>
                         <p className="nearby-card-location">
                           <FaMapMarkerAlt />
-                          {nearbyProperty.location.wardName}, {nearbyProperty.location.districtName}
+                          {nearbyProperty.ward}, {nearbyProperty.province}
                         </p>
                         <div className="nearby-card-meta">
                           <span className="meta-item-meta">
@@ -1437,7 +1523,7 @@ Xem chi tiết tại: ${window.location.href}`;
                 <div className="view-all-nearby">
                   <button
                     className="view-all-btn"
-                    onClick={() => navigate(`/properties?district=${property.district}&ward=${property.ward}`)}
+                    onClick={() => navigate(`/properties?province=${property.province}&ward=${property.ward}`)}
                   >
                     Xem tất cả tin đăng trong khu vực
                     <FaAngleRight />
@@ -1555,31 +1641,10 @@ Xem chi tiết tại: ${window.location.href}`;
               {/* Map Tab */}
               <div className={`tab-content map-tab ${modalActiveTab === 'map' && !isTabChanging ? 'active' : ''} ${isTabChanging && modalActiveTab === 'map' ? 'fade-out' : ''}`}>
                 {property.coordinates?.lat && property.coordinates?.lng ? (
-                  <MapContainer
-                    center={[property.coordinates.lat, property.coordinates.lng]}
-                    zoom={20}
-                    style={{ height: '500px', width: '100%' }}
-                  >
-                    <TileLayer
-                      attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                      url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <Marker position={[property.coordinates.lat, property.coordinates.lng]}>
-                      <Popup>
-                        <div className="map-popup">
-                          <h4>{property.title}</h4>
-                          <p>
-                            <FaMapMarkerAlt />
-                            {property.detailAddress}
-                            {addressInfo.wardName && `, ${addressInfo.wardName}`}
-                            {addressInfo.districtName && `, ${addressInfo.districtName}`}
-                            {addressInfo.provinceName && `, ${addressInfo.provinceName}`}
-                          </p>
-                          <p><FaMoneyBillWave /> {formatPrice(property.rentPrice)}/tháng</p>
-                        </div>
-                      </Popup>
-                    </Marker>
-                  </MapContainer>
+                  <div 
+                    ref={modalMapContainerRef}
+                    style={{ height: '500px', width: '100%', borderRadius: '8px' }}
+                  />
                 ) : (
                   <div className="no-content">
                     <FaMap />
@@ -1625,7 +1690,7 @@ Xem chi tiết tại: ${window.location.href}`;
                   <p className="share-price">{formatPrice(property.rentPrice)}/tháng</p>
                   <p className="share-location">
                     <FaMapMarkerAlt style={{ fontSize: '14px', color: '#ff0000ff' }} />
-                    {property.detailAddress}, {addressInfo.wardName}, {addressInfo.districtName}, {addressInfo.provinceName}
+                    {property.detailAddress}, {property.ward}, {property.province}
                   </p>
                 </div>
               </div>
@@ -1679,7 +1744,7 @@ Xem chi tiết tại: ${window.location.href}`;
                   <p className="report-price">{formatPrice(property.rentPrice)}/tháng</p>
                   <p className="report-location">
                     <FaMapMarkerAlt style={{ fontSize: '14px', color: '#ff0000ff' }} />
-                    {property.detailAddress}, {addressInfo.wardName}, {addressInfo.districtName}, {addressInfo.provinceName}
+                    {property.detailAddress}, {property.ward}, {property.province}
                   </p>
                 </div>
               </div>

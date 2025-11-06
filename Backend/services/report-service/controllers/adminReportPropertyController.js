@@ -194,9 +194,17 @@ const adminReportPropertyController = {
       const { reason } = req.body;
       const adminId = req.user.userId || req.user.id;
 
+      console.log('sendWarning - Request data:', {
+        reportId,
+        reason: reason ? `"${reason}" (length: ${reason.length})` : 'null/undefined',
+        adminId,
+        body: req.body
+      });
+
       // Validation
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        console.log('Validation errors:', errors.array());
         return res.status(400).json({
           success: false,
           message: 'Dữ liệu không hợp lệ',
@@ -205,16 +213,19 @@ const adminReportPropertyController = {
       }
 
       if (!reportId) {
+        console.log('Missing reportId');
         return res.status(400).json({
           success: false,
           message: 'ID báo cáo không hợp lệ'
         });
       }
 
-      if (!reason || reason.trim().length < 10) {
+      // Express-validator đã check length rồi, không cần check lại
+      if (!reason) {
+        console.log('Missing reason');
         return res.status(400).json({
           success: false,
-          message: 'Lý do cảnh báo phải có ít nhất 10 ký tự'
+          message: 'Lý do cảnh báo không được để trống'
         });
       }
 

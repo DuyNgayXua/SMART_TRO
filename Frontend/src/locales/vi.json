@@ -1211,5 +1211,158 @@
       "exporting": "Đang xuất...",
       "exportCount": "Xuất {{count}} hóa đơn"
     }
+  },
+  "propertiesListing": {
+    "title": "Danh sách bất động sản",
+    "searchTitle": "Tìm kiếm tin đăng",
+    "searchPlaceholder": "Tìm kiếm theo tiêu đề, mô tả, hẻm, tên đường...",
+    "heroSearch": {
+      "province": "Tỉnh/Thành phố",
+      "ward": "Phường, Xã",
+      "category": "Loại hình",
+      "price": "Mức giá",
+      "area": "Diện tích",
+      "amenities": "Tiện ích",
+      "selectProvince": "Chọn tỉnh/thành phố",
+      "selectWard": "Chọn phường/xã",
+      "selectWardFirst": "Chọn tỉnh/thành phố trước",
+      "loading": "Đang tải...",
+      "search": "Tìm kiếm",
+      "reset": "Đặt lại",
+      "searching": "Đang tìm kiếm...",
+      "selectAmenities": "Chọn tiện ích",
+      "selectedAmenities": "Đã chọn {{count}} tiện ích"
+    },
+    "categories": {
+      "all": "Tất cả loại hình",
+      "phong_tro": "Phòng trọ",
+      "can_ho": "Căn hộ",
+      "nha_nguyen_can": "Nhà nguyên căn",
+      "chung_cu_mini": "Chung cư mini",
+      "homestay": "Homestay"
+    },
+    "priceRanges": {
+      "choose": "Chọn mức giá",
+      "under1M": "Dưới 1 triệu",
+      "1to2M": "1 - 2 triệu",
+      "2to3M": "2 - 3 triệu",
+      "3to5M": "3 - 5 triệu",
+      "5to7M": "5 - 7 triệu",
+      "7to10M": "7 - 10 triệu",
+      "over10M": "Trên 10 triệu"
+    },
+    "areaRanges": {
+      "choose": "Chọn diện tích",
+      "under20": "Dưới 20m²",
+      "20to30": "20 - 30m²",
+      "30to50": "30 - 50m²",
+      "50to70": "50 - 70m²",
+      "70to100": "70 - 100m²",
+      "over100": "Trên 100m²"
+    },
+    "results": {
+      "found": "Tìm thấy {{count}} tin đăng",
+      "searching": "Đang tìm kiếm...",
+      "sortBy": "Sắp xếp:",
+      "newest": "Tin mới nhất",
+      "oldest": "Tin cũ nhất",
+      "priceAsc": "Giá thấp nhất",
+      "priceDesc": "Giá cao nhất",
+      "areaDesc": "Diện tích lớn nhất",
+      "areaAsc": "Diện tích nhỏ nhất",
+      "mostViewed": "Xem nhiều nhất"
+    },
+    "filters": {
+      "activeFilters": "Đang lọc theo:",
+      "clearAll": "Xóa tất cả",
+      "search": "Từ khóa: \"{{keyword}}\"",
+      "location": "Khu vực: {{location}}",
+      "category": "Loại: {{category}}",
+      "priceRange": "Giá: {{range}}",
+      "areaRange": "Diện tích: {{range}}",
+      "amenities": "Tiện ích: {{count}} mục",
+      "from": "Từ",
+      "to": "Đến"
+    },
+    "loading": {
+      "searching": "Đang tìm kiếm tin đăng...",
+      "loadingMore": "Đang tải thêm..."
+    },
+    "empty": {
+      "noResults": "Không tìm thấy tin đăng nào",
+      "adjustFilters": "Hãy thử điều chỉnh bộ lọc hoặc từ khóa tìm kiếm"
+    },
+    "pagination": {
+      "previous": "Trước",
+      "next": "Sau",
+      "page": "Trang {{page}}"
+    },
+    "sidebar": {
+      "priceFilter": "Xem theo khoảng giá",
+      "areaFilter": "Xem theo diện tích",
+      "recentPosts": "Tin mới đăng",
+      "blogPosts": "Bài viết mới",
+      "recommended": "Có thể bạn quan tâm",
+      "support": {
+        "title": "Hỗ trợ chủ nhà đăng tin 24/7",
+        "description": "Nếu bạn cần hỗ trợ đăng tin, vui lòng liên hệ số điện thoại bên dưới:"
+      },
+      "blog": {
+        "tip1": "5 Tips để tìm phòng trọ giá rẻ",
+        "tip2": "Hướng dẫn thuê phòng trọ an toàn",
+        "tip3": "Quyền lợi của người thuê trọ",
+        "daysAgo": "{{days}} ngày trước",
+        "weekAgo": "1 tuần trước",
+        "weeksAgo": "{{weeks}} tuần trước"
+      }
+    },
+    "amenitiesModal": {
+      "title": "Chọn tiện ích",
+      "cancel": "Hủy",
+      "apply": "Áp dụng ({{count}})",
+      "close": "Đóng"
+    },
+    "property": {
+      "month": "tháng",
+      "people": "người",
+      "viewDetails": "Xem chi tiết"
+    }
+  },
+  "footer": {
+    "help": {
+      "title": "Bạn có cần trợ giúp gì không ?",
+      "description": "Nhận thông tin cập nhật, ưu đãi hấp dẫn, hướng dẫn, giảm giá được gửi đến gmail của bạn hàng tháng",
+      "emailPlaceholder": "Nhập vào gmail của bạn...",
+      "subscribeButton": "Đăng ký"
+    },
+    "sections": {
+      "0": {
+        "title": "Về smarttro.com",
+        "items": {
+          "0": "Giới thiệu",
+          "1": "Quy chế hoạt động",
+          "2": "Quy định sử dụng",
+          "3": "Chính sách bảo mật",
+          "4": "Liên hệ"
+        }
+      },
+      "1": {
+        "title": "Dành cho khách hàng",
+        "items": {
+          "0": "Câu hỏi thường gặp",
+          "1": "Hướng dẫn đăng tin",
+          "2": "Bảng giá dịch vụ",
+          "3": "Quy định đăng tin",
+          "4": "Giải quyết khiếu nại"
+        }
+      },
+      "2": {
+        "title": "Phương thức thanh toán",
+        "items": {}
+      }
+    },
+    "legal": {
+      "copyright": "© 2025 SMART TRỌ. Được thiết kế bởi DUYHUY."
+    }
   }
 }
