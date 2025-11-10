@@ -14,7 +14,7 @@ import ForgotPassword from "../auth/ForgotPassword"
 import VerifyEmail from "../auth/VerifyEmail"
 import ProtectedRoute from "../auth/ProtectedRoute"
 import AdminProtectedRoute from "../auth/AdminProtectedRoute"
-import LandlordProtectedRoute from "../common/LandlordProtectedRoute"
+import LandlordProtectedRoute from "../auth/LandlordProtectedRoute"
 import Dashboard from "../admin/dashboard/Dashboard"
 import PropertyManagement from "../admin/properties/PropertyManagement"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
@@ -39,6 +39,8 @@ import PackagePlanManagement from "../admin/package-plan/PackagePlanManagement"
 import UsersManagement from "../admin/users/UsersManagement"
 import PropertiesPackage from "../profile/properties-package/PropertiesPackage.jsx"
 import Payment from "../profile/payment/Payment.jsx"
+import LandlordProperties from "../landlord/LandlordProperties.jsx"
+import PackagePaymentsManagement from "../admin/package-payments/PackagePaymentsManagement.jsx"
 import PageTitleWrapper from "../common/PageTitleWrapper"
 import { ToastContainer, toast } from 'react-toastify'
 import 'react-toastify/dist/ReactToastify.css'
@@ -186,8 +188,16 @@ const Pages = () => {
           <Route path='/admin/users' element={<AdminProtectedRoute><UsersManagement /></AdminProtectedRoute>} />
           <Route path='/admin/properties-packages' element={<AdminProtectedRoute><PropertiesPackagesManagement /></AdminProtectedRoute>} />
           <Route path='/admin/package-plans' element={<AdminProtectedRoute><PackagePlanManagement /></AdminProtectedRoute>} />
+          <Route path='/admin/package-payments' element={<AdminProtectedRoute><PackagePaymentsManagement /></AdminProtectedRoute>} />
           
           {/* Trang chỉ dành cho landlord */}
+          <Route path='/landlord/properties' element={
+            <LandlordProtectedRoute>
+              <Header />
+              <LandlordProperties />
+              <Footer />
+            </LandlordProtectedRoute>
+          } />
           <Route path='/admin/rooms' element={<LandlordProtectedRoute><RoomsManagement /></LandlordProtectedRoute>} />
           <Route path='/admin/amenities' element={<LandlordProtectedRoute><AmenitiesManagement /></LandlordProtectedRoute>} />
           <Route path='/admin/tenants' element={<LandlordProtectedRoute><Tenants /></LandlordProtectedRoute>} />

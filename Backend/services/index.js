@@ -28,6 +28,7 @@ import paymentHistoryRoutes from './payment-service/routes/paymentHistoryRoutes.
 import packagePlanRoutes from './package-plan-service/routes/packagePlanRoutes.js';
 import analyticsRoutes from './analytics-service/routes/analyticsRoutes.js';
 import notificationRoutes from './notification-service/routes/notificationRoutes.js';
+import packagePaymentRoutes from '../routes/packagePaymentRoutes.js';
 
 
 const router = express.Router();
@@ -59,6 +60,7 @@ router.use('/api/payment-history', paymentHistoryRoutes);
 router.use('/api/package-plans', packagePlanRoutes);
 router.use('/api/analytics', analyticsRoutes);
 router.use('/api/notifications', notificationRoutes);
+router.use('/api/admin/package-payments', packagePaymentRoutes);
 
 
 

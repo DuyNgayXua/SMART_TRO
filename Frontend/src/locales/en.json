@@ -4,11 +4,14 @@
     "properties": "Property Management",
     "report-properties": "Property Reports",
     "properties-packages": "Property Packages",
+    "package-plans": "Package Plans",
+    "package-payments": "Package Payments",
     "rooms": "Room Management",
     "amenities": "Amenity Management",
     "users": "User Management",
     "tenants": "Tenant Management",
     "contracts": "Contract Management",
+    "payments": "Payment Management",
     "posts": "Post Management",
     "reports": "Revenue Reports",
     "vouchers": "Voucher Management",
@@ -1186,6 +1189,43 @@
       "noInvoices": "No invoices match the filter",
       "exporting": "Exporting...",
       "exportCount": "Export {{count}} invoices"
+    }
+  },
+  "packagePayments": {
+    "title": "Package Payment Management",
+    "searchPlaceholder": "Search by name, email, transaction ID...",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "loading": "Loading data...",
+    "noTransactions": "No transactions",
+    "loadError": "Error loading data",
+    "table": {
+      "transactionId": "Transaction ID",
+      "buyer": "Buyer",
+      "package": "Package",
+      "amount": "Amount",
+      "paymentMethod": "Payment Method",
+      "status": "Status",
+      "createdAt": "Created At",
+      "paidAt": "Paid At",
+      "duration": "days"
+    },
+    "status": {
+      "all": "All",
+      "paid": "Paid",
+      "pending": "Pending",
+      "cancelled": "Cancelled"
+    },
+    "paymentMethod": {
+      "momo": "MoMo",
+      "vnpay": "VNPay",
+      "bank_transfer": "Bank Transfer",
+      "cash": "Cash"
+    },
+    "pagination": {
+      "page": "Page",
+      "of": "/",
+      "transactions": "transactions"
     }
   },
   "propertiesListing": {

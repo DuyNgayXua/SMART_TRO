@@ -5,6 +5,7 @@
     "report-properties": "Báo cáo tin đăng",
     "properties-packages": "Quản lý loại tin",
     "package-plans": "Quản lý gói tin",
+    "package-payments": "Thanh toán gói tin",
     "rooms": "Quản lý phòng trọ",
     "amenities": "Quản lý tiện ích",
     "users": "Quản lý người dùng",
@@ -1211,6 +1212,43 @@
       "noInvoices": "Không có hóa đơn nào phù hợp với bộ lọc",
       "exporting": "Đang xuất...",
       "exportCount": "Xuất {{count}} hóa đơn"
+    }
+  },
+  "packagePayments": {
+    "title": "Quản lý thanh toán gói tin",
+    "searchPlaceholder": "Tìm theo tên, email, mã giao dịch...",
+    "fromDate": "Từ ngày",
+    "toDate": "Đến ngày",
+    "loading": "Đang tải dữ liệu...",
+    "noTransactions": "Không có giao dịch nào",
+    "loadError": "Lỗi tải dữ liệu",
+    "table": {
+      "transactionId": "Mã GD",
+      "buyer": "Người mua",
+      "package": "Gói tin",
+      "amount": "Số tiền",
+      "paymentMethod": "Phương thức",
+      "status": "Trạng thái",
+      "createdAt": "Ngày tạo",
+      "paidAt": "Ngày TT",
+      "duration": "ngày"
+    },
+    "status": {
+      "all": "Tất cả",
+      "paid": "Đã thanh toán",
+      "pending": "Chờ thanh toán",
+      "cancelled": "Đã hủy"
+    },
+    "paymentMethod": {
+      "momo": "MoMo",
+      "vnpay": "VNPay",
+      "bank_transfer": "Chuyển khoản",
+      "cash": "Tiền mặt"
+    },
+    "pagination": {
+      "page": "Trang",
+      "of": "/",
+      "transactions": "giao dịch"
     }
   },
   "propertiesListing": {
