@@ -13,6 +13,9 @@ router.get('/', adminUserController.getUsers);
 // Get user details
 router.get('/:userId', adminUserController.getUserDetails);
 
+// Get user packages
+router.get('/:userId/packages', adminUserController.getUserPackages);
+
 // Toggle block/unblock user
 router.put('/:userId/toggle-block', adminUserController.toggleBlockUser);
 

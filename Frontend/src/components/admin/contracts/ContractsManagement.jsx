@@ -1085,10 +1085,6 @@ const ContractsManagement = () => {
 
         {(activeTab === 'rental' ? contracts : depositContracts).length>0 && (
           <div className="pagination">
-            <div className="pagination-info">
-              <span>{t('rooms.pagination.showing')} {((pagination.currentPage - 1) * pagination.itemsPerPage) + 1} - {Math.min(pagination.currentPage * pagination.itemsPerPage, pagination.totalItems)} {t('rooms.pagination.of')} {pagination.totalItems} {t('rooms.pagination.results')}</span>
-            </div>
-
             <div className="pagination-controls">
               <button 
                 className="pagination-btn" 

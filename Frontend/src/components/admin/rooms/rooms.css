@@ -2802,10 +2802,31 @@ body .room-modal-backdrop .room-modal .room-modal-content .room-form-group.full 
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
   z-index: 2147483647; /* Maximum 32-bit integer z-index */
   min-width: 180px;
-  overflow: hidden;
+  max-height: calc(100vh - 20px); /* Maximum height to fit in viewport */
+  overflow-y: auto; /* Allow scrolling if content is too tall */
+  overflow-x: hidden;
   animation: dropdownFadeIn 0.2s ease;
   transform: translateZ(0);
   will-change: transform;
+}
+
+/* Scrollbar styling for dropdown */
+.action-menu-dropdown::-webkit-scrollbar {
+  width: 6px;
+}
+
+.action-menu-dropdown::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 4px;
+}
+
+.action-menu-dropdown::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+.action-menu-dropdown::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 /* Fixed position variant that calculates position dynamically */
@@ -7649,6 +7670,22 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
 }
 
 /* Import Excel Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10005;
+  padding: 20px;
+  animation: fadeIn 0.2s ease-out;
+}
+
 .import-modal-content {
   background: white;
   border-radius: 16px;

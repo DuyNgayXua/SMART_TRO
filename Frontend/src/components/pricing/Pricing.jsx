@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Heading from "../common/Heading";
 import "./Pricing.css";
-import { FaStar, FaArrowUp, FaTimes } from "react-icons/fa";
+import { FaStar, FaArrowUp } from "react-icons/fa";
 import { toast } from 'react-toastify';
 
 
 const Pricing = () => {
+  const navigate = useNavigate();
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [showTrialModal, setShowTrialModal] = useState(false);
   const [trialFormData, setTrialFormData] = useState({
@@ -14,6 +16,21 @@ const Pricing = () => {
     phone: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+
+  // Lấy thông tin user từ localStorage
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    const user = localStorage.getItem('user');
+    if (token && user) {
+      try {
+        const parsedUser = JSON.parse(user);
+        setUserInfo(parsedUser);
+      } catch (error) {
+        console.error('Error parsing user info:', error);
+      }
+    }
+  }, []);
 
   // Theo dõi scroll để hiển thị/ẩn nút scroll to top
   useEffect(() => {
@@ -36,6 +53,19 @@ const Pricing = () => {
   // Xử lý mở modal đăng ký dùng thử
   const handleOpenTrialModal = (planName) => {
     if (planName === 'free') {
+      // Kiểm tra xem user đã đăng nhập chưa
+      if (!userInfo) {
+        toast.info('Vui lòng đăng nhập để đăng ký gói miễn phí');
+        navigate('/dang-nhap');
+        return;
+      }
+
+      // Tự động điền thông tin từ user
+      setTrialFormData({
+        fullName: userInfo.fullName || '',
+        email: userInfo.email || '',
+        phone: userInfo.phone || ''
+      });
       setShowTrialModal(true);
       document.body.style.overflow = 'hidden'; // Prevent background scroll
     }
@@ -92,12 +122,15 @@ const Pricing = () => {
     setIsSubmitting(true);
 
     try {
+      const token = localStorage.getItem('token');
+      
       const response = await fetch(
         `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/management/trial-request`,
         {
           method: 'POST',
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify(trialFormData)
         }
@@ -106,10 +139,35 @@ const Pricing = () => {
       const data = await response.json();
 
       if (data.success) {
-        toast.success('Đăng ký thành công! Chúng tôi sẽ liên hệ với bạn sớm nhất.');
+        toast.success('Đăng ký gói dùng thử thành công! Bạn đã được nâng cấp lên quyền Chủ trọ.');
+        
+        // Cập nhật thông tin user trong localStorage
+        const updatedUser = {
+          ...userInfo,
+          role: 'landlord',
+          freeTrial: {
+            hasRegistered: true,
+            registeredAt: new Date(),
+            expiryDate: data.data.trialExpiryDate
+          }
+        };
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        localStorage.setItem('role', 'landlord');
+        
         handleCloseTrialModal();
+        
+        // Redirect to admin dashboard after 2 seconds
+        setTimeout(() => {
+          window.location.href = '/admin/dashboard';
+        }, 2000);
       } else {
-        toast.error(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+        if (data.requireLogin) {
+          toast.info('Vui lòng đăng nhập để đăng ký gói miễn phí');
+          handleCloseTrialModal();
+          navigate('/dang-nhap');
+        } else {
+          toast.error(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
+        }
       }
     } catch (error) {
       console.error('Error submitting trial request:', error);
@@ -326,16 +384,34 @@ const Pricing = () => {
                   </>
                 )}
 
-                <button
-                  className="btn-choose-plan"
-                  style={{
-                    backgroundColor: plan.color,
-                    boxShadow: `0 4px 12px ${plan.color}40`
-                  }}
-                  onClick={() => handleOpenTrialModal(plan.name)}
-                >
-                  {plan.price === 0 ? 'Bắt Đầu Miễn Phí' : 'Đăng Ký Ngay'}
-                </button>
+                {/* Ẩn nút nếu user đã đăng ký gói trial */}
+                {!(userInfo && userInfo.freeTrial && userInfo.freeTrial.hasRegistered && plan.price === 0) && (
+                  <button
+                    className="btn-choose-plan"
+                    style={{
+                      backgroundColor: plan.color,
+                      boxShadow: `0 4px 12px ${plan.color}40`
+                    }}
+                    onClick={() => handleOpenTrialModal(plan.name)}
+                  >
+                    {plan.price === 0 ? 'Bắt Đầu Miễn Phí' : 'Đăng Ký Ngay'}
+                  </button>
+                )}
+
+                {/* Hiển thị thông báo đã đăng ký */}
+                {userInfo && userInfo.freeTrial && userInfo.freeTrial.hasRegistered && plan.price === 0 && (
+                  <div style={{
+                    padding: '12px',
+                    background: '#f0fdf4',
+                    border: '2px solid #22c55e',
+                    borderRadius: '8px',
+                    textAlign: 'center',
+                    color: '#16a34a',
+                    fontWeight: 'bold'
+                  }}>
+                    ✅ Đã đăng ký
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -367,6 +443,7 @@ const Pricing = () => {
                     value={trialFormData.fullName}
                     onChange={handleTrialInputChange}
                     placeholder="Nguyễn Văn A"
+                    disabled={!!userInfo}
                     required
                   />
                 </div>
@@ -383,6 +460,7 @@ const Pricing = () => {
                     value={trialFormData.email}
                     onChange={handleTrialInputChange}
                     placeholder="example@email.com"
+                    disabled={!!userInfo}
                     required
                   />
                 </div>
@@ -400,6 +478,7 @@ const Pricing = () => {
                     onChange={handleTrialInputChange}
                     placeholder="0123456789"
                     maxLength="10"
+                    disabled={!!userInfo}
                     required
                   />
                 </div>

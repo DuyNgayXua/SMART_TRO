@@ -133,7 +133,7 @@ class AmenityController {
   // Create new amenity
   async createAmenity(req, res) {
     try {
-      const { name, key, icon, category, description, isActive, displayOrder } = req.body;
+      const { name, icon, category, description, isActive, displayOrder } = req.body;
       const owner = req.user?.userId;
 
       // Validate owner (chủ trọ bắt buộc)
@@ -152,32 +152,9 @@ class AmenityController {
         });
       }
 
-      // Auto-generate key from name if not provided
-      let amenityKey = key;
-      if (!amenityKey) {
-        // Convert name to slug format: "Máy lạnh" -> "may-lanh"
-        amenityKey = name
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
-          .replace(/đ/g, 'd')
-          .replace(/[^a-z0-9\s-]/g, '') // Remove special chars
-          .replace(/\s+/g, '-') // Replace spaces with dashes
-          .replace(/-+/g, '-') // Replace multiple dashes with single
-          .trim();
-      }
-
-      // Check if key already exists for this owner
-      const existingAmenity = await amenityRepository.findByKey(amenityKey, owner);
-      if (existingAmenity) {
-        // Thêm timestamp vào key để unique
-        amenityKey = `${amenityKey}-${Date.now()}`;
-      }
-
       const amenityData = {
         owner,
         name,
-        key: amenityKey,
         icon: icon || 'fas fa-check',
         category: category || 'other',
         description,

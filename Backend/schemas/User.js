@@ -68,6 +68,19 @@ const userSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // Thông tin gói dùng thử miễn phí
+    freeTrial: {
+        hasRegistered: {
+            type: Boolean,
+            default: false
+        },
+        registeredAt: Date,
+        expiryDate: Date,
+        trialRequestId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'TrialRequest'
+        }
+    },
     // Package plan hiện tại của user
     packageType: {
         type: String,

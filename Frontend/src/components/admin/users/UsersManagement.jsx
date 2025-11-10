@@ -11,6 +11,11 @@ const UsersManagement = () => {
     const [roleFilter, setRoleFilter] = useState('all'); // all, landlord, tenant
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
+    const [openActionMenu, setOpenActionMenu] = useState(null);
+    const [showViewModal, setShowViewModal] = useState(false);
+    const [selectedUser, setSelectedUser] = useState(null);
+    const [userPackages, setUserPackages] = useState({ propertyPackage: null, postPackage: null });
+    const [loadingPackages, setLoadingPackages] = useState(false);
     const [stats, setStats] = useState({
         total: 0,
         landlord: 0,
@@ -61,34 +66,74 @@ const UsersManagement = () => {
         }
     };
 
-    // Handle block/unblock user
-    const handleToggleBlock = async (userId, currentStatus) => {
+    // Handle delete user
+    const handleDeleteUser = async (userId, userName) => {
+        const confirmMessage = `Bạn có chắc chắn muốn xóa người dùng "${userName}"?\n\nHành động này không thể hoàn tác!`;
+        
+        if (!window.confirm(confirmMessage)) {
+            return;
+        }
+
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(
-                `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${userId}/toggle-block`,
+                `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${userId}`,
                 {
-                    method: 'PUT',
+                    method: 'DELETE',
                     headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
+                        'Authorization': `Bearer ${token}`
                     }
                 }
             );
 
             if (!response.ok) {
-                throw new Error('Failed to toggle block status');
+                throw new Error('Failed to delete user');
             }
 
             const data = await response.json();
             if (data.success) {
-                toast.success(currentStatus === 'active' ? 'Đã khóa người dùng' : 'Đã mở khóa người dùng');
-                // Reload users list
+                toast.success(`Đã xóa người dùng "${userName}"`);
                 loadUsers(currentPage, roleFilter, searchTerm);
             }
         } catch (error) {
-            console.error('Error toggling block status:', error);
-            toast.error('Lỗi khi thay đổi trạng thái người dùng');
+            console.error('Error deleting user:', error);
+            toast.error('Lỗi khi xóa người dùng');
+        }
+        setOpenActionMenu(null);
+    };
+
+    // Handle view user
+    const handleViewUser = async (user) => {
+        setSelectedUser(user);
+        setShowViewModal(true);
+        setOpenActionMenu(null);
+        
+        // Load user packages
+        setLoadingPackages(true);
+        try {
+            const token = localStorage.getItem('token');
+            const response = await fetch(
+                `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${user._id}/packages`,
+                {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                }
+            );
+
+            if (response.ok) {
+                const data = await response.json();
+                if (data.success) {
+                    setUserPackages({
+                        propertyPackage: data.data.propertyPackage || null,
+                        postPackage: data.data.postPackage || null
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Error loading user packages:', error);
+        } finally {
+            setLoadingPackages(false);
         }
     };
 
@@ -109,6 +154,18 @@ const UsersManagement = () => {
         setCurrentPage(1);
         loadUsers(1, role, searchTerm);
     };
+
+    // Close menu when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (!e.target.closest('.action-menu-container')) {
+                setOpenActionMenu(null);
+            }
+        };
+        
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, []);
 
     // Load users on mount
     useEffect(() => {
@@ -193,6 +250,13 @@ const UsersManagement = () => {
                             Tất cả ({stats.total})
                         </button>
                         <button
+                            className={`status-tab ${roleFilter === 'admin' ? 'active' : ''}`}
+                            onClick={() => handleRoleFilterChange('admin')}
+                        >
+                            <i className="fas fa-user-shield"></i>
+                            Quản trị viên ({stats.admin || 0})
+                        </button>
+                        <button
                             className={`status-tab ${roleFilter === 'landlord' ? 'active' : ''}`}
                             onClick={() => handleRoleFilterChange('landlord')}
                         >
@@ -273,14 +337,38 @@ const UsersManagement = () => {
                                                 </td>
                                                 <td>{formatDate(user.createdAt)}</td>
                                                 <td>
-                                                    <button
-                                                        className={`btn-action ${user.status === 'active' ? 'btn-block' : 'btn-unblock'}`}
-                                                        onClick={() => handleToggleBlock(user._id, user.status)}
-                                                        title={user.status === 'active' ? 'Khóa người dùng' : 'Mở khóa người dùng'}
-                                                    >
-                                                        <i className={`fas ${user.status === 'active' ? 'fa-ban' : 'fa-unlock'}`}></i>
-                                                        {user.status === 'active' ? 'Khóa' : 'Mở khóa'}
-                                                    </button>
+                                                    <div className={`action-menu-container ${openActionMenu === user._id ? 'active' : ''}`}>
+                                                        <button
+                                                            className="action-menu-trigger"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                setOpenActionMenu(openActionMenu === user._id ? null : user._id);
+                                                            }}
+                                                        >
+                                                            <i className="fas fa-ellipsis-v"></i>
+                                                        </button>
+                                                        {openActionMenu === user._id && (
+                                                            <div className="action-menu-dropdown">
+                                                                <button
+                                                                    className="action-menu-item"
+                                                                    onClick={() => handleViewUser(user)}
+                                                                >
+                                                                    <i className="fas fa-eye"></i>
+                                                                    Xem chi tiết
+                                                                </button>
+                                                                <button
+                                                                    className="action-menu-item danger"
+                                                                    onClick={() => {
+                                                                        handleDeleteUser(user._id, user.fullName);
+                                                                        setOpenActionMenu(null);
+                                                                    }}
+                                                                >
+                                                                    <i className="fas fa-trash"></i>
+                                                                    Xóa người dùng
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -298,9 +386,6 @@ const UsersManagement = () => {
                                     >
                                         <i className="fas fa-chevron-left"></i>
                                     </button>
-                                    <span className="pagination-info">
-                                        Trang {currentPage} / {totalPages}
-                                    </span>
                                     <button
                                         className="pagination-btn"
                                         onClick={() => loadUsers(currentPage + 1, roleFilter, searchTerm)}
@@ -314,6 +399,164 @@ const UsersManagement = () => {
                     )}
                 </div>
             </div>
+
+            {/* View User Modal */}
+            {showViewModal && selectedUser && (
+                <div className="modal-overlay" onClick={() => setShowViewModal(false)}>
+                    <div className="modal-content user-detail-modal" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h2>
+                                <i className="fas fa-user-circle"></i> Thông tin người dùng
+                            </h2>
+                            <button className="close-modal-btn" onClick={() => setShowViewModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+
+                        <div className="modal-body">
+                            {/* User Info Section */}
+                            <div className="user-detail-section">
+                                <h3 className="user-section-title">
+                                    <i className="fas fa-id-card"></i> Thông tin cá nhân
+                                </h3>
+                                <div className="user-detail-grid">
+                                    <div className="user-detail-item">
+                                        <span className="user-detail-label">Họ và tên:</span>
+                                        <span className="user-detail-value">{selectedUser.fullName}</span>
+                                    </div>
+                                    <div className="user-detail-item">
+                                        <span className="user-detail-label">Email:</span>
+                                        <span className="user-detail-value">{selectedUser.email}</span>
+                                    </div>
+                                    <div className="user-detail-item">
+                                        <span className="user-detail-label">Số điện thoại:</span>
+                                        <span className="user-detail-value">{selectedUser.phone || 'Chưa cập nhật'}</span>
+                                    </div>
+                                    <div className="user-detail-item">
+                                        <span className="user-detail-label">Vai trò:</span>
+                                        <span className="user-detail-value">
+                                            <span className={`user-role-badge ${selectedUser.role}`}>
+                                                {selectedUser.role === 'admin' && 'Quản trị viên'}
+                                                {selectedUser.role === 'landlord' && 'Chủ trọ'}
+                                                {(selectedUser.role === 'tenant' || selectedUser.role === 'user') && 'Người dùng'}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="user-detail-item">
+                                        <span className="user-detail-label">Trạng thái:</span>
+                                        <span className="user-detail-value">
+                                            <span className={`user-status-badge ${selectedUser.status}`}>
+                                                {selectedUser.status === 'active' ? 'Hoạt động' : 'Đã khóa'}
+                                            </span>
+                                        </span>
+                                    </div>
+                                    <div className="user-detail-item">
+                                        <span className="user-detail-label">Ngày tạo:</span>
+                                        <span className="user-detail-value">{formatDate(selectedUser.createdAt)}</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Packages Section */}
+                            {(selectedUser.role === 'landlord' || selectedUser.role === 'tenant' || selectedUser.role === 'user') && (
+                                <div className="user-detail-section">
+                                    <h3 className="user-section-title">
+                                        <i className="fas fa-box"></i> Gói đăng ký
+                                    </h3>
+                                    {loadingPackages ? (
+                                        <div className="user-loading-section">
+                                            <i className="fas fa-spinner fa-spin"></i>
+                                            <span>Đang tải thông tin gói...</span>
+                                        </div>
+                                    ) : (
+                                        <div className="user-packages-grid">
+                                            {/* Property Package (for landlord) */}
+                                            {selectedUser.role === 'landlord' && (
+                                                <div className="user-package-card">
+                                                    <h4>
+                                                        <i className="fas fa-building"></i> Gói quản lý trọ
+                                                    </h4>
+                                                    {userPackages.propertyPackage ? (
+                                                        <div className="user-package-info">
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Tên gói:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.packageName}</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Số phòng tối đa:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.maxRooms} phòng</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Số phòng đã dùng:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.usedRooms || 0} phòng</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Ngày hết hạn:</span>
+                                                                <span className={`user-package-value ${new Date(userPackages.propertyPackage.expiryDate) < new Date() ? 'expired' : ''}`}>
+                                                                    {new Date(userPackages.propertyPackage.expiryDate).toLocaleDateString('vi-VN')}
+                                                                    {new Date(userPackages.propertyPackage.expiryDate) < new Date() && ' (Đã hết hạn)'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="user-no-package">
+                                                            <i className="fas fa-info-circle"></i>
+                                                            <span>Chưa đăng ký gói nào</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                            {/* Post Package (for tenant/user) */}
+                                            {(selectedUser.role === 'tenant' || selectedUser.role === 'user') && (
+                                                <div className="user-package-card">
+                                                    <h4>
+                                                        <i className="fas fa-newspaper"></i> Gói đăng tin
+                                                    </h4>
+                                                    {userPackages.postPackage ? (
+                                                        <div className="user-package-info">
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Tên gói:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.packageName}</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Số tin tối đa:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.maxPosts} tin</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">Số tin đã dùng:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.usedPosts || 0} tin</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="label">Ngày hết hạn:</span>
+                                                                <span className={`value ${new Date(userPackages.postPackage.expiryDate) < new Date() ? 'expired' : ''}`}>
+                                                                    {new Date(userPackages.postPackage.expiryDate).toLocaleDateString('vi-VN')}
+                                                                    {new Date(userPackages.postPackage.expiryDate) < new Date() && ' (Đã hết hạn)'}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        <div className="user-no-package">
+                                                            <i className="fas fa-info-circle"></i>
+                                                            <span>Chưa đăng ký gói nào</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn-secondary" onClick={() => setShowViewModal(false)}>
+                                <i className="fas fa-times"></i> Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

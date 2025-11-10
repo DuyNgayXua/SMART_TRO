@@ -6,11 +6,6 @@ const amenitySchema = new mongoose.Schema({
     ref: 'User',
     required: true // Bắt buộc có owner (chủ trọ)
   },
-  key: {
-    type: String,
-    required: true,
-    trim: true
-  },
   name: {
     type: String,
     required: true,
@@ -40,9 +35,6 @@ const amenitySchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
-
-// Compound unique index: key phải unique trong phạm vi mỗi owner
-amenitySchema.index({ owner: 1, key: 1 }, { unique: true });
 
 // Index for better performance
 amenitySchema.index({ owner: 1, category: 1, displayOrder: 1 });

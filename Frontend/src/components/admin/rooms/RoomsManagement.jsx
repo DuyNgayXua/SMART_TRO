@@ -2123,19 +2123,6 @@ const RoomsManagement = () => {
     }
   };
 
-  const handleViewRoom = (roomId) => {
-    (async () => {
-      try {
-        const res = await roomsAPI.getRoomById(roomId);
-        if (res.success) {
-          setViewRoom(res.data);
-          setViewCarouselIndex(0);
-          setShowViewModal(true);
-        }
-      } catch (e) { console.error('Load room detail error', e); }
-    })();
-  };
-
   const handleEditRoom = (roomId) => {
     (async () => {
       try {
@@ -2185,12 +2172,35 @@ const RoomsManagement = () => {
   };
 
   const handleDeleteRoom = async (roomId) => {
-  if (window.confirm(t('rooms.confirmDelete'))) {
+    // Find the room to check its status
+    const room = rooms.find(r => r.id === roomId);
+    
+    if (!room) {
+      showToast('error', 'Không tìm thấy phòng');
+      return;
+    }
+
+    // Check if room is rented or has active contracts
+    if (room.status === 'rented' || room.status === 'expiring') {
+      showToast('error', 'Không thể xóa phòng đang được thuê hoặc sắp hết hạn. Vui lòng kết thúc hợp đồng trước!');
+      return;
+    }
+
+    // Check if room has deposit contract
+    if (room.status === 'reserved' || room.status === 'deposited') {
+      showToast('warning', 'Phòng có hợp đồng cọc. Vui lòng hủy hợp đồng cọc trước khi xóa!');
+      return;
+    }
+
+    // Confirm deletion for available rooms
+    if (window.confirm(`Bạn có chắc chắn muốn xóa phòng "${room.name}"?\n\nHành động này không thể hoàn tác!`)) {
       try {
         await roomsAPI.deleteRoom(roomId);
-         fetchRooms();
+        showToast('success', `Đã xóa phòng "${room.name}" thành công`);
+        fetchRooms();
       } catch (error) {
         console.error('Error deleting room:', error);
+        showToast('error', error.response?.data?.message || 'Lỗi khi xóa phòng');
       }
     }
   };
@@ -3470,17 +3480,26 @@ const RoomsManagement = () => {
           await contractsAPI.updateContract(contract._id, { status: 'terminated' });
         }
         
-        // 3. Lấy tất cả khách thuê của phòng và xóa khỏi phòng
+        // 3. Lấy tất cả khách thuê của phòng
         const tenantsRes = await tenantsAPI.getTenantsByRoom(selectedRoomForTerminate.id, { status: 'active' });
         const tenants = tenantsRes.success ? (Array.isArray(tenantsRes.data) ? tenantsRes.data : []) : [];
         
-        // 4. Cập nhật phòng: xóa tenants và chuyển status về available
+        // 4. Xóa từng khách thuê khỏi hệ thống
+        for (const tenant of tenants) {
+          try {
+            await tenantsAPI.deleteTenant(tenant._id);
+          } catch (err) {
+            console.error('Error deleting tenant:', tenant._id, err);
+          }
+        }
+        
+        // 5. Cập nhật phòng: xóa tenants và chuyển status về available
         await roomsAPI.updateRoom(selectedRoomForTerminate.id, { 
           status: 'available',
           tenants: []
         });
         
-        showToast('success', `Đã kết thúc hợp đồng và xóa ${tenants.length} khách thuê khỏi phòng`);
+        showToast('success', `Đã kết thúc hợp đồng và xóa ${tenants.length} khách thuê khỏi hệ thống`);
         fetchRooms();
       }
     } catch (error) {
@@ -4239,7 +4258,19 @@ const RoomsManagement = () => {
                               // Calculate position for fixed positioning
                               const buttonRect = e.target.getBoundingClientRect();
                               const viewportHeight = window.innerHeight;
-                              const dropdownHeight = 200; // Estimated dropdown height
+                              
+                              // Estimate dropdown height based on room status
+                              let estimatedHeight = 60; // Base height (padding)
+                              if (room.status === 'available' && !hasDepositContract(room.name)) {
+                                estimatedHeight += 48; // Create contract
+                              } else if ((room.status === 'available' || room.status === 'reserved' || room.status === 'deposited') && hasDepositContract(room.name)) {
+                                estimatedHeight += 96; // Create rental + View deposit
+                              } else if (room.status === 'rented' || room.status === 'expiring') {
+                                estimatedHeight += 240; // Create invoice, transfer, expiring, terminate (4-5 items)
+                              }
+                              estimatedHeight += 96; // Edit + Delete
+                              
+                              const dropdownHeight = Math.max(estimatedHeight, 250); // Minimum 250px
                               
                               let top = buttonRect.bottom + 4;
                               let left = buttonRect.right - 180; // Dropdown width = 180px
@@ -4247,11 +4278,21 @@ const RoomsManagement = () => {
                               // If dropdown would go below viewport, show above button
                               if (top + dropdownHeight > viewportHeight) {
                                 top = buttonRect.top - dropdownHeight - 4;
+                                // Make sure it doesn't go above viewport
+                                if (top < 10) {
+                                  top = 10;
+                                }
                               }
                               
                               // Ensure dropdown doesn't go off left edge
                               if (left < 4) {
                                 left = 4;
+                              }
+                              
+                              // Ensure dropdown doesn't go off right edge
+                              const viewportWidth = window.innerWidth;
+                              if (left + 180 > viewportWidth - 4) {
+                                left = viewportWidth - 184;
                               }
                               
                               setDropdownPosition({ top, left });
@@ -4403,16 +4444,6 @@ const RoomsManagement = () => {
                               <button
                                 className="action-menu-item"
                                 onClick={() => {
-                                  handleViewRoom(room.id);
-                                  setOpenActionMenu(null);
-                                }}
-                              >
-                                <i className="fas fa-eye"></i>
-                                {t('rooms.actions.view')}
-                              </button>
-                              <button
-                                className="action-menu-item"
-                                onClick={() => {
                                   handleEditRoom(room.id);
                                   setOpenActionMenu(null);
                                 }}
@@ -4445,14 +4476,6 @@ const RoomsManagement = () => {
         {/* Pagination */}
         {rooms.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
-            {/* Pagination Info */}
-            <div className="pagination-info">
-              <span className="pagination-text">
-                {t('rooms.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} 
-                ({pagination.totalItems} {t('rooms.pagination.rooms', 'phòng')})
-              </span>
-            </div>
-
             <div className="pagination-controls">
               {/* First Page Button */}
               <button
@@ -7639,6 +7662,16 @@ const RoomsManagement = () => {
               </label>
             </div>
 
+            {/* Error Warning - Positioned after file upload for immediate visibility */}
+            {importData.length > 0 && importData.some(r => !r.isValid) && (
+              <div className="import-section">
+                <p className="import-warning">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  {t('rooms.invalidRowsWarning', 'Có một số dòng không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.')}
+                </p>
+              </div>
+            )}
+
             {/* Data Preview Grid */}
             {importData.length > 0 && (
               <div className="import-section">
@@ -7646,6 +7679,7 @@ const RoomsManagement = () => {
                   <i className="fas fa-table"></i>
                   {t('rooms.dataPreview', 'Xem trước dữ liệu')} ({importData.length} phòng)
                 </h4>
+                
                 <div className="import-data-grid">
                   <table className="import-table">
                     <thead>
@@ -7759,13 +7793,6 @@ const RoomsManagement = () => {
                     <span>Lỗi: <strong>{importData.filter(r => !r.isValid).length}</strong> phòng</span>
                   </div>
                 </div>
-
-                {importData.some(r => !r.isValid) && (
-                  <p className="import-warning">
-                    <i className="fas fa-exclamation-triangle"></i>
-                    {t('rooms.invalidRowsWarning', 'Có một số dòng không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể import.')}
-                  </p>
-                )}
               </div>
             )}
           </div>
@@ -7858,6 +7885,16 @@ const RoomsManagement = () => {
               </label>
             </div>
 
+            {/* Error Warning - Positioned after file upload for immediate visibility */}
+            {billingData.length > 0 && billingData.some(r => !r.isValid) && (
+              <div className="import-section">
+                <p className="import-warning">
+                  <i className="fas fa-exclamation-triangle"></i>
+                  {t('rooms.invalidBillingWarning', 'Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể tạo hóa đơn.')}
+                </p>
+              </div>
+            )}
+
             {/* Data Preview Grid */}
             {billingData.length > 0 && (
               <div className="import-section">
@@ -7865,6 +7902,7 @@ const RoomsManagement = () => {
                   <i className="fas fa-table"></i>
                   {t('rooms.billingDataPreview', 'Xem trước hóa đơn')} ({billingData.length} phòng)
                 </h4>
+                
                 <div className="import-data-grid">
                   <table className="billing-table">
                     <thead>
@@ -7908,8 +7946,10 @@ const RoomsManagement = () => {
                               type="number"
                               className="editable-cell"
                               value={record.electricOld}
-                              onChange={(e) => handleEditBillingRow(index, 'electricOld', e.target.value)}
-                              disabled={billingLoading}
+                              readOnly
+                              disabled
+                              style={{backgroundColor: '#f3f4f6', cursor: 'not-allowed'}}
+                              title="Chỉ số cũ không được chỉnh sửa"
                             />
                           </td>
                           <td>
@@ -7931,8 +7971,10 @@ const RoomsManagement = () => {
                                 type="number"
                                 className="editable-cell"
                                 value={record.waterOld}
-                                onChange={(e) => handleEditBillingRow(index, 'waterOld', e.target.value)}
-                                disabled={billingLoading}
+                                readOnly
+                                disabled
+                                style={{backgroundColor: '#f3f4f6', cursor: 'not-allowed'}}
+                                title="Chỉ số cũ không được chỉnh sửa"
                               />
                             )}
                           </td>
@@ -8000,13 +8042,6 @@ const RoomsManagement = () => {
                     <span>Lỗi: <strong>{billingData.filter(r => !r.isValid).length}</strong> phòng</span>
                   </div>
                 </div>
-
-                {billingData.some(r => !r.isValid) && (
-                  <p className="import-warning">
-                    <i className="fas fa-exclamation-triangle"></i>
-                    {t('rooms.invalidBillingWarning', 'Có một số bản ghi không hợp lệ. Hãy sửa dữ liệu trực tiếp trên bảng để có thể tạo hóa đơn.')}
-                  </p>
-                )}
               </div>
             )}
           </div>

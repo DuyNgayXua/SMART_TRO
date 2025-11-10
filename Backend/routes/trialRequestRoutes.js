@@ -4,8 +4,11 @@ import { authenticateToken, isAdmin } from '../shared/middleware/auth.js';
 
 const router = express.Router();
 
-// Public route - Tạo yêu cầu dùng thử
-router.post('/trial-request', trialRequestController.createTrialRequest);
+// User route - Đăng ký gói dùng thử (yêu cầu đăng nhập)
+router.post('/trial-request', authenticateToken, trialRequestController.createTrialRequest);
+
+// Public route - Đăng ký tài khoản sau khi được approve
+router.post('/trial-register', trialRequestController.registerTrialUser);
 
 // Admin routes - Quản lý yêu cầu dùng thử
 router.get('/trial-requests', authenticateToken, isAdmin, trialRequestController.getAllTrialRequests);

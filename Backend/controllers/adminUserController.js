@@ -1,4 +1,6 @@
 import User from '../schemas/User.js';
+import PropertiesPackage from '../schemas/PropertiesPackage.js';
+import Property from '../schemas/Property.js';
 
 // Get all users with filters
 export const getUsers = async (req, res) => {
@@ -188,6 +190,83 @@ export const updateUserRole = async (req, res) => {
         res.status(500).json({
             success: false,
             message: 'Lỗi khi cập nhật vai trò người dùng',
+            error: error.message
+        });
+    }
+};
+
+// Get user packages
+export const getUserPackages = async (req, res) => {
+    try {
+        const { userId } = req.params;
+        
+        const user = await User.findById(userId)
+            .populate('currentPackagePlan.packagePlanId')
+            .lean();
+            
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Không tìm thấy người dùng'
+            });
+        }
+        
+        let propertyPackage = null;
+        let postPackage = null;
+        
+        // Nếu là landlord, lấy gói quản lý trọ
+        if (user.role === 'landlord') {
+            // Tìm gói đang active của landlord
+            const activePackage = await PropertiesPackage.findOne({
+                landlordId: userId,
+                status: 'active'
+            })
+            .populate('packagePlanId')
+            .sort({ expiryDate: -1 })
+            .lean();
+            
+            if (activePackage && activePackage.packagePlanId) {
+                // Đếm số phòng đã dùng
+                const properties = await Property.find({ landlordId: userId });
+                const usedRooms = properties.reduce((total, property) => {
+                    return total + (property.rooms ? property.rooms.length : 0);
+                }, 0);
+                
+                propertyPackage = {
+                    packageName: activePackage.packagePlanId.name,
+                    maxRooms: activePackage.packagePlanId.maxRooms,
+                    usedRooms: usedRooms,
+                    expiryDate: activePackage.expiryDate
+                };
+            }
+        }
+        
+        // Nếu là tenant/user, lấy gói đăng tin từ currentPackagePlan
+        if (user.role === 'tenant' || user.role === 'user') {
+            if (user.currentPackagePlan && user.currentPackagePlan.packagePlanId) {
+                const packagePlan = user.currentPackagePlan.packagePlanId;
+                
+                postPackage = {
+                    packageName: user.currentPackagePlan.displayName || user.currentPackagePlan.packageName || packagePlan.name,
+                    maxPosts: user.currentPackagePlan.freePushCount || 0,
+                    usedPosts: user.currentPackagePlan.usedPushCount || 0,
+                    expiryDate: user.currentPackagePlan.expiryDate
+                };
+            }
+        }
+        
+        res.status(200).json({
+            success: true,
+            data: {
+                propertyPackage,
+                postPackage
+            }
+        });
+    } catch (error) {
+        console.error('Error getting user packages:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Lỗi khi lấy thông tin gói',
             error: error.message
         });
     }

@@ -2,6 +2,14 @@ import { useCallback } from 'react';
 
 export const useToast = () => {
   const showToast = useCallback((type, message) => {
+    // Tạo hoặc lấy toast container
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toast-container';
+      document.body.appendChild(toastContainer);
+    }
+
     // Tạo toast element
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
@@ -19,18 +27,29 @@ export const useToast = () => {
       const styles = document.createElement('style');
       styles.id = 'toast-styles';
       styles.textContent = `
+        #toast-container {
+          position: fixed !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          pointer-events: none !important;
+          z-index: 2147483647 !important;
+          isolation: isolate !important;
+        }
+
         .toast {
-          position: fixed;
-          top: 20px;
-          right: 20px;
+          position: fixed !important;
+          top: 20px !important;
+          right: 20px !important;
           padding: 12px 20px;
           border-radius: 8px;
           color: white;
           font-weight: 500;
-          z-index: 10000;
           min-width: 300px;
           animation: slideIn 0.3s ease-out;
           box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          pointer-events: auto !important;
         }
         
         .toast-success { background-color: #10b981; }
@@ -78,8 +97,8 @@ export const useToast = () => {
       document.head.appendChild(styles);
     }
 
-    // Thêm vào DOM
-    document.body.appendChild(toast);
+    // Thêm toast vào container thay vì body
+    toastContainer.appendChild(toast);
 
     // Tự động xóa sau 4 giây
     setTimeout(() => {

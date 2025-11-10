@@ -272,12 +272,15 @@ export const apiUtils = {
   },
   
   // Set auth data - luôn lưu token vào localStorage
-  setAuthData: (token, userId, role, sessionToken = null) => {
+  setAuthData: (token, userId, role, sessionToken = null, user = null) => {
     localStorage.setItem('token', token);
     localStorage.setItem('userId', userId);
     localStorage.setItem('role', role);
     if (sessionToken) {
       localStorage.setItem('sessionToken', sessionToken);
+    }
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
     }
   },
   
@@ -287,6 +290,7 @@ export const apiUtils = {
     localStorage.removeItem('userId');
     localStorage.removeItem('role');
     localStorage.removeItem('sessionToken');
+    localStorage.removeItem('user');
   },
   
   // Get token from storage

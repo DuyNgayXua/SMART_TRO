@@ -45,7 +45,7 @@ const Login = () => {
             if (res.data && res.data.success) {
                 const { token, user, sessionToken } = res.data.data;
                 // Luôn lưu token vào localStorage
-                apiUtils.setAuthData(token, user._id, user.role, sessionToken);
+                apiUtils.setAuthData(token, user._id, user.role, sessionToken, user);
                 
                 // Xử lý ghi nhớ đăng nhập
                 if (remember) {
@@ -97,7 +97,7 @@ const Login = () => {
 
             if (res.data && res.data.success) {
                 const { token, user, sessionToken } = res.data.data;
-                apiUtils.setAuthData(token, user._id, user.role, sessionToken);
+                apiUtils.setAuthData(token, user._id, user.role, sessionToken, user);
                 
                 toast.success(`Chào mừng ${user.fullName}! Đăng nhập Google thành công.`);
                 setTimeout(() => {
