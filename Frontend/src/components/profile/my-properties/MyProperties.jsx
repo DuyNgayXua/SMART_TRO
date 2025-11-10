@@ -110,6 +110,64 @@ const MyProperties = () => {
     loadUserPackageInfo(); // Load thông tin gói user
   }, []);
 
+  // Lắng nghe thông báo cập nhật property status real-time
+  useEffect(() => {
+    const handlePropertyStatusChange = async (event) => {
+      const { propertyId, notification } = event.detail;
+      console.log('🔄 Property status change event received:', propertyId, notification);
+      
+      // Cập nhật property cụ thể thay vì reload toàn bộ danh sách
+      await updateSingleProperty(propertyId, notification);
+    };
+
+    // Lắng nghe custom event
+    window.addEventListener('propertyStatusChanged', handlePropertyStatusChange);
+
+    // Cleanup listener khi component unmount
+    return () => {
+      window.removeEventListener('propertyStatusChanged', handlePropertyStatusChange);
+    };
+  }, []);
+
+  // Hàm cập nhật một property cụ thể
+  const updateSingleProperty = async (propertyId, notification) => {
+    try {
+      console.log('🔍 Updating single property:', propertyId);
+      
+      // Gọi API để lấy thông tin mới nhất của property này
+      const response = await myPropertiesAPI.getProperty(propertyId);
+      const updatedProperty = response.data;
+      
+      // Cập nhật property trong danh sách hiện tại
+      setProperties(prevProperties => {
+        return prevProperties.map(property => {
+          if (property._id === propertyId) {
+            console.log('✅ Updated property status from', property.approvalStatus, 'to', updatedProperty.approvalStatus);
+            return { ...property, ...updatedProperty };
+          }
+          return property;
+        });
+      });
+
+      // Cũng cập nhật trong search results nếu có
+      setSearchResults(prevResults => {
+        return prevResults.map(property => {
+          if (property._id === propertyId) {
+            return { ...property, ...updatedProperty };
+          }
+          return property;
+        });
+      });
+
+      console.log('🎉 Property updated successfully without full reload');
+      
+    } catch (error) {
+      console.error('❌ Error updating single property:', error);
+      // Fallback: reload properties nếu cập nhật đơn lẻ thất bại
+      loadProperties();
+    }
+  };
+
   // Kiểm tra URL parameter để mở modal nâng cấp từ file new property
   useEffect(() => {
     const showUpgrade = searchParams.get('showUpgradeModal');

@@ -4,7 +4,6 @@ import reportRepository from '../repositories/reportRepository.js';
 const reportProperty = async (req, res) => {
   console.log('Report Property Request Body:', req.body);
   console.log('Report Property Request Params:', req.params);
-  console.log('Report Property Request User:', req.user);
   try {
     const { propertyId } = req.params;
     const { reason, description, contactEmail, reportedBy, propertyOwner, propertyTitle } = req.body;

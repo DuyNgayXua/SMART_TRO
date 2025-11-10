@@ -289,7 +289,7 @@ const PaymentHistory = () => {
 
     const config = statusConfig[status] || statusConfig.Pending;
     return (
-      <span className={`status-badge ${config.class}`}>
+      <span className={`status-badge-payment-history ${config.class}`}>
         <i className={`fa ${config.icon}`}></i>
         {config.text}
       </span>

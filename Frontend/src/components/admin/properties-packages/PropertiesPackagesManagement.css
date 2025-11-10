@@ -30,7 +30,7 @@
     margin-left: 24px;
 }
 
-.search-box {
+.search-box-properties-packages {
     position: relative;
     display: flex;
     align-items: center;
@@ -65,7 +65,7 @@
     color: #94a3b8;
 }
 
-.clear-search-btn {
+.clear-search-btn-properties-packages {
     position: absolute;
     right: 14px;
     width: 24px;
@@ -82,10 +82,15 @@
     font-size: 12px;
 }
 
-.clear-search-btn:hover {
+.clear-search-btn-properties-packages:hover {
     transform: scale(1.1);
     box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
 }
+.clear-search-btn-properties-packages i {
+    margin-left: 5px;
+    color: red;
+}
+
 
 /* Status Tabs */
 .status-tabs {
@@ -1195,25 +1200,25 @@
     font-size: 14px;
 }
 
-.clear-search-btn {
-    position: absolute;
-    right: 12px;
-    top: 20%;
-    background: none;
-    border: none;
-    color: #6c757d;
-    cursor: pointer;
-    padding: 4px;
-    border-radius: 50%;
+.clear-search-btn-properties-packages {
+   position: absolute;
+    right: 14px;
     width: 24px;
     height: 24px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #fff0f0 0%, #c9c9c9 100%);
+    border: none;
+    color: white;
+    cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
+    font-size: 12px;
+    padding: 0 !important;
 }
 
-.clear-search-btn:hover {
+.clear-search-btn-properties-packages:hover {
     background: #f8f9fa;
     color: #dc3545;
 }

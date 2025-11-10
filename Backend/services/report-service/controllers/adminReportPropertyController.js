@@ -1,6 +1,7 @@
 import adminReportRepository from '../repositories/adminReportPropertyRepository.js';
 import emailService from '../../emailService.js';
 import { validationResult } from 'express-validator';
+import NotificationService from '../../notification-service/notificationService.js';
 
 const adminReportPropertyController = {
   // GET /api/admin/reports - Lấy danh sách báo cáo
@@ -168,6 +169,30 @@ const adminReportPropertyController = {
       // Bỏ qua báo cáo
       const updatedReport = await adminReportRepository.dismissReport(reportId, adminId);
 
+      // Gửi thông báo cho người báo cáo
+      try {
+        // Debug log để kiểm tra userId
+        console.log('Sending notification with userId:', existingReport.reporter);
+        console.log('Full existingReport:', JSON.stringify(existingReport, null, 2));
+        
+        if (!existingReport.reporter) {
+          console.error('reporter is missing from existingReport');
+          throw new Error('reporter field is missing');
+        }
+
+        await NotificationService.notifyReportStatus(
+          existingReport.reporter,     // userId (người báo cáo)
+          reportId,                    // reportId
+          'dismissed',                 // status
+          existingReport.type || 'báo cáo',  // reportType
+          `Tin đăng "${existingReport.propertyTitle || existingReport.property?.title || 'N/A'}" không vi phạm quy định.`, // adminNote
+          existingReport.property?._id || existingReport.property // propertyId
+        );
+        console.log(`Notification sent to user ${existingReport.reporter} for dismissed report ${reportId}`);
+      } catch (notifError) {
+        console.error('Failed to send report dismissal notification:', notifError);
+      }
+
       // Log action (có thể gửi tới logging service)
       console.log(`Admin ${adminId} dismissed report ${reportId} for property ${updatedReport.property?._id}`);
 
@@ -282,6 +307,43 @@ const adminReportPropertyController = {
         });
       }
 
+      // Gửi thông báo cho chủ tin đăng về cảnh báo
+      try {
+        await NotificationService.notifyPropertyStatus(
+          updatedReport.property.owner._id,   // userId (chủ tin đăng)
+          updatedReport.property._id,         // propertyId
+          'warning',                          // status (custom status)
+          updatedReport.property.title,       // propertyTitle
+          `Cảnh báo: ${reason}. Lý do báo cáo: ${existingReport.reason}` // adminNote
+        );
+        console.log(`Warning notification sent to property owner ${updatedReport.property.owner._id}`);
+      } catch (notifError) {
+        console.error('Failed to send warning notification:', notifError);
+      }
+
+      // Gửi thông báo cho người báo cáo
+      try {
+        // Debug log để kiểm tra userId
+        console.log('Sending warning notification with userId:', existingReport.reporter);
+        
+        if (!existingReport.reporter) {
+          console.error('reporter is missing from existingReport in sendWarning');
+          throw new Error('reporter field is missing');
+        }
+
+        await NotificationService.notifyReportStatus(
+          existingReport.reporter,          // userId (người báo cáo)
+          reportId,                         // reportId
+          'warning',                        // status
+          existingReport.type || 'báo cáo', // reportType
+          `Tin đăng "${existingReport.propertyTitle || existingReport.property?.title || 'N/A'}" đã nhận cảnh báo: ${reason}`, // adminNote
+          updatedReport.property?._id || existingReport.property?._id || existingReport.property // propertyId
+        );
+        console.log(`Notification sent to reporter ${existingReport.reporter} for resolved report ${reportId}`);
+      } catch (notifError) {
+        console.error('Failed to send report resolution notification:', notifError);
+      }
+
       // Log action
       console.log(`Admin ${adminId} sent warning for report ${reportId} - Property: ${updatedReport.property?._id}`);
 
@@ -387,6 +449,44 @@ const adminReportPropertyController = {
         console.error('Error sending property hidden email:', emailError);
         // Trả về thông báo nhưng vẫn thành công vì bài đăng đã được ẩn
         console.warn('Bài đăng đã được ẩn nhưng không thể gửi email thông báo');
+      }
+
+      // Gửi thông báo cho chủ tin đăng về việc ẩn bài đăng
+      try {
+        const propertyOwnerId = updatedReport.propertyOwner || existingReport.propertyOwner;
+        await NotificationService.notifyPropertyStatus(
+          propertyOwnerId,                     // userId (chủ tin đăng)
+          existingReport.property._id,         // propertyId
+          'hidden',                            // status (custom status)
+          updatedReport.propertyTitle || existingReport.propertyTitle || 'Bài đăng', // propertyTitle
+          `Tin đăng của bạn đã bị ẩn do vi phạm: ${reason}. Lý do báo cáo: ${existingReport.reason}` // adminNote
+        );
+        console.log(`Hidden property notification sent to owner ${propertyOwnerId}`);
+      } catch (notifError) {
+        console.error('Failed to send property hidden notification:', notifError);
+      }
+
+      // Gửi thông báo cho người báo cáo
+      try {
+        // Debug log để kiểm tra userId
+        console.log('Sending hide notification with userId:', existingReport.reporter);
+        
+        if (!existingReport.reporter) {
+          console.error('reporter is missing from existingReport in hideProperty');
+          throw new Error('reporter field is missing');
+        }
+
+        await NotificationService.notifyReportStatus(
+          existingReport.reporter,           // userId (người báo cáo)
+          reportId,                          // reportId
+          'hidden',                          // status
+          existingReport.type || 'báo cáo',  // reportType
+          `Tin đăng "${existingReport.propertyTitle || existingReport.property?.title || 'N/A'}" đã bị gỡ bỏ do vi phạm: ${reason}`, // adminNote
+          null // propertyId - đặt null vì tin đăng đã bị ẩn, không cần link
+        );
+        console.log(`Notification sent to reporter ${existingReport.reporter} for resolved report ${reportId}`);
+      } catch (notifError) {
+        console.error('Failed to send report resolution notification:', notifError);
       }
 
       // Log action

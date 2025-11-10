@@ -238,6 +238,52 @@ const myPropertiesController = {
     }
   },
 
+  // Lấy thông tin chi tiết một property (cho việc cập nhật real-time)
+  getPropertyForNotification: async (req, res) => {
+    try {
+      const { propertyId } = req.params;
+      const userId = req.user.userId;
+
+      // Validate ObjectId format
+      if (!propertyId || !propertyId.match(/^[0-9a-fA-F]{24}$/)) {
+        return res.status(400).json({
+          success: false,
+          message: 'ID tin đăng không hợp lệ'
+        });
+      }
+
+      const property = await Property.findOne({
+        _id: propertyId,
+        owner: userId,
+        isDeleted: false
+      })
+        .populate('amenities', 'name icon')
+        .populate('packageInfo.plan', 'name displayName type priority color stars')
+        .populate('packageInfo.postType', 'name displayName color priority description stars textStyle')
+        .lean();
+
+      if (!property) {
+        return res.status(404).json({
+          success: false,
+          message: 'Không tìm thấy tin đăng hoặc bạn không có quyền truy cập'
+        });
+      }
+
+      res.json({
+        success: true,
+        data: property
+      });
+
+    } catch (error) {
+      console.error('Error in getProperty:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Lỗi server khi lấy thông tin tin đăng',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  },
+
   // Lấy danh sách tin đăng đã được duyệt và chưa bị xóa của user hiện tại
   getMyApprovedProperties: async (req, res) => {
     try {

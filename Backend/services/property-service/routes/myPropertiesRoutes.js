@@ -77,6 +77,7 @@ router.get('/recommended-packages', authMiddleware, myPropertiesController.getRe
 router.get('/test-package-status', authMiddleware, myPropertiesController.testPackageStatus);
 router.get('/migration-properties', authMiddleware, myPropertiesController.getPropertiesForMigration);
 router.get('/:propertyId/edit', authMiddleware, myPropertiesController.getPropertyForEdit);
+router.get('/notification/:propertyId', authMiddleware, myPropertiesController.getPropertyForNotification);
 
 // PUT update property với upload và AI moderation.
 router.put(

@@ -15,6 +15,8 @@ import Report from './Report.js';
 import Comment from './Comment.js';
 import Invoice from './Invoice.js';
 import PropertyPackage from './PropertiesPackage.js';
+import Notification from './Notification.js';
+
 
 export default {
     User,
@@ -30,7 +32,8 @@ export default {
     Report,
     Comment,
     Invoice,
-    PropertyPackage
+    PropertyPackage,
+    Notification
 };
 
 export {
@@ -47,5 +50,6 @@ export {
     Report,
     Comment,
     Invoice,
-    PropertyPackage
+    PropertyPackage,
+    Notification
 };

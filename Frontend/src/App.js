@@ -3,6 +3,7 @@ import Pages from "./components/pages/Pages"
 import { ThemeProvider } from "./contexts/ThemeContext"
 import { AuthProvider } from "./contexts/AuthContext"
 import { FavoritesProvider } from "./contexts/FavoritesContext"
+import { NotificationProvider } from "./contexts/NotificationContext"
 import { GoogleOAuthProvider } from '@react-oauth/google'
 import ViewTrackingManager from "./components/common/ViewTrackingManager"
 import "./styles/themes.css"
@@ -13,8 +14,10 @@ function App() {
       <ThemeProvider>
         <AuthProvider>
           <FavoritesProvider>
-            <ViewTrackingManager />
-            <Pages />
+            <NotificationProvider>
+              <ViewTrackingManager />
+              <Pages />
+            </NotificationProvider>
           </FavoritesProvider>
         </AuthProvider>
       </ThemeProvider>

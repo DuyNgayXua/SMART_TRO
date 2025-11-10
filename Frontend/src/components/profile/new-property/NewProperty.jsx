@@ -11,7 +11,7 @@ import { postAPI } from '../../../services/propertiesAPI';
 import { locationAPI } from '../../../services/locationAPI';
 import amenitiesAPI from '../../../services/amenitiesAPI';
 import userPackageAPI from '../../../services/userPackageAPI';
-import { processFilesForUpload, validateFile, formatFileSize, createFilePreview } from '../../../utils/fileUtils';
+import { processFilesForUpload, validateFileWithDimensions, formatFileSize, createFilePreview } from '../../../utils/fileUtils';
 import './../ProfilePages.css';
 import './NewProperty.css';
 import './DirectionsPanel.css';
@@ -76,16 +76,14 @@ const NewProperty = () => {
 
 
   // TrackAsia API configuration
-const TRACKASIA_API_KEY = process.env.REACT_APP_TRACKASIA_API_KEY || 'public_key';
-const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
+  const TRACKASIA_API_KEY = process.env.REACT_APP_TRACKASIA_API_KEY || 'public_key';
+  const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
 
-console.log("TrackAsia API Key (frontend):", TRACKASIA_API_KEY);
-console.log("TRACKASIA_BASE_URL:", TRACKASIA_BASE_URL);
 
-const defaultCenter = {
-  lat: 16.056204,
-  lng: 108.168202
-};
+  const defaultCenter = {
+    lat: 16.056204,
+    lng: 108.168202
+  };
 
 
   // Form state
@@ -137,7 +135,7 @@ const defaultCenter = {
   const [rejectedFiles, setRejectedFiles] = useState({ images: [], videos: [] });
   const [showModal, setShowModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+
   // File validation states
   const [fileValidation, setFileValidation] = useState({ images: [], videos: [] });
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
@@ -618,7 +616,7 @@ const defaultCenter = {
     }
 
     setIsProcessingFiles(true);
-    
+
     try {
       // Validate và process files
       const processResult = await processFilesForUpload(files, (progress) => {
@@ -694,11 +692,11 @@ const defaultCenter = {
   // Helper function to add processed images
   const addProcessedImages = (processedFiles, validationResults) => {
     const newValidations = [];
-    
+
     processedFiles.forEach((file, index) => {
       const validation = validationResults[index];
       newValidations.push(createFilePreview(file, validation));
-      
+
       const reader = new FileReader();
       reader.onload = (event) => {
         setFormData(prev => ({
@@ -730,9 +728,9 @@ const defaultCenter = {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Validate video file
-    const validation = validateFile(file);
-    
+    // Validate video file with comprehensive validation
+    const validation = await validateFileWithDimensions(file);
+
     // Hiển thị lỗi nếu có
     if (!validation.isValid) {
       toast.error(validation.errors.join('\n'));
@@ -877,7 +875,7 @@ const defaultCenter = {
     // Priority càng thấp = VIP càng cao = nhiều sao hơn
     const priority = postType?.priority || postType?.packageType?.priority || 10;
     const stars = priority <= 6 ? Math.max(0, Math.min(5, 6 - priority)) : 0;
-    
+
     // Màu sắc theo thứ bậc VIP (dựa trên số sao từ priority)
     const colorMap = {
       5: '#8b0000', // Đỏ đậm - VIP đặc biệt (priority 1)
@@ -887,10 +885,10 @@ const defaultCenter = {
       1: '#27ae60', // Xanh lá - VIP 3 (priority 5)
       0: '#6c757d'  // Xám - Thường (priority 6+)
     };
-    
-    return { 
-      stars: Math.max(0, stars), 
-      color: colorMap[stars] || '#6c757d' 
+
+    return {
+      stars: Math.max(0, stars),
+      color: colorMap[stars] || '#6c757d'
     };
   };
 
@@ -1313,7 +1311,7 @@ const defaultCenter = {
           endMarker = new trackasiagl.Marker({ color: 'red' })
             .setLngLat(coords)
             .addTo(map);
-        
+
         } else {
           // Reset khi click lần 3
           origin = coords;
@@ -1359,7 +1357,7 @@ const defaultCenter = {
       }
     });
 
-   
+
   };
 
   // Hàm lấy vị trí hiện tại và vẽ đường đi
@@ -1410,9 +1408,9 @@ const defaultCenter = {
 
     } catch (error) {
       console.error('Error getting current location:', error);
-      
+
       let errorMessage = 'Không thể lấy vị trí hiện tại. ';
-      
+
       switch (error.code) {
         case error.PERMISSION_DENIED:
           errorMessage += 'Bạn đã từ chối chia sẻ vị trí. Vui lòng cho phép truy cập vị trí trong cài đặt trình duyệt.';
@@ -1445,13 +1443,13 @@ const defaultCenter = {
     console.log("Drawing route from", origin, "to", destination);
     console.log("Map instance:", map);
     if (!map) return;
-    
+
 
     // TrackAsia format: latitude,longitude (khác với MapBox)
     const originStr = `${origin[1]},${origin[0]}`; // lat,lng
     console.log("Origin string (lat,lng):", originStr);
     const destinationStr = `${destination[1]},${destination[0]}`; // lat,lng
-    
+
     const url = `${TRACKASIA_BASE_URL}/route/v2/directions/json?new_admin=true&origin=${originStr}&destination=${destinationStr}&mode=motorcycling&key=${TRACKASIA_API_KEY}`;
     console.log("TrackAsia Directions URL:", url);
     console.log("Origin coordinates (lat,lng):", originStr);
@@ -1461,7 +1459,7 @@ const defaultCenter = {
       const response = await fetch(url);
       console.log("Response status:", response.status);
       console.log("Response headers:", Object.fromEntries(response.headers.entries()));
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error('API Response Error:', errorText);
@@ -1484,33 +1482,33 @@ const defaultCenter = {
 
       if (!Array.isArray(data.routes) || data.routes.length === 0) {
         console.error('No routes found. Full response:', data);
-        
+
         // Kiểm tra có error message từ API không
         if (data.error || data.message) {
           throw new Error(`TrackAsia API: ${data.error || data.message}`);
         }
-        
+
         throw new Error('Không tìm thấy đường đi giữa hai điểm này. Vui lòng thử lại với vị trí khác.');
       }
 
       if (data && data.routes && data.routes.length > 0) {
         const route = data.routes[0];
         console.log("Route object:", route);
-        
+
         // TrackAsia API trả về overview_polyline thay vì geometry
         if (!route.overview_polyline || !route.overview_polyline.points) {
           console.error('No overview_polyline in route:', route);
           throw new Error('Route không có thông tin polyline');
         }
-        
+
         // Decode polyline thành coordinates
         const encodedPolyline = route.overview_polyline.points;
         console.log("Encoded polyline:", encodedPolyline);
-        
+
         // Tạo geometry từ polyline đã decode
         const decodedCoordinates = decodePolyline(encodedPolyline);
         console.log("Decoded coordinates:", decodedCoordinates);
-        
+
         const routeGeometry = {
           type: 'LineString',
           coordinates: decodedCoordinates
@@ -1581,7 +1579,7 @@ const defaultCenter = {
         const currentLocationMarker = new trackasiagl.Marker({ color: 'green' })
           .setLngLat(origin)
           .addTo(map);
-        
+
         currentLocationMarkerRef.current = currentLocationMarker;
 
         // Fit map để hiển thị toàn bộ route
@@ -1598,7 +1596,7 @@ const defaultCenter = {
         // Lấy thông tin từ legs (giống Google Maps)
         const leg = route.legs[0]; // Lấy leg đầu tiên
         console.log("Route leg:", leg);
-        
+
         const routeData = {
           distance: leg.distance.text,
           duration: leg.duration.text,
@@ -1672,7 +1670,7 @@ const defaultCenter = {
   // Function to get maneuver icon
   const getManeuverIcon = (maneuver, instruction = '') => {
     const instructionLower = instruction.toLowerCase();
-    
+
     // Kiểm tra từ khóa trong instruction trước
     if (instructionLower.includes('rẽ trái') || instructionLower.includes('quay trái') || instructionLower.includes('left')) {
       return 'fa-arrow-left';
@@ -1695,7 +1693,7 @@ const defaultCenter = {
     if (instructionLower.includes('đích') || instructionLower.includes('destination') || instructionLower.includes('arrive')) {
       return 'fa-flag-checkered';
     }
-    
+
     // Fallback to maneuver type
     const iconMap = {
       'turn-left': 'fa-arrow-left',
@@ -1716,7 +1714,7 @@ const defaultCenter = {
       'roundabout-left': 'fa-refresh',
       'roundabout-right': 'fa-refresh'
     };
-    
+
     return iconMap[maneuver] || 'fa-arrow-up';
   };
 
@@ -1733,7 +1731,7 @@ const defaultCenter = {
         result |= (b & 0x1f) << shift;
         shift += 5;
       } while (b >= 0x20);
-      
+
       const deltaLat = ((result & 1) ? ~(result >> 1) : (result >> 1));
       lat += deltaLat;
 
@@ -1744,13 +1742,13 @@ const defaultCenter = {
         result |= (b & 0x1f) << shift;
         shift += 5;
       } while (b >= 0x20);
-      
+
       const deltaLng = ((result & 1) ? ~(result >> 1) : (result >> 1));
       lng += deltaLng;
 
       coordinates.push([lng / 1e5, lat / 1e5]); // [longitude, latitude] for MapBox format
     }
-    
+
     return coordinates;
   };
 
@@ -1793,7 +1791,7 @@ const defaultCenter = {
       },
       (error) => {
         let errorMessage = 'Không thể lấy vị trí hiện tại. ';
-        
+
         switch (error.code) {
           case error.PERMISSION_DENIED:
             errorMessage += 'Bạn đã từ chối chia sẻ vị trí.';
@@ -2471,7 +2469,7 @@ const defaultCenter = {
                                 <i className="fa fa-route"></i>
                                 Chỉ đường ({routeInfo.distance}, {routeInfo.duration})
                               </h5>
-                              <button 
+                              <button
                                 className="directions-close-btn"
                                 onClick={clearRoute}
                                 type="button"
@@ -2486,9 +2484,9 @@ const defaultCenter = {
                                     <i className={`fa ${getManeuverIcon(step.maneuver, step.instruction)}`}></i>
                                   </div>
                                   <div className="step-content">
-                                    <div 
+                                    <div
                                       className="step-instruction"
-                                      dangerouslySetInnerHTML={{ 
+                                      dangerouslySetInnerHTML={{
                                         __html: step.instruction || 'Tiếp tục đi thẳng'
                                       }}
                                     />
@@ -2499,7 +2497,7 @@ const defaultCenter = {
                             </div>
                           </div>
                         )}
-                    
+
                       </div>
 
                       <div className="location-buttons">
@@ -2512,7 +2510,7 @@ const defaultCenter = {
                           <i className="fa fa-location-arrow"></i>
                           {gettingLocation ? 'Đang lấy...' : 'Vị trí hiện tại'}
                         </button>
-                        
+
                         {/* <button
                           className="btn location-btn directions-btn"
                           onClick={getDirectionsFromCurrentLocation}
@@ -2552,7 +2550,7 @@ const defaultCenter = {
                   <h4>Hình ảnh và video</h4>
 
                   <div className="form-group">
-                    <label>Hình ảnh (tối đa 5 ảnh) *</label>
+                    <label>Hình ảnh (tối đa 5 ảnh, ≤ 5 MB/ảnh, định dạng: jpeg, jpg, png, webp, gif, heic, svg) *</label>
                     <input
                       type="file"
                       ref={fileInputRef}
@@ -2617,13 +2615,13 @@ const defaultCenter = {
                                     ...prev,
                                     images: prev.images.filter((_, i) => i !== index)
                                   }));
-                                  
+
                                   // Xóa validation info tương ứng
                                   setFileValidation(prev => ({
                                     ...prev,
                                     images: prev.images.filter((_, i) => i !== index)
                                   }));
-                                  
+
                                   // Xóa khỏi danh sách rejected nếu có
                                   if (isRejected) {
                                     setRejectedFiles(prev => {
@@ -2657,13 +2655,12 @@ const defaultCenter = {
                               >
                                 <i className="fa fa-times"></i>
                               </button>
-                              
+
                               {/* File validation info */}
                               {fileValidation.images[index] && (
-                                <div className={`file-validation-info ${
-                                  fileValidation.images[index].validation.errors.length > 0 ? 'has-errors' : 
-                                  fileValidation.images[index].validation.warnings.length > 0 ? 'has-warnings' : ''
-                                }`}>
+                                <div className={`file-validation-info ${fileValidation.images[index].validation.errors.length > 0 ? 'has-errors' :
+                                    fileValidation.images[index].validation.warnings.length > 0 ? 'has-warnings' : ''
+                                  }`}>
                                   <div className="file-validation-detail">
                                     <span>{img.name}</span>
                                     <span className="file-size-info">
@@ -2695,7 +2692,7 @@ const defaultCenter = {
                   </div>
 
                   <div className="form-group">
-                    <label>Video (tùy chọn)</label>
+                    <label>Chọn 1 video, định dạng: mp4, webm, ogg, mov, kích thước tối đa: 50 MB</label>
                     <input
                       type="file"
                       ref={videoInputRef}
@@ -2767,13 +2764,13 @@ const defaultCenter = {
                               ...prev,
                               video: null
                             }));
-                            
+
                             // Xóa validation info
                             setFileValidation(prev => ({
                               ...prev,
                               videos: []
                             }));
-                            
+
                             // Xóa khỏi danh sách rejected nếu có
                             if (isRejected) {
                               setRejectedFiles(prev => {
@@ -2807,27 +2804,8 @@ const defaultCenter = {
                         >
                           <i className="fa fa-times"></i>
                         </button>
-                        
-                        {/* Video validation info */}
-                        {fileValidation.videos.length > 0 && fileValidation.videos[0] && (
-                          <div className={`file-validation-info ${
-                            fileValidation.videos[0].validation.errors.length > 0 ? 'has-errors' : 
-                            fileValidation.videos[0].validation.warnings.length > 0 ? 'has-warnings' : ''
-                          }`}>
-                            <div className="file-validation-detail">
-                              <span>{formData.video.name}</span>
-                              <span className="file-size-info">
-                                <span>{formData.video.formattedSize || formatFileSize(formData.video.size)}</span>
-                              </span>
-                            </div>
-                            {fileValidation.videos[0].validation.warnings.map((warning, wIndex) => (
-                              <div key={wIndex} className="validation-message">
-                                <i className="fa fa-exclamation-triangle"></i>
-                                {warning}
-                              </div>
-                            ))}
-                          </div>
-                        )}
+
+
                       </div>
                     )}
                   </div>

@@ -64,6 +64,12 @@ const ProfileLayout = () => {
       label: t('profile.layout.sidebar.paymentHistory'),
       path: '/profile/payment-history',
       active: location.pathname === '/profile/payment-history'
+    }, {
+      id: 'notifications',
+      icon: 'fa-bell',
+      label: t('profile.layout.sidebar.notifications'),
+      path: '/profile/notifications',
+      active: location.pathname === '/profile/notifications'
     }
   ];
 

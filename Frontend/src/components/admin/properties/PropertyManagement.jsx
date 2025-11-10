@@ -32,7 +32,7 @@ const PropertyManagement = () => {
         try {
             setLoading(true);
 
-            const data = await adminPropertiesAPI.getPropertiesForAdmin(page, status, 10, search);
+            const data = await adminPropertiesAPI.getPropertiesForAdmin(page, status, 12, search);
             console.log('Loaded properties for admin:', data);
 
             if (data.success) {
@@ -312,7 +312,7 @@ const PropertyManagement = () => {
                     <div className="rooms-header">
                         <h1 className="rooms-title">Quản lý tin đăng</h1>
                         <div className="header-search">
-                            <div className="search-box">
+                            <div className="search-box-property-management">
                                 <i className="fas fa-search search-icon"></i>
                                 <input
                                     type="text"
@@ -324,7 +324,7 @@ const PropertyManagement = () => {
                                 />
                                 {searchTerm && (
                                     <button 
-                                        className="clear-search-btn"
+                                        className="clear-search-btn-property-management"
                                         onClick={() => {
                                             setSearchTerm('');
                                             setCurrentPage(1);
@@ -588,9 +588,9 @@ const PropertyManagement = () => {
 
                             {/* Pagination */}
                             {totalPages > 1 && (
-                                <div className="pagination">
+                                <div className="pagination-container">
                                     <button
-                                        className="pagination-btn"
+                                        className="pagination-btn-container"
                                         onClick={() => handlePageChange(currentPage - 1)}
                                         disabled={currentPage === 1}
                                     >
@@ -599,9 +599,9 @@ const PropertyManagement = () => {
                                     </button>
 
                                     <div className="page-numbers">
-                                        {[...Array(Math.min(totalPages, 10))].map((_, index) => {
+                                        {[...Array(Math.min(totalPages, 12))].map((_, index) => {
                                             let pageNum;
-                                            if (totalPages <= 10) {
+                                            if (totalPages <= 12) {
                                                 pageNum = index + 1;
                                             } else {
                                                 const start = Math.max(1, currentPage - 5);
@@ -623,7 +623,7 @@ const PropertyManagement = () => {
                                     </div>
 
                                     <button
-                                        className="pagination-btn"
+                                        className="pagination-btn-container"
                                         onClick={() => handlePageChange(currentPage + 1)}
                                         disabled={currentPage === totalPages}
                                     >
@@ -893,7 +893,7 @@ const PropertyManagement = () => {
                                     </button>
                                 </div>
 
-                                <div className="modal-content">
+                                <div className="modal-content-reject-property-management">
                                     <p><strong>Bài đăng:</strong> {selectedProperty?.title}</p>
                                     <p>Vui lòng nhập lý do từ chối bài đăng:</p>
 

@@ -208,7 +208,7 @@ const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
       // Small delay to ensure DOM is ready
       setTimeout(() => {
         initializeMap();
-      }, 100);
+      }, 1000);
     }
 
     return () => {
@@ -272,6 +272,12 @@ const TRACKASIA_BASE_URL = 'https://maps.track-asia.com';
 
 
   const handleSubmitReport = async () => {
+    // Kiểm tra không cho phép tự báo cáo tin đăng của mình
+    if (user && property.owner && user._id === property.owner._id) {
+      toast.error('Bạn không thể báo cáo tin đăng của chính mình');
+      return;
+    }
+
     // Validation
     if (!reportForm.reason) {
       toast.error('Vui lòng chọn lý do báo cáo');
@@ -1056,9 +1062,12 @@ Xem chi tiết tại: ${window.location.href}`;
                   <button className="share-btn" onClick={handleShare} title="Chia sẻ">
                     <FaShare />
                   </button>
-                  <button className="report-btn" onClick={handleOpenReportModal} title="Báo cáo">
-                    <FaFlag />
-                  </button>
+                  {/* Chỉ hiển thị nút báo cáo nếu không phải chủ sở hữu */}
+                  {!(user && property.owner && user._id === property.owner._id) && (
+                    <button className="report-btn" onClick={handleOpenReportModal} title="Báo cáo">
+                      <FaFlag />
+                    </button>
+                  )}
                 </div>
               </div>
 

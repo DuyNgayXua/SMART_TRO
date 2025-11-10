@@ -19,6 +19,7 @@ const ReportManagement = () => {
     const [actionReason, setActionReason] = useState('');
     const [processingReportId, setProcessingReportId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [openDropdownId, setOpenDropdownId] = useState(null); // Thêm state cho dropdown menu
     const [stats, setStats] = useState({
         total: 0,
         pending: 0,
@@ -31,7 +32,7 @@ const ReportManagement = () => {
         try {
             setLoading(true);
 
-            const data = await adminReportsAPI.getReportsForAdmin(page, status, 10, search);
+            const data = await adminReportsAPI.getReportsForAdmin(page, status, 12, search);
             console.log("Fetched reports data:", data);
 
             if (data.success) {
@@ -113,7 +114,7 @@ const ReportManagement = () => {
                 const actionMessages = {
                     dismiss: 'Báo cáo đã được bỏ qua',
                     warning: 'Đã gửi email cảnh báo tới chủ bài đăng',
-                    hide: 'Bài đăng đã được xóa'
+                    hide: 'Bài đăng đã được ẩn'
                 };
                 toast.success(actionMessages[actionType]);
                 
@@ -179,6 +180,28 @@ const ReportManagement = () => {
     // Handle search input change
     const handleSearchChange = (e) => {
         setSearchTerm(e.target.value);
+    };
+
+    // Toggle dropdown menu
+    const toggleDropdown = (reportId) => {
+        setOpenDropdownId(openDropdownId === reportId ? null : reportId);
+    };
+
+    // Close dropdown when clicking outside
+    const closeDropdown = () => {
+        setOpenDropdownId(null);
+    };
+
+    // Handle menu item click
+    const handleMenuAction = (report, action) => {
+        setSelectedReport(report);
+        setActionType(action);
+        if (action === 'view') {
+            setShowDetailModal(true);
+        } else {
+            setShowActionModal(true);
+        }
+        closeDropdown();
     };
 
     // Format date
@@ -248,6 +271,20 @@ const ReportManagement = () => {
         loadStats();
     }, []);
 
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (!event.target.closest('.dropdown-menu-container')) {
+                setOpenDropdownId(null);
+            }
+        };
+
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
+
     return (
         <div className="dashboard-container">
             <SideBar />
@@ -257,7 +294,7 @@ const ReportManagement = () => {
                     <div className="rooms-header">
                         <h1 className="rooms-title">Quản lý báo cáo bài đăng</h1>
                         <div className="header-search">
-                            <div className="search-box">
+                            <div className="search-box-report-management">
                                 <i className="fas fa-search search-icon"></i>
                                 <input
                                     type="text"
@@ -273,7 +310,7 @@ const ReportManagement = () => {
                                 />
                                 {searchTerm && (
                                     <button
-                                        className="clear-search-btn"
+                                        className="clear-search-btn-report-management"
                                         onClick={() => {
                                             setSearchTerm('');
                                             setCurrentPage(1);
@@ -404,10 +441,10 @@ const ReportManagement = () => {
                                                             ) : (
                                                                 <div className="deleted-property-info">
                                                                     <span className="property-title-report deleted-title">
-                                                                        {report.propertyTitle || 'Bài đăng đã bị xóa'}
+                                                                        {report.propertyTitle || 'Bài đăng đã bị ẩn'}
                                                                     </span>
                                                                     <span className="deleted-badge">
-                                                                        <i className="fa fa-trash"></i> Đã xóa
+                                                                        <i className="fa fa-trash"></i> Đã ẩn
                                                                     </span>
                                                                 </div>
                                                             )}
@@ -471,54 +508,61 @@ const ReportManagement = () => {
                                                     </td>
                                                     <td className="actions-cell">
                                                         <div className="action-buttons-compact">
-                                                            <button
-                                                                className="btn-action view"
-                                                                onClick={() => {
-                                                                    setSelectedReport(report);
-                                                                    setShowDetailModal(true);
-                                                                }}
-                                                                title="Xem chi tiết"
-                                                            >
-                                                                <i className="fa fa-eye"></i>
-                                                            </button>
-
-                                                            {report.status === 'pending' && (
-                                                                <>
-                                                                    <button
-                                                                        className="btn-action dismiss"
-                                                                        onClick={() => {
-                                                                            setSelectedReport(report);
-                                                                            setActionType('dismiss');
-                                                                            setShowActionModal(true);
-                                                                        }}
-                                                                        title="Bỏ qua"
-                                                                    >
-                                                                        <i className="fa fa-ban"></i>
-                                                                    </button>
-                                                                    <button
-                                                                        className="btn-action warning"
-                                                                        onClick={() => {
-                                                                            setSelectedReport(report);
-                                                                            setActionType('warning');
-                                                                            setShowActionModal(true);
-                                                                        }}
-                                                                        title="Gửi cảnh báo"
-                                                                    >
-                                                                        <i className="fa fa-exclamation-triangle"></i>
-                                                                    </button>
-                                                                    <button
-                                                                        className="btn-action hide"
-                                                                        onClick={() => {
-                                                                            setSelectedReport(report);
-                                                                            setActionType('hide');
-                                                                            setShowActionModal(true);
-                                                                        }}
-                                                                        title="Xóa bài đăng"
-                                                                    >
-                                                                        <i className="fa fa-trash"></i>
-                                                                    </button>
-                                                                </>
-                                                            )}
+                                                            <div className="dropdown-menu-container">
+                                                                <button
+                                                                    className="btn-action menu-toggle"
+                                                                    onClick={() => toggleDropdown(report._id)}
+                                                                    title="Thao tác"
+                                                                >
+                                                                    <i className="fa fa-ellipsis-v"></i>
+                                                                </button>
+                                                                
+                                                                {openDropdownId === report._id && (
+                                                                    <div className="dropdown-menu" onClick={(e) => e.stopPropagation()}>
+                                                                        <div className="dropdown-menu-item">
+                                                                            <button
+                                                                                className="menu-item view"
+                                                                                onClick={() => handleMenuAction(report, 'view')}
+                                                                            >
+                                                                                <i className="fa fa-eye"></i>
+                                                                                Xem chi tiết
+                                                                            </button>
+                                                                        </div>
+                                                                        
+                                                                        {report.status === 'pending' && (
+                                                                            <>
+                                                                                <div className="dropdown-menu-item">
+                                                                                    <button
+                                                                                        className="menu-item dismiss"
+                                                                                        onClick={() => handleMenuAction(report, 'dismiss')}
+                                                                                    >
+                                                                                        <i className="fa fa-ban"></i>
+                                                                                        Bỏ qua
+                                                                                    </button>
+                                                                                </div>
+                                                                                <div className="dropdown-menu-item">
+                                                                                    <button
+                                                                                        className="menu-item warning"
+                                                                                        onClick={() => handleMenuAction(report, 'warning')}
+                                                                                    >
+                                                                                        <i className="fa fa-exclamation-triangle"></i>
+                                                                                        Gửi cảnh báo
+                                                                                    </button>
+                                                                                </div>
+                                                                                <div className="dropdown-menu-item">
+                                                                                    <button
+                                                                                        className="menu-item hide"
+                                                                                        onClick={() => handleMenuAction(report, 'hide')}
+                                                                                    >
+                                                                                        <i className="fa fa-eye-slash"></i>
+                                                                                        Ẩn bài đăng
+                                                                                    </button>
+                                                                                </div>
+                                                                            </>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -530,9 +574,9 @@ const ReportManagement = () => {
 
                             {/* Pagination */}
                             {totalPages > 1 && (
-                                <div className="pagination">
+                                <div className="pagination-container">
                                     <button
-                                        className="pagination-btn"
+                                        className="pagination-btn-container"
                                         onClick={() => handlePageChange(currentPage - 1)}
                                         disabled={currentPage === 1}
                                     >
@@ -541,9 +585,9 @@ const ReportManagement = () => {
                                     </button>
 
                                     <div className="page-numbers">
-                                        {[...Array(Math.min(totalPages, 10))].map((_, index) => {
+                                        {[...Array(Math.min(totalPages, 12))].map((_, index) => {
                                             let pageNum;
-                                            if (totalPages <= 10) {
+                                            if (totalPages <= 12) {
                                                 pageNum = index + 1;
                                             } else {
                                                 const start = Math.max(1, currentPage - 5);
@@ -565,7 +609,7 @@ const ReportManagement = () => {
                                     </div>
 
                                     <button
-                                        className="pagination-btn"
+                                        className="pagination-btn-container"
                                         onClick={() => handlePageChange(currentPage + 1)}
                                         disabled={currentPage === totalPages}
                                     >
@@ -625,10 +669,10 @@ const ReportManagement = () => {
                                                 ) : (
                                                     <div className="deleted-property-detail">
                                                         <span className="deleted-title-text">
-                                                            {selectedReport.propertyTitle || 'Bài đăng đã bị xóa'}
+                                                            {selectedReport.propertyTitle || 'Bài đăng đã bị ẩn'}
                                                         </span>
                                                         <span className="deleted-status">
-                                                            <i className="fa fa-trash"></i> Đã bị xóa
+                                                            <i className="fa fa-trash"></i> Đã bị ẩn
                                                         </span>
                                                     </div>
                                                 )}
@@ -695,8 +739,8 @@ const ReportManagement = () => {
                                                     setShowActionModal(true);
                                                 }}
                                             >
-                                                <i className="fa fa-trash"></i>
-                                                Xóa bài đăng
+                                                <i className="fa fa-eye-slash"></i>
+                                                Ẩn bài đăng
                                             </button>
                                         </div>
                                     )}
@@ -713,7 +757,7 @@ const ReportManagement = () => {
                                     <h3 data-action={actionType}>
                                         {actionType === 'dismiss' && 'Bỏ qua báo cáo'}
                                         {actionType === 'warning' && 'Gửi cảnh báo'}
-                                        {actionType === 'hide' && 'Xóa bài đăng'}
+                                        {actionType === 'hide' && 'Ẩn bài đăng'}
                                     </h3>
                                     <button
                                         className="close-btn"
@@ -725,16 +769,16 @@ const ReportManagement = () => {
 
                                 <div className="modal-content-report">
                                     <p><strong>Báo cáo:</strong> {getReasonInVietnamese(selectedReport?.reason)}</p>
-                                    <p><strong>Bài đăng:</strong> {selectedReport?.property?.title || selectedReport?.propertyTitle || 'Bài đăng đã bị xóa'}</p>
+                                    <p><strong>Bài đăng:</strong> {selectedReport?.property?.title || selectedReport?.propertyTitle || 'Bài đăng đã bị ẩn'}</p>
                                     
                                     {actionType !== 'dismiss' && (
                                         <>
-                                            <p>Vui lòng nhập lý do {actionType === 'warning' ? 'gửi cảnh báo' : 'xóa bài đăng'}:</p>
+                                            <p>Vui lòng nhập lý do {actionType === 'warning' ? 'gửi cảnh báo' : 'ẩn bài đăng'}:</p>
                                             <textarea
                                                 className="action-reason-input"
                                                 value={actionReason}
                                                 onChange={(e) => setActionReason(e.target.value)}
-                                                placeholder={actionType === 'warning' ? 'Nhập lý do cảnh báo...' : 'Nhập lý do xóa bài đăng...'}
+                                                placeholder={actionType === 'warning' ? 'Nhập lý do cảnh báo...' : 'Nhập lý do ẩn bài đăng...'}
                                                 rows="4"
                                             />
                                             <div style={{ 
@@ -770,7 +814,7 @@ const ReportManagement = () => {
                                             {actionType === 'hide' && <i className="fa fa-eye-slash"></i>}
                                             {processingReportId ? 'Đang xử lý...' : (
                                                 actionType === 'dismiss' ? 'Bỏ qua' :
-                                                actionType === 'warning' ? 'Gửi cảnh báo' : 'Xóa bài đăng'
+                                                actionType === 'warning' ? 'Gửi cảnh báo' : 'Ẩn bài đăng'
                                             )}
                                         </button>
                                     </div>

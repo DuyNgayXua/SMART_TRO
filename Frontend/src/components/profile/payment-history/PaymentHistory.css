@@ -277,7 +277,7 @@
     font-size: 13px;
 }
 
-.status-badge {
+.status-badge-payment-history {
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -607,7 +607,7 @@
         font-size: 14px;
     }
 
-    .status-badge {
+    .status-badge-payment-history {
         padding: 6px 10px;
         font-size: 11px;
     }

@@ -390,7 +390,7 @@ export const checkVectorCache = async (req, res, next) => {
 
       const cachedResult = await vectorService.findSimilarQuestion(
         req.body.message.trim(),
-        0.95, // Threshold cao - chỉ serve cache khi match rất tốt
+        0.97, // Threshold cao - chỉ serve cache khi match rất tốt
         userMetadata // Truyền metadata để filtering cache
       );
       if (cachedResult) {

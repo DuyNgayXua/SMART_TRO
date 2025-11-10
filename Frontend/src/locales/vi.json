@@ -819,7 +819,7 @@
     }
   },
   "roles": {
-    "tenant": "người ở",
+    "tenant": "Khách thuê",
     "landlord": "Chủ trọ",
     "admin": "Quản trị viên"
   },
@@ -859,7 +859,8 @@
         "paymentHistory": "Lịch sử thanh toán",
         "pricing-analytics": "Phân tích giá thuê",
         "account": "Quản lý tài khoản",
-        "logout": "Đăng xuất"
+        "logout": "Đăng xuất",
+        "notifications": "Thông báo"
       },
       "breadcrumb": {
         "home": "Trang chủ",
@@ -1183,7 +1184,7 @@
     "generalInfo": "Thông tin chung",
     "paymentDetail": "Chi tiết thanh toán",
     "room": "Phòng",
-    "tenant": "người ở",
+    "tenant": "Khách thuê",
     "status": {
       "label": "Trạng thái",
       "all": "Tất cả",

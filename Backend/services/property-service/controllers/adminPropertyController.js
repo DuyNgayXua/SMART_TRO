@@ -1,4 +1,5 @@
 import adminPropertyRepository from '../repositories/adminPropertyRepository.js';
+import NotificationService from '../../notification-service/notificationService.js';
 
 class AdminPropertyController {
   // Lấy danh sách properties cho admin
@@ -70,6 +71,22 @@ class AdminPropertyController {
       // Duyệt property
       const updatedProperty = await adminPropertyRepository.approveProperty(propertyId, adminId);
 
+      // Gửi thông báo cho chủ tin đăng
+      try {
+        const ownerId = property.owner._id || property.owner; // Handle both object and string cases
+        await NotificationService.notifyPropertyStatus(
+          ownerId,                 // userId
+          propertyId,              // propertyId  
+          'approved',              // status
+          property.title,          // propertyTitle
+          'Tin đăng của bạn đã được duyệt và sẽ hiển thị công khai' // adminNote
+        );
+        console.log(`Notification sent to user ${ownerId} for approved property ${propertyId}`);
+      } catch (notifError) {
+        console.error('Failed to send approval notification:', notifError);
+        // Don't fail the main operation if notification fails
+      }
+
       // Log hoạt động
       console.log(`Property ${propertyId} approved by admin ${adminId} at ${new Date()}`);
 
@@ -126,6 +143,22 @@ class AdminPropertyController {
         adminId, 
         reason.trim()
       );
+
+      // Gửi thông báo cho chủ tin đăng
+      try {
+        const ownerId = property.owner._id || property.owner; // Handle both object and string cases
+        await NotificationService.notifyPropertyStatus(
+          ownerId,                 // userId
+          propertyId,              // propertyId
+          'rejected',              // status  
+          property.title,          // propertyTitle
+          reason.trim()            // adminNote (lý do từ chối)
+        );
+        console.log(`Notification sent to user ${ownerId} for rejected property ${propertyId}`);
+      } catch (notifError) {
+        console.error('Failed to send rejection notification:', notifError);
+        // Don't fail the main operation if notification fails
+      }
 
       // Log hoạt động
       console.log(`Property ${propertyId} rejected by admin ${adminId} at ${new Date()}: ${reason}`);

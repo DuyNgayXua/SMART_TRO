@@ -153,7 +153,7 @@ const UsersManagement = () => {
                     <div className="rooms-header">
                         <h1 className="rooms-title">Quản lý người dùng</h1>
                         <div className="header-search">
-                            <div className="search-box">
+                            <div className="search-box-user-management">
                                 <i className="fas fa-search search-icon"></i>
                                 <input
                                     type="text"
@@ -169,7 +169,7 @@ const UsersManagement = () => {
                                 />
                                 {searchTerm && (
                                     <button
-                                        className="clear-search-btn"
+                                        className="clear-search-btn-user-management"
                                         onClick={() => {
                                             setSearchTerm('');
                                             setCurrentPage(1);

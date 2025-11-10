@@ -383,7 +383,7 @@ const PropertiesPackagesManagement = () => {
           <div className="rooms-header">
             <h1 className="rooms-title">Quản lý loại tin</h1>
             <div className="header-search">
-              <div className="search-box">
+              <div className="search-box-properties-packages">
                 <i className="fas fa-search search-icon"></i>
                 <input
                   type="text"
@@ -395,7 +395,7 @@ const PropertiesPackagesManagement = () => {
                 />
                 {searchTerm && (
                   <button
-                    className="clear-search-btn"
+                    className="clear-search-btn-properties-packages"
                     onClick={handleClearSearch}
                   >
                     <i className="fas fa-times"></i>

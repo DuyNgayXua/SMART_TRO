@@ -30,6 +30,7 @@ import MyPosts from "../profile/my-properties/MyProperties.jsx"
 import Favorites from "../profile/favorites/Favorites"
 import PaymentHistory from "../profile/payment-history/PaymentHistory"
 import RentalPriceAnalytics from "../profile/rentalpriceanalytics/RentalPriceAnalytics.jsx"
+import NotificationPage from "../notifications/NotificationPage/NotificationPage"
 import PropertiesListing from "../properties/PropertiesListing"
 import PropertyDetail from "../properties/PropertyDetail"
 import ReportProperties from "../admin/report-properties/ReportManagement"
@@ -167,8 +168,10 @@ const Pages = () => {
             <Route path='favorites' element={<Favorites />} />
             <Route path='payment-history' element={<PaymentHistory />} />
             <Route path='pricing-analytics' element={<RentalPriceAnalytics />} />
+            <Route path='notifications' element={<NotificationPage />} />
             <Route path='properties-package' element={<PropertiesPackage />} />
             <Route path='payment' element={<Payment />} />
+             
             <Route index element={<AccountManagement />} />
           </Route>
 

@@ -1,5 +1,5 @@
 import TrialRequest from '../schemas/TrialRequest.js';
-import { sendEmail } from './emailService.js';
+import { sendEmail } from '../services/emailService.js';
 
 // Tạo yêu cầu dùng thử mới
 export const createTrialRequest = async (req, res) => {

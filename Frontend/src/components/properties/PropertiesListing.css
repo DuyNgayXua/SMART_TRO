@@ -1646,7 +1646,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   backdrop-filter: blur(10px);
   background-color: white;
 }

@@ -62,11 +62,11 @@ header h4 {
 }
 
 /* Favorites link styling */
-.favorites-link {
-  text-decoration: none;
-  color: inherit;
-  transition: all 0.3s ease;
-  color: black;
+.favorites-link h4 {
+  display: flex;
+  align-items: center;
+  gap: 6px; /* tạo khoảng cách đều giữa icon và chữ */
+  margin: 0;
 }
 
 .favorites-link:hover {
@@ -80,6 +80,30 @@ header h4 {
 
 .favorites-link:hover h4 {
   color: #27ae60;
+}
+
+/* Heart icon styling */
+.heart-icon-header {
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+.heart-icon-header.filled {
+  color: #e74c3c; /* Màu đỏ cho tim đầy */
+}
+
+.heart-icon-header.empty {
+  color: #e74c3c; /* Màu xám cho tim rỗng */
+}
+
+.favorites-link:hover .heart-icon-header.filled {
+  color: #c0392b; /* Màu đỏ đậm hơn khi hover */
+  transform: scale(1.1);
+}
+
+.favorites-link:hover .heart-icon.empty {
+  color: #e74c3c; /* Chuyển thành màu đỏ khi hover */
+  transform: scale(1.1);
 }
 header .language-switcher {
   display: flex;
@@ -400,4 +424,200 @@ header .toggle {
 
 .btn-confirm:hover {
   background-color: #c82333;
+}
+
+/* Notification Bell Styles */
+.user-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.notification-bell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Nút chuông */
+.notification-btn {
+  position: relative;
+  background: #ffffff;
+  border: 1px solid #27ae60;
+  border-radius: 50%;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #27ae60;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+  transition: all 0.25s ease;
+  padding: 0 !important;
+}
+
+.notification-btn i {
+  font-size: 18px;
+  transition: transform 0.25s ease;
+  margin-left: 5px;
+}
+
+/* Temporary bell animation when new notification arrives */
+.bell-animate {
+  animation: bellShake 1.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes bellShake {
+  0% { transform: rotate(0) translateY(0); }
+  10% { transform: rotate(-20deg) translateY(-1px); }
+  20% { transform: rotate(15deg) translateY(0); }
+  30% { transform: rotate(-10deg) translateY(0); }
+  40% { transform: rotate(8deg) translateY(0); }
+  50% { transform: rotate(-6deg) translateY(0); }
+  60% { transform: rotate(4deg) translateY(0); }
+  70% { transform: rotate(-2deg) translateY(0); }
+  100% { transform: rotate(0) translateY(0); }
+}
+
+/* Hiệu ứng hover */
+.notification-btn:hover {
+  background: #f1f5f9;
+  color: #334155;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+
+/* Khi hover rung nhẹ */
+.notification-btn:hover i {
+  animation: ring 0.4s ease-in-out;
+}
+
+
+/* Animation rung chuông */
+@keyframes ring {
+  0% { transform: rotate(0); }
+  20% { transform: rotate(-15deg); }
+  40% { transform: rotate(10deg); }
+  60% { transform: rotate(-10deg); }
+  80% { transform: rotate(5deg); }
+  100% { transform: rotate(0); }
+}
+
+/* WebSocket Status Indicator */
+.ws-status {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1px solid white;
+}
+
+.ws-status.connected {
+  background-color: #10b981; /* Green for connected */
+  animation: pulse-green 2s infinite;
+}
+
+.ws-status.disconnected {
+  background-color: #ef4444; /* Red for disconnected */
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+
+@keyframes pulse-red {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* Animation nhịp đập cho chấm đỏ */
+@keyframes pulse {
+  0% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6);
+  }
+  70% {
+    transform: scale(1);
+    box-shadow: 0 0 0 6px rgba(239, 68, 68, 0);
+  }
+  100% {
+    transform: scale(0.9);
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+.notification-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  background: #ef4444 !important;
+  color: white;
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 2px 6px;
+  min-width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .user-section {
+    gap: 10px;
+  }
+  
+  .notification-btn {
+    width: 36px;
+    height: 36px;
+  }
+  
+  .notification-btn i {
+    font-size: 14px;
+  }
+  
+  .notification-badge {
+    font-size: 10px;
+    min-width: 16px;
+    height: 16px;
+    padding: 1px 4px;
+  }
 }

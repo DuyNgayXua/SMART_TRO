@@ -15,7 +15,8 @@ import {
   BarChart,
   Bar,
   Area,
-  AreaChart
+  AreaChart,
+  LabelList  
 } from 'recharts';
 import axios from 'axios';
 import { toast } from 'react-toastify';
@@ -28,6 +29,23 @@ import './RentalPriceAnalytics.css';
 const RentalPriceAnalytics = () => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
+
+  // Custom label component for bar chart
+  const CustomBarLabel = (props) => {
+    const { x, y, width, height, value } = props;
+    return (
+      <text
+        x={x + width + 5}  // nằm ngoài thanh, hoặc x + width/2 để nằm giữa
+        y={y + height / 2 + 4} // căn giữa theo chiều cao
+        fill="#333"
+        fontSize={12}
+        textAnchor="start" // căn bên trái
+      >
+        {value}%
+      </text>
+    );
+  };
+
 
   // Updated to match new schema: only province and ward (no district)
   const [selectedProvince, setSelectedProvince] = useState('');
@@ -65,7 +83,7 @@ const RentalPriceAnalytics = () => {
 
   // Amenities data state
   const [amenities, setAmenities] = useState([]);
-  
+
   // Amenities modal state
   const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
   const [selectedAmenities, setSelectedAmenities] = useState([]);
@@ -74,13 +92,6 @@ const RentalPriceAnalytics = () => {
   // Chart animation state
   const [isChartLoading, setIsChartLoading] = useState(false);
 
-  // Chart animation styles function
-  const getChartAnimationStyle = () => ({
-    position: 'relative',
-    transition: 'opacity 0.3s ease-in-out, transform 0.3s ease-in-out',
-    opacity: isChartLoading ? 0.3 : 1,
-    transform: isChartLoading ? 'translateY(10px)' : 'translateY(0px)'
-  });
 
   // Typing effect placeholders
   const placeholderTexts = [
@@ -348,7 +359,7 @@ const RentalPriceAnalytics = () => {
           }
 
           return {
-            month: `T${item.month}`, // Convert "1/2025" to "T1/2025"
+            month: `${item.month}`, // Convert "1/2025" to "T1/2025"
             price: item.avgPrice,
             count: item.count,
             change: parseFloat(change.toFixed(1))
@@ -391,7 +402,7 @@ const RentalPriceAnalytics = () => {
       if (response.success) {
         setSentimentData(response.data.sentiment);
         setNewsData(response.data.news);
-        
+
         // Hiển thị toast thành công
         toast.success(`Tìm thấy ${response.data.totalResults || response.data.news?.length || 0} tin tức về "${keyword}"`, {
           position: "top-right",
@@ -434,8 +445,8 @@ const RentalPriceAnalytics = () => {
       }
     } catch (error) {
       console.error('Error loading news analysis:', error);
-     
-      
+
+
       // Xử lý error 400 - từ khóa không hợp lệ
       if (error.response && error.response.status === 400) {
         const errorMessage = error.response.data?.message || 'Từ khóa tìm kiếm không hợp lệ cho chủ đề thuê trọ.';
@@ -447,13 +458,13 @@ const RentalPriceAnalytics = () => {
           pauseOnHover: true,
           draggable: true
         });
-        
+
         // Không hiển thị mock data khi từ khóa không hợp lệ
         setNewsData([]);
         setSentimentData([]);
         return;
       }
-      
+
       // Hiển thị toast cho các lỗi khác
       toast.error('Có lỗi xảy ra khi tải tin tức. Đang hiển thị dữ liệu mẫu.', {
         position: "top-right",
@@ -463,7 +474,7 @@ const RentalPriceAnalytics = () => {
         pauseOnHover: true,
         draggable: true
       });
-      
+
       // Use mock data as fallback for other errors
       const mockSentiment = [
         { name: 'Tích cực', value: 45, color: '#10B981' },
@@ -661,6 +672,9 @@ const RentalPriceAnalytics = () => {
     setNewsKeyword('');
   };
 
+
+
+
   if (loading) {
     return (
       <div className="analytics-loading">
@@ -762,8 +776,8 @@ const RentalPriceAnalytics = () => {
               className="amenities-selector-btn"
               onClick={handleOpenAmenitiesModal}
             >
-              
-              {selectedAmenities.length > 0 
+
+              {selectedAmenities.length > 0
                 ? `Đã chọn ${selectedAmenities.length} tiện ích`
                 : 'Chọn tiện ích'
               }
@@ -915,7 +929,7 @@ const RentalPriceAnalytics = () => {
               Khoảng giá thuê phổ biến
             </h3>
           </div>
-          <div className={`chart-container ${isChartLoading ? 'chart-loading' : 'chart-loaded'}`} style={getChartAnimationStyle()}>
+          <div className={`chart-container ${isChartLoading ? 'chart-loading' : 'chart-loaded'}`}>
             {isChartLoading && (
               <div style={{
                 position: 'absolute',
@@ -933,7 +947,7 @@ const RentalPriceAnalytics = () => {
               <BarChart
                 data={priceRangeData}
                 layout="vertical" // đổi thành vertical để thanh nằm ngang (đúng như hình bạn mong muốn)
-                margin={{ top: 20, right: 40, left: 5, bottom: 20 }}
+                margin={{ top: 20, right: 60, left: 5, bottom: 20 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
@@ -974,14 +988,13 @@ const RentalPriceAnalytics = () => {
                   dataKey="percentage"
                   name="Tỷ lệ"
                   radius={[0, 4, 4, 0]}
-                  barSize={18}
-                  label={{
-                    position: 'right',
-                    formatter: (value) => `${value}%`,
-                    fill: '#4B5563',
-                    fontSize: 14,
-                  }}
+                  barSize={20}
                 >
+                  <LabelList
+                    dataKey="percentage"
+                    position="right" // nằm bên phải thanh
+                    formatter={(value) => `${value}%`} // thêm % cho label
+                  />
                   {priceRangeData.map((entry, index) => (
                     <Cell
                       key={`cell-${index}`}
@@ -991,35 +1004,7 @@ const RentalPriceAnalytics = () => {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
-            {/* Range Indicators */}
-            <div className="range-indicators">
-              {Array.isArray(priceRangeData) && priceRangeData.map((item, index) => (
-                <div key={index} className="range-indicator">
-                  <div
-                    className="range-color"
-                    style={{
-                      backgroundColor: `hsl(${140 + index * 8}, 70%, ${55 - index * 4}%)`
-                    }}
-                  ></div>
-                  <div className="range-info">
-                    <span className="range-label">{item.range}</span>
-                    <div className="range-stats">
-                      <span className="range-count">{item.count || 0} tin</span>
-                      <span className="range-percentage">{item.percentage || 0}%</span>
-                    </div>
-                  </div>
-                  <div className="range-bar">
-                    <div
-                      className="range-fill"
-                      style={{
-                        width: `${item.percentage || 0}%`,
-                        backgroundColor: `hsl(${140 + index * 8}, 70%, ${55 - index * 4}%)`
-                      }}
-                    ></div>
-                  </div>
-                </div>
-              ))}
-            </div>
+
           </div>
         </div>
         {/* Price Trend Chart */}
@@ -1030,7 +1015,7 @@ const RentalPriceAnalytics = () => {
               Xu hướng giá thuê theo thời gian ({timePeriods.find(p => p.value === timePeriod)?.label || '3 tháng'})
             </h3>
           </div>
-          <div className={`chart-container ${isChartLoading ? 'chart-loading' : 'chart-loaded'}`} style={getChartAnimationStyle()}>
+          <div className={`chart-container ${isChartLoading ? 'chart-loading' : 'chart-loaded'}`} >
             {isChartLoading && (
               <div style={{
                 position: 'absolute',
@@ -1097,7 +1082,7 @@ const RentalPriceAnalytics = () => {
         <div className="section-header-rental">
           <h3>
             <i className="fa fa-newspaper"></i>
-            Tin tức về "{newsKeyword}"
+            Tin tức {newsKeyword}
           </h3>
 
         </div>
@@ -1138,12 +1123,12 @@ const RentalPriceAnalytics = () => {
 
       {/* Amenities Modal */}
       {showAmenitiesModal && (
-        <div 
-          className="modal-overlay-analytics" 
+        <div
+          className="modal-overlay-analytics"
           onClick={handleCloseAmenitiesModal}
         >
-          <div 
-            className="amenities-modal-analytics" 
+          <div
+            className="amenities-modal-analytics"
             onClick={e => e.stopPropagation()}
           >
             <div className="modal-header-analytics">
@@ -1151,7 +1136,7 @@ const RentalPriceAnalytics = () => {
                 <i className="fa fa-star"></i>
                 Chọn tiện ích
               </h3>
-              <button 
+              <button
                 className="close-btn-analytics"
                 onClick={handleCancelAmenities}
                 title="Đóng"
@@ -1159,14 +1144,14 @@ const RentalPriceAnalytics = () => {
                 <i className="fa fa-times"></i>
               </button>
             </div>
-            
+
             <div className="modal-body-analytics">
               <div className="amenities-grid-analytics">
                 {amenities.map(amenity => {
                   const isSelected = tempSelectedAmenities.includes(amenity.value);
                   return (
-                    <label 
-                      key={amenity.value} 
+                    <label
+                      key={amenity.value}
                       className={`amenity-checkbox-analytics ${isSelected ? 'checked' : ''}`}
                     >
                       <input
@@ -1187,16 +1172,16 @@ const RentalPriceAnalytics = () => {
                 })}
               </div>
             </div>
-            
+
             <div className="modal-footer-analytics">
-              <button 
+              <button
                 className="btn btn-outline-analytics"
                 onClick={handleCancelAmenities}
               >
                 <i className="fa fa-times"></i>
                 Hủy
               </button>
-              <button 
+              <button
                 className="btn btn-primary-analytics"
                 onClick={handleApplyAmenities}
               >

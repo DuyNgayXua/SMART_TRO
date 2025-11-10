@@ -834,7 +834,8 @@
         "paymentHistory": "Payment History",
         "pricing-analytics": "Pricing Analytics",
         "account": "Account Management",
-        "logout": "Logout"
+        "logout": "Logout",
+        "notifications": "Notifications"
       },
       "breadcrumb": {
         "home": "Home",

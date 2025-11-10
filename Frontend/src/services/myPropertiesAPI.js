@@ -89,6 +89,17 @@ export const myPropertiesAPI = {
     }
   },
 
+  // Lấy thông tin chi tiết một property (cho việc cập nhật real-time)
+  getProperty: async (propertyId) => {
+    try {
+      const response = await api.get(`/my-properties/notification/${propertyId}`);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching property details:', error);
+      throw error;
+    }
+  },
+
   // Cập nhật tin đăng
   updateProperty: async (propertyId, formData) => {
     try {

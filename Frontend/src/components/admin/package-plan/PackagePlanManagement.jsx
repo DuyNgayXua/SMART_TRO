@@ -537,7 +537,7 @@ const PackagePlanManagement = () => {
                     <div className="rooms-header">
                         <h1 className="rooms-title">Quản lý gói tin đăng</h1>
                         <div className="header-search">
-                            <div className="search-box">
+                            <div className="search-box-properties-packages-plan">
                                 <i className="fas fa-search search-icon"></i>
                                 <input
                                     type="text"
@@ -549,7 +549,7 @@ const PackagePlanManagement = () => {
                                 />
                                 {searchTerm && (
                                     <button
-                                        className="clear-search-btn"
+                                        className="clear-search-btn-properties-packages-plan"
                                         onClick={() => {
                                             setSearchTerm('');
                                             setIsSearched(false);

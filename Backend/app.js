@@ -10,6 +10,8 @@ import serviceRoutes from './services/index.js';
 import EmbeddingMigration from './services/chatbot-service/scripts/migrateChatbotEmbeddings.js';
 import { initPaymentServices, stopPaymentServices } from './services/payment-service/init.js';
 import { initPackageExpiryCron } from './services/packageExpiryService.js';
+import notificationWSServer from './services/notification-service/websocket/notificationWebSocket.js';
+import { createServer } from 'http';
 
 
 // Load environment variables
@@ -208,17 +210,26 @@ async function startServer() {
         console.log('\nInitializing package expiry cron jobs...');
         initPackageExpiryCron();
 
+        // Create HTTP server
+        const server = createServer(app);
+        
+        // Initialize WebSocket server
+        console.log('\nInitializing WebSocket notification server...');
+        notificationWSServer.initialize(server);
+        
         // Start server
-        app.listen(PORT, () => {
+        server.listen(PORT, () => {
             console.log(`\n🚀 Server running on port ${PORT}`);
             console.log(`📊 Health check: http://localhost:${PORT}/health`);
             console.log(`📋 API status: http://localhost:${PORT}/api/status`);
             console.log(`🗄️  Database info: http://localhost:${PORT}/api/database/info`);
             console.log(`📚 API documentation: http://localhost:${PORT}/api`);
+            console.log(`🔔 WebSocket notifications: ws://localhost:${PORT}/notifications`);
             console.log(`\n🔗 API Endpoints:`);
             console.log(`   👤 Users: http://localhost:${PORT}/api/users`);
             console.log(`   🏠 Properties: http://localhost:${PORT}/api/properties`);
             console.log(`   🚪 Rooms: http://localhost:${PORT}/api/rooms`);
+            console.log(`   🔔 Notifications: http://localhost:${PORT}/api/notifications`);
             console.log(`\n💡 Ready to handle requests!`);
         });
         
@@ -232,6 +243,7 @@ async function startServer() {
 process.on('SIGTERM', async () => {
     console.log('\nReceived SIGTERM, shutting down gracefully...');
     stopPaymentServices();
+    notificationWSServer.close();
     await Database.disconnect();
     process.exit(0);
 });
@@ -239,6 +251,7 @@ process.on('SIGTERM', async () => {
 process.on('SIGINT', async () => {
     console.log('\nReceived SIGINT, shutting down gracefully...');
     stopPaymentServices();
+    notificationWSServer.close();
     await Database.disconnect();
     process.exit(0);
 });

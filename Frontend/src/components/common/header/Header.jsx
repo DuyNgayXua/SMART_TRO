@@ -5,16 +5,52 @@ import { Link, useNavigate } from "react-router-dom"
 import { useTranslation } from 'react-i18next'
 import { useAuth } from "../../../contexts/AuthContext"
 import { useFavorites } from "../../../contexts/FavoritesContext"
+import { useNotifications } from "../../../contexts/NotificationContext"
 import { toast } from 'react-toastify'
+import { FaHeart, FaRegHeart } from "react-icons/fa";
+import NotificationDropdown from "../../notifications/NotificationDropdown/NotificationDropdown"
+
 
 const Header = () => {
   const [navList, setNavList] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [showLogoutModal, setShowLogoutModal] = useState(false)
+  const [notificationDropdownOpen, setNotificationDropdownOpen] = useState(false)
   const { t, i18n } = useTranslation()
   const { user, logout, loading } = useAuth()
   const { favoritesCount } = useFavorites()
+  const { unreadCount, reconnectWebSocket, refreshNotifications, wsConnection, testNotification, notifications } = useNotifications()
   const navigate = useNavigate()
+  const [bellAnimating, setBellAnimating] = useState(false)
+
+  // Debug: Track unreadCount changes
+  useEffect(() => {
+    console.log('🔔 Header: unreadCount changed to:', unreadCount, 'Current page:', window.location.pathname);
+    console.log('🔔 Header: Full context value:', { unreadCount, wsConnection, notificationsLength: notifications?.length });
+  }, [unreadCount, wsConnection, notifications]);
+
+  // Debug: Track WebSocket connection changes
+  useEffect(() => {
+    console.log('🔌 Header: WebSocket connection status:', wsConnection, 'Current page:', window.location.pathname);
+  }, [wsConnection]);
+
+  // Animate bell when unreadCount increases
+  useEffect(() => {
+    if (unreadCount > 0) {
+      console.log('🔔 Header: triggering bell animation for new notification');
+      setBellAnimating(true);
+      const t = setTimeout(() => setBellAnimating(false), 1400); // match CSS animation duration
+      return () => clearTimeout(t);
+    }
+  }, [unreadCount]);
+
+  // Force component re-render when notifications change (debugging)
+  const [, forceUpdate] = useState({});
+  useEffect(() => {
+    console.log('Header: Force updating component due to notification changes');
+    forceUpdate({});
+  }, [notifications, unreadCount]);
+
 
   // Helper function để xử lý URL avatar Google
   const getAvatarUrl = (avatar) => {
@@ -38,13 +74,16 @@ const Header = () => {
       if (userMenuOpen && !event.target.closest('.user-profile')) {
         setUserMenuOpen(false)
       }
+      if (notificationDropdownOpen && !event.target.closest('.notification-bell')) {
+        setNotificationDropdownOpen(false)
+      }
     }
 
     document.addEventListener('mousedown', handleClickOutside)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [userMenuOpen])
+  }, [userMenuOpen, notificationDropdownOpen])
 
   const handleLogout = () => {
     // Hiển thị modal xác nhận
@@ -55,10 +94,10 @@ const Header = () => {
   const confirmLogout = () => {
     // Hiển thị toast đăng xuất thành công
     toast.success('Đăng xuất thành công!');
-    
+
     // Đóng modal
     setShowLogoutModal(false);
-    
+
     // Delay logout và chuyển trang
     setTimeout(() => {
       logout();
@@ -89,17 +128,18 @@ const Header = () => {
           <div className='button flex'>
             <Link to="/profile/favorites" className="favorites-link">
               <h4>
-                <span>{favoritesCount || 0}</span> {t('header.myList')}
+                {favoritesCount > 0 ? <FaHeart className="heart-icon-header filled" /> : <FaRegHeart className="heart-icon-header empty" />}
+                {t('header.myList')}
               </h4>
             </Link>
             <div className="language-switcher">
-              <button 
+              <button
                 className={`lang-btn ${i18n.language === 'vi' ? 'active' : ''}`}
                 onClick={() => changeLanguage('vi')}
               >
                 VI
               </button>
-              <button 
+              <button
                 className={`lang-btn ${i18n.language === 'en' ? 'active' : ''}`}
                 onClick={() => changeLanguage('en')}
               >
@@ -112,75 +152,95 @@ const Header = () => {
                 <div className="loading-auth">...</div>
               ) : user ? (
                 // Hiển thị thông tin user khi đã đăng nhập
-                <div className="user-profile" onClick={() => setUserMenuOpen(!userMenuOpen)}>
-                  <div className="user-info">
-                    <img 
-                      src={getAvatarUrl(user.avatar)}
-                      alt="Avatar" 
-                      className="user-avatar"
-                      crossOrigin="anonymous"
-                      referrerPolicy="no-referrer"
-                      onError={(e) => {
-                        console.log('Header avatar load error:', e.target.src);
-                        e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
-                      }}
-                    />
-                    <span className="user-name">{user.fullName}</span>
-                    <i className={`fa fa-chevron-${userMenuOpen ? 'up' : 'down'}`}></i>
-                  </div>
-                  {userMenuOpen && (
-                    <div className="user-dropdown">
-                      <div className="user-dropdown-header">
-                        <img 
-                          src={getAvatarUrl(user.avatar)}
-                          alt="Avatar" 
-                          className="dropdown-avatar"
-                          crossOrigin="anonymous"
-                          referrerPolicy="no-referrer"
-                          onError={(e) => {
-                            console.log('Dropdown avatar load error:', e.target.src);
-                            e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
-                          }}
-                        />
-                        <div className="dropdown-user-info">
-                          <p className="dropdown-name">{user.fullName}</p>
-                          <p className="dropdown-email">{user.email}</p>
-                          {user.phone ? (
-                            <p className="dropdown-phone">SĐT: {user.phone}</p>
-                          ) : user.googleId ? (
-                            <p className="dropdown-phone">Tài khoản Google</p>
-                          ) : (
-                            <p className="dropdown-phone">Chưa có SĐT</p>
-                          )}
-                          <span className="dropdown-role">{t(`roles.${user.role}`)}</span>
-                        </div>
-                      </div>
-                      <hr />
-                      <Link to="/profile/new-post" onClick={() => setUserMenuOpen(false)}>
-                        <i className="fa fa-plus-circle"></i> {t('header.properties')}
-                      </Link>
-
-                      <Link to="/profile/favorites" onClick={() => setUserMenuOpen(false)}>
-                        <i className="fa fa-heart"></i> {t('header.myList')} ({favoritesCount || 0})
-                      </Link>
-
-                       <Link to="/profile/account" onClick={() => setUserMenuOpen(false)}>
-                        <i className="fa fa-user"></i> {t('header.profile')}
-                      </Link>
-                      <Link to="/settings" onClick={() => setUserMenuOpen(false)}>
-                        <i className="fa fa-cog"></i> {t('header.settings')}
-                      </Link>
-                      {user.role === 'admin' && (
-                        <Link to="/admin/dashboard" onClick={() => setUserMenuOpen(false)}>
-                          <i className="fa fa-dashboard"></i> {t('header.admin')}
-                        </Link>
+                <div className="user-section">
+                  {/* Notification Bell */}
+                  <div className="notification-bell" onClick={() => setNotificationDropdownOpen(!notificationDropdownOpen)}>
+                    <button className="notification-btn">
+                      <i className={`fa fa-bell ${bellAnimating ? 'bell-animate' : ''}`}></i>
+                      {unreadCount > 0 && (
+                        <span className="notification-badge">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
                       )}
-                      <hr />
-                      <button className="logout-btn" onClick={handleLogout}>
-                        <i className="fa fa-sign-out"></i> {t('header.logout')}
-                      </button>
+                
+                   
+                    </button>
+                    <NotificationDropdown
+                      isOpen={notificationDropdownOpen}
+                      onClose={() => setNotificationDropdownOpen(false)}
+                    />
+                  </div>
+
+                  <div className="user-profile" onClick={() => setUserMenuOpen(!userMenuOpen)}>
+                    <div className="user-info">
+                      <img
+                        src={getAvatarUrl(user.avatar)}
+                        alt="Avatar"
+                        className="user-avatar"
+                        crossOrigin="anonymous"
+                        referrerPolicy="no-referrer"
+                        onError={(e) => {
+                          console.log('Header avatar load error:', e.target.src);
+                          e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                        }}
+                      />
+                      <span className="user-name">{user.fullName}</span>
+                      <i className={`fa fa-chevron-${userMenuOpen ? 'up' : 'down'}`}></i>
                     </div>
-                  )}
+                    {userMenuOpen && (
+                      <div className="user-dropdown">
+                        <div className="user-dropdown-header">
+                          <img
+                            src={getAvatarUrl(user.avatar)}
+                            alt="Avatar"
+                            className="dropdown-avatar"
+                            crossOrigin="anonymous"
+                            referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              console.log('Dropdown avatar load error:', e.target.src);
+                              e.target.src = 'https://res.cloudinary.com/dapvuniyx/image/upload/v1755712519/avatar_gj5yhw.jpg';
+                            }}
+                          />
+                          <div className="dropdown-user-info">
+                            <p className="dropdown-name">{user.fullName}</p>
+                            <p className="dropdown-email">{user.email}</p>
+                            {user.phone ? (
+                              <p className="dropdown-phone">SĐT: {user.phone}</p>
+                            ) : user.googleId ? (
+                              <p className="dropdown-phone">Tài khoản Google</p>
+                            ) : (
+                              <p className="dropdown-phone">Chưa có SĐT</p>
+                            )}
+                            <span className="dropdown-role">{t(`roles.${user.role}`)}</span>
+                          </div>
+                        </div>
+                        <hr />
+                        <Link to="/profile/new-post" onClick={() => setUserMenuOpen(false)}>
+                          <i className="fa fa-plus-circle"></i> {t('header.properties')}
+                        </Link>
+
+                        <Link to="/profile/favorites" onClick={() => setUserMenuOpen(false)}>
+                          <i className="fa fa-heart"></i> {t('header.myList')} ({favoritesCount || 0})
+                        </Link>
+
+                        <Link to="/profile/account" onClick={() => setUserMenuOpen(false)}>
+                          <i className="fa fa-user"></i> {t('header.profile')}
+                        </Link>
+                        <Link to="/settings" onClick={() => setUserMenuOpen(false)}>
+                          <i className="fa fa-cog"></i> {t('header.settings')}
+                        </Link>
+                        {user.role === 'admin' && (
+                          <Link to="/admin/dashboard" onClick={() => setUserMenuOpen(false)}>
+                            <i className="fa fa-dashboard"></i> {t('header.admin')}
+                          </Link>
+                        )}
+                        <hr />
+                        <button className="logout-btn" onClick={handleLogout}>
+                          <i className="fa fa-sign-out"></i> {t('header.logout')}
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               ) : (
                 // Hiển thị nút đăng ký/đăng nhập khi chưa đăng nhập
