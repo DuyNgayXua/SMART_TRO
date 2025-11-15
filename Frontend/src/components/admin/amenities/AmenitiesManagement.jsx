@@ -664,12 +664,12 @@ const AmenitiesManagement = () => {
           {amenities.length > 0 && pagination.totalPages > 1 && (
             <div className="pagination">
               {/* Pagination Info */}
-              <div className="pagination-info">
+              {/* <div className="pagination-info">
                 <span className="pagination-text">
                   {t('amenities.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} 
                   ({pagination.totalItems} {t('amenities.pagination.items', 'tiện ích')})
                 </span>
-              </div>
+              </div> */}
 
               <div className="pagination-controls">
                 {/* First Page Button */}

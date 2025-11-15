@@ -109,7 +109,7 @@ export const sendInvoiceEmailWithQR = async (req, res) => {
     if (!recipientEmail) {
       return res.status(400).json({
         success: false,
-        message: 'Không tìm thấy email khách thuê'
+        message: 'Không tìm thấy email Người lưu trú'
       });
     }
 

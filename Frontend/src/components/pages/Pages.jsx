@@ -16,6 +16,7 @@ import ProtectedRoute from "../auth/ProtectedRoute"
 import AdminProtectedRoute from "../auth/AdminProtectedRoute"
 import LandlordProtectedRoute from "../auth/LandlordProtectedRoute"
 import Dashboard from "../admin/dashboard/Dashboard"
+import AdminDashboard from "../admin/admin-dashboard/AdminDashboard"
 import PropertyManagement from "../admin/properties/PropertyManagement"
 import RoomsManagement from "../admin/rooms/RoomsManagement"
 import AmenitiesManagement from "../admin/amenities/AmenitiesManagement"
@@ -178,8 +179,13 @@ const Pages = () => {
           </Route>
 
           {/* Admin pages without Header and Footer */}
+          {/* Trang dành cho admin */}
+          <Route path='/admin/dashboard' element={<AdminProtectedRoute><AdminDashboard /></AdminProtectedRoute>} />
+          
+          {/* Trang dành cho landlord */}
+          <Route path='/landlord/dashboard' element={<LandlordProtectedRoute><Dashboard /></LandlordProtectedRoute>} />
+          
           {/* Trang chung cho cả admin và landlord */}
-          <Route path='/admin/dashboard' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path='/admin/settings' element={<ProtectedRoute><Settings /></ProtectedRoute>} />
           
           {/* Trang chỉ dành cho admin */}

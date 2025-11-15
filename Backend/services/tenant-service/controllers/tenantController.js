@@ -28,7 +28,7 @@ class TenantController {
         if (isDuplicate) {
           return res.status(409).json({
             success: false,
-            message: 'Số CMND/CCCD đã được sử dụng bởi khách thuê khác'
+            message: 'Số CMND/CCCD đã được sử dụng bởi Người lưu trú khác'
           });
         }
       }
@@ -187,7 +187,7 @@ class TenantController {
         if (isDuplicate) {
           return res.status(409).json({
             success: false,
-            message: 'Số CMND/CCCD đã được sử dụng bởi khách thuê khác'
+            message: 'Số CMND/CCCD đã được sử dụng bởi Người lưu trú khác'
           });
         }
         updateData.identificationNumber = identificationNumber;

@@ -211,6 +211,9 @@ export const getUserPackages = async (req, res) => {
             });
         }
         
+        // Đếm số bài đăng thực tế của user
+        const totalPosts = await Property.countDocuments({ owner: userId });
+        
         let propertyPackage = null;
         let postPackage = null;
         
@@ -241,16 +244,86 @@ export const getUserPackages = async (req, res) => {
             }
         }
         
-        // Nếu là tenant/user, lấy gói đăng tin từ currentPackagePlan
-        if (user.role === 'tenant' || user.role === 'user') {
+        // Nếu là tenant/user/admin, lấy gói đăng tin từ currentPackagePlan hoặc freeTrial
+        if (user.role === 'tenant' || user.role === 'user' || user.role === 'admin') {
+            // Ưu tiên lấy currentPackagePlan trước
             if (user.currentPackagePlan && user.currentPackagePlan.packagePlanId) {
                 const packagePlan = user.currentPackagePlan.packagePlanId;
                 
                 postPackage = {
                     packageName: user.currentPackagePlan.displayName || user.currentPackagePlan.packageName || packagePlan.name,
-                    maxPosts: user.currentPackagePlan.freePushCount || 0,
-                    usedPosts: user.currentPackagePlan.usedPushCount || 0,
-                    expiryDate: user.currentPackagePlan.expiryDate
+                    packageType: user.packageType || 'trial',
+                    priority: user.currentPackagePlan.priority || packagePlan.priority,
+                    stars: user.currentPackagePlan.stars || packagePlan.stars,
+                    color: user.currentPackagePlan.color || packagePlan.color,
+                    totalPosts: packagePlan.maxProperties || packagePlan.properties || 0,
+                    usedPosts: totalPosts,
+                    totalPushes: user.currentPackagePlan.freePushCount || 0,
+                    usedPushes: user.currentPackagePlan.usedPushCount || 0,
+                    purchaseDate: user.currentPackagePlan.purchaseDate,
+                    expiryDate: user.currentPackagePlan.expiryDate,
+                    status: user.currentPackagePlan.status,
+                    isActive: user.currentPackagePlan.isActive
+                };
+            }
+            // Nếu không có currentPackagePlan, check freeTrial
+            else if (user.freeTrial && user.freeTrial.hasRegistered) {
+                postPackage = {
+                    packageName: 'Gói Dùng Thử',
+                    packageType: 'trial',
+                    priority: 0,
+                    stars: 0,
+                    color: '#gray',
+                    totalPosts: 3, // Gói trial thường cho phép 3 tin
+                    usedPosts: totalPosts,
+                    totalPushes: 0,
+                    usedPushes: 0,
+                    purchaseDate: user.freeTrial.registeredAt,
+                    expiryDate: user.freeTrial.expiryDate,
+                    status: new Date(user.freeTrial.expiryDate) < new Date() ? 'expired' : 'active',
+                    isActive: new Date(user.freeTrial.expiryDate) >= new Date()
+                };
+            }
+        }
+        
+        // Nếu landlord cũng có currentPackagePlan (trường hợp đặc biệt), lấy luôn
+        if (user.role === 'landlord' && !propertyPackage) {
+            // Ưu tiên lấy currentPackagePlan
+            if (user.currentPackagePlan && user.currentPackagePlan.packagePlanId) {
+                const packagePlan = user.currentPackagePlan.packagePlanId;
+                
+                propertyPackage = {
+                    packageName: user.currentPackagePlan.displayName || user.currentPackagePlan.packageName || packagePlan.name,
+                    packageType: user.packageType || 'trial',
+                    priority: user.currentPackagePlan.priority || packagePlan.priority,
+                    stars: user.currentPackagePlan.stars || packagePlan.stars,
+                    color: user.currentPackagePlan.color || packagePlan.color,
+                    totalPosts: packagePlan.maxRooms || packagePlan.maxProperties || 0,
+                    usedPosts: totalPosts,
+                    totalPushes: user.currentPackagePlan.freePushCount || 0,
+                    usedPushes: user.currentPackagePlan.usedPushCount || 0,
+                    purchaseDate: user.currentPackagePlan.purchaseDate,
+                    expiryDate: user.currentPackagePlan.expiryDate,
+                    status: user.currentPackagePlan.status,
+                    isActive: user.currentPackagePlan.isActive
+                };
+            }
+            // Nếu không có, check freeTrial
+            else if (user.freeTrial && user.freeTrial.hasRegistered) {
+                propertyPackage = {
+                    packageName: 'Gói Dùng Thử',
+                    packageType: 'trial',
+                    priority: 0,
+                    stars: 0,
+                    color: '#gray',
+                    totalPosts: 3,
+                    usedPosts: totalPosts,
+                    totalPushes: 0,
+                    usedPushes: 0,
+                    purchaseDate: user.freeTrial.registeredAt,
+                    expiryDate: user.freeTrial.expiryDate,
+                    status: new Date(user.freeTrial.expiryDate) < new Date() ? 'expired' : 'active',
+                    isActive: new Date(user.freeTrial.expiryDate) >= new Date()
                 };
             }
         }

@@ -909,7 +909,7 @@ const RoomsManagement = () => {
         [
           'STT',
           'Tên phòng',
-          'Khách thuê',
+          'Người lưu trú',
           'Kỳ thanh toán (Từ - Đến)',
           'Tiền phòng (đ/tháng)',
           'Số người thuê',
@@ -1005,7 +1005,7 @@ const RoomsManagement = () => {
           
           const periodStr = `${periodStartDate.toLocaleDateString('vi-VN')} - ${periodEndDate.toLocaleDateString('vi-VN')}`;
 
-          // Lấy tên khách thuê từ hợp đồng
+          // Lấy tên Người lưu trú từ hợp đồng
           const tenantNames = activeContract.tenants?.map(t => t.fullName || '').filter(n => n).join(', ') || '';
           console.log('Tenant names:', tenantNames);
           console.log('Tenants array:', activeContract.tenants);
@@ -1076,7 +1076,7 @@ const RoomsManagement = () => {
         { wch: 5 },   // STT
         { wch: 25 },  // Mã hợp đồng
         { wch: 15 },  // Tên phòng
-        { wch: 20 },  // Khách thuê
+        { wch: 20 },  // Người lưu trú
         { wch: 15 },  // Giá điện
         { wch: 12 },  // Điện cũ
         { wch: 12 },  // Điện mới
@@ -2381,12 +2381,12 @@ const RoomsManagement = () => {
       } else {
         console.error('Failed to fetch tenants:', response.message);
         setRoomTenants([]);
-        showToast('error', t('rooms.messages.fetchTenantsError') || 'Không thể tải danh sách khách thuê');
+        showToast('error', t('rooms.messages.fetchTenantsError') || 'Không thể tải danh sách Người lưu trú');
       }
     } catch (error) {
       console.error('Error fetching tenants:', error);
       setRoomTenants([]);
-      showToast('error', t('rooms.messages.fetchTenantsError') || 'Không thể tải danh sách khách thuê');
+      showToast('error', t('rooms.messages.fetchTenantsError') || 'Không thể tải danh sách Người lưu trú');
     } finally {
       setLoadingTenants(false);
     }
@@ -3480,11 +3480,11 @@ const RoomsManagement = () => {
           await contractsAPI.updateContract(contract._id, { status: 'terminated' });
         }
         
-        // 3. Lấy tất cả khách thuê của phòng
+        // 3. Lấy tất cả Người lưu trú của phòng
         const tenantsRes = await tenantsAPI.getTenantsByRoom(selectedRoomForTerminate.id, { status: 'active' });
         const tenants = tenantsRes.success ? (Array.isArray(tenantsRes.data) ? tenantsRes.data : []) : [];
         
-        // 4. Xóa từng khách thuê khỏi hệ thống
+        // 4. Xóa từng Người lưu trú khỏi hệ thống
         for (const tenant of tenants) {
           try {
             await tenantsAPI.deleteTenant(tenant._id);
@@ -3499,7 +3499,7 @@ const RoomsManagement = () => {
           tenants: []
         });
         
-        showToast('success', `Đã kết thúc hợp đồng và xóa ${tenants.length} khách thuê khỏi hệ thống`);
+        showToast('success', `Đã kết thúc hợp đồng và xóa ${tenants.length} Người lưu trú khỏi hệ thống`);
         fetchRooms();
       }
     } catch (error) {
@@ -5876,7 +5876,7 @@ const RoomsManagement = () => {
             <div className="modal-title-section">
               <h2 className="room-modal-title">
                 <i className="fas fa-users"></i>
-                Khách thuê - {selectedRoomForTenants?.name || selectedRoomForTenants?.roomNumber}
+                Người lưu trú - {selectedRoomForTenants?.name || selectedRoomForTenants?.roomNumber}
               </h2>
               <div className="tenant-count-info">
                 {!loadingTenants && (
@@ -5901,16 +5901,16 @@ const RoomsManagement = () => {
             {loadingTenants ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
-                <p>{t('contracts.rental.tenantsSection.loading', 'Đang tải danh sách khách thuê...')}</p>
+                <p>{t('contracts.rental.tenantsSection.loading', 'Đang tải danh sách Người lưu trú...')}</p>
               </div>
             ) : roomTenants.length === 0 ? (
               <div className="empty-tenants">
                 <div className="empty-icon">👥</div>
-                <h3>{t('contracts.rental.tenantsSection.noTenants', 'Chưa có khách thuê')}</h3>
-                <p>{t('contracts.rental.tenantsSection.noTenantsDesc', 'Phòng này chưa có khách thuê nào.')}</p>
+                <h3>{t('contracts.rental.tenantsSection.noTenants', 'Chưa có Người lưu trú')}</h3>
+                <p>{t('contracts.rental.tenantsSection.noTenantsDesc', 'Phòng này chưa có Người lưu trú nào.')}</p>
                 <button className="btn-primary" onClick={handleAddTenant}>
                   <i className="fas fa-user-plus"></i>
-                  {t('contracts.rental.tenantInfo.addTenant', 'Thêm khách thuê đầu tiên')}
+                  {t('contracts.rental.tenantInfo.addTenant', 'Thêm Người lưu trú đầu tiên')}
                 </button>
               </div>
             ) : (
@@ -5972,7 +5972,7 @@ const RoomsManagement = () => {
           <div className="room-modal-header">
             <h2 className="room-modal-title">
               <i className="fas fa-user-plus"></i>
-              Thêm khách thuê mới - {selectedRoomForTenants?.name || selectedRoomForTenants?.roomNumber}
+              Thêm Người lưu trú mới - {selectedRoomForTenants?.name || selectedRoomForTenants?.roomNumber}
             </h2>
             <button className="room-modal-close" onClick={closeTenantModals}>×</button>
           </div>
@@ -5982,7 +5982,7 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h4 className="section-title">
                   <i className="fas fa-user"></i>
-                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin khách thuê')}
+                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin Người lưu trú')}
                 </h4>
                 <div className="form-row">
                   <div className="form-group">
@@ -6241,7 +6241,7 @@ const RoomsManagement = () => {
           <div className="room-modal-header">
             <h2 className="room-modal-title">
               <i className="fas fa-user-edit"></i>
-              Sửa thông tin khách thuê - {editingTenant?.fullName}
+              Sửa thông tin Người lưu trú - {editingTenant?.fullName}
             </h2>
             <button className="room-modal-close" onClick={closeTenantModals}>×</button>
           </div>
@@ -6251,7 +6251,7 @@ const RoomsManagement = () => {
               <div className="form-section">
                 <h4 className="section-title">
                   <i className="fas fa-user"></i>
-                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin khách thuê')}
+                  {t('contracts.rental.form.tenantInfoTitle', 'Thông tin Người lưu trú')}
                 </h4>
                 <div className="form-row">
                   <div className="form-group">
@@ -7572,7 +7572,7 @@ const RoomsManagement = () => {
                 <p><strong>Hành động này sẽ:</strong></p>
                 <ul>
                   <li>Chuyển trạng thái hợp đồng sang "Đã kết thúc"</li>
-                  <li>Xóa tất cả khách thuê khỏi phòng</li>
+                  <li>Xóa tất cả Người lưu trú khỏi phòng</li>
                   <li>Chuyển trạng thái phòng về "Trống"</li>
                   {createFinalInvoice && <li style={{color: '#2563eb', fontWeight: '500'}}>Mở form tạo hóa đơn thanh toán tháng cuối</li>}
                 </ul>

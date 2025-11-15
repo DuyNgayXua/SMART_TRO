@@ -822,7 +822,7 @@
     }
   },
   "roles": {
-    "tenant": "Khách thuê",
+    "tenant": "Người lưu trú",
     "landlord": "Chủ trọ",
     "admin": "Quản trị viên"
   },
@@ -1187,7 +1187,7 @@
     "generalInfo": "Thông tin chung",
     "paymentDetail": "Chi tiết thanh toán",
     "room": "Phòng",
-    "tenant": "Khách thuê",
+    "tenant": "Người lưu trú",
     "status": {
       "label": "Trạng thái",
       "all": "Tất cả",
@@ -1405,5 +1405,27 @@
     "legal": {
       "copyright": "© 2025 SMART TRỌ. Được thiết kế bởi DUYHUY."
     }
+  },
+  "userPackages": {
+    "title": "Gói đăng ký",
+    "loading": "Đang tải thông tin gói...",
+    "noPackage": "Chưa đăng ký gói nào",
+    "propertyPackage": "Gói quản lý trọ",
+    "postPackage": "Gói đăng tin",
+    "packageName": "Tên gói",
+    "priority": "Độ ưu tiên",
+    "totalPosts": "Tổng số tin đăng",
+    "usedPosts": "Số tin đã đăng",
+    "totalPushes": "Tổng số lần đẩy tin",
+    "usedPushes": "Số lần đã đẩy",
+    "purchaseDate": "Ngày mua",
+    "expiryDate": "Ngày hết hạn",
+    "status": "Trạng thái",
+    "statusActive": "Đang hoạt động",
+    "statusExpired": "Đã hết hạn",
+    "statusCancelled": "Đã hủy",
+    "expired": "(Đã hết hạn)",
+    "posts": "tin",
+    "times": "lần"
   }
 }

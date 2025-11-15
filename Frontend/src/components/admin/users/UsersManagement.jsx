@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
+import { useTranslation } from 'react-i18next';
 import SideBar from '../../common/adminSidebar';
 import './UsersManagement.css';
 import '../admin-global.css';
 
 const UsersManagement = () => {
+    const { t } = useTranslation();
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
@@ -112,22 +114,23 @@ const UsersManagement = () => {
         setLoadingPackages(true);
         try {
             const token = localStorage.getItem('token');
-            const response = await fetch(
-                `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${user._id}/packages`,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+            const url = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${user._id}/packages`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
                 }
-            );
-
+            });
+            
             if (response.ok) {
                 const data = await response.json();
+                
                 if (data.success) {
-                    setUserPackages({
-                        propertyPackage: data.data.propertyPackage || null,
-                        postPackage: data.data.postPackage || null
-                    });
+                    const packages = {
+                        propertyPackage: data.data?.propertyPackage || null,
+                        postPackage: data.data?.postPackage || null
+                    };
+                    setUserPackages(packages);
                 }
             }
         } catch (error) {
@@ -457,88 +460,153 @@ const UsersManagement = () => {
                                 </div>
                             </div>
 
-                            {/* Packages Section */}
-                            {(selectedUser.role === 'landlord' || selectedUser.role === 'tenant' || selectedUser.role === 'user') && (
-                                <div className="user-detail-section">
-                                    <h3 className="user-section-title">
-                                        <i className="fas fa-box"></i> Gói đăng ký
-                                    </h3>
-                                    {loadingPackages ? (
-                                        <div className="user-loading-section">
-                                            <i className="fas fa-spinner fa-spin"></i>
-                                            <span>Đang tải thông tin gói...</span>
-                                        </div>
-                                    ) : (
-                                        <div className="user-packages-grid">
+                            {/* Packages Section - Show for all roles */}
+                            <div className="user-detail-section">
+                                <h3 className="user-section-title">
+                                    <i className="fas fa-box"></i> {t('userPackages.title')}
+                                </h3>
+                                {loadingPackages ? (
+                                    <div className="user-loading-section">
+                                        <i className="fas fa-spinner fa-spin"></i>
+                                        <span>{t('userPackages.loading')}</span>
+                                    </div>
+                                ) : (
+                                    <div className="user-packages-grid">
                                             {/* Property Package (for landlord) */}
                                             {selectedUser.role === 'landlord' && (
                                                 <div className="user-package-card">
                                                     <h4>
-                                                        <i className="fas fa-building"></i> Gói quản lý trọ
+                                                        <i className="fas fa-building"></i> {t('userPackages.propertyPackage')}
                                                     </h4>
-                                                    {userPackages.propertyPackage ? (
+                                                    {userPackages?.propertyPackage ? (
                                                         <div className="user-package-info">
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Tên gói:</span>
+                                                                <span className="user-package-label">{t('userPackages.packageName')}:</span>
                                                                 <span className="user-package-value">{userPackages.propertyPackage.packageName}</span>
                                                             </div>
+                                                            {userPackages.propertyPackage.priority && (
+                                                                <div className="user-package-detail">
+                                                                    <span className="user-package-label">{t('userPackages.priority')}:</span>
+                                                                    <span className="user-package-value">
+                                                                        {'⭐'.repeat(userPackages.propertyPackage.stars || 0)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Số phòng tối đa:</span>
-                                                                <span className="user-package-value">{userPackages.propertyPackage.maxRooms} phòng</span>
+                                                                <span className="user-package-label">{t('userPackages.totalPosts')}:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.totalPosts} {t('userPackages.posts')}</span>
                                                             </div>
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Số phòng đã dùng:</span>
-                                                                <span className="user-package-value">{userPackages.propertyPackage.usedRooms || 0} phòng</span>
+                                                                <span className="user-package-label">{t('userPackages.usedPosts')}:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.usedPosts || 0} {t('userPackages.posts')}</span>
                                                             </div>
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Ngày hết hạn:</span>
+                                                                <span className="user-package-label">{t('userPackages.totalPushes')}:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.totalPushes || 0} {t('userPackages.times')}</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">{t('userPackages.usedPushes')}:</span>
+                                                                <span className="user-package-value">{userPackages.propertyPackage.usedPushes || 0} {t('userPackages.times')}</span>
+                                                            </div>
+                                                            {userPackages.propertyPackage.purchaseDate && (
+                                                                <div className="user-package-detail">
+                                                                    <span className="user-package-label">{t('userPackages.purchaseDate')}:</span>
+                                                                    <span className="user-package-value">
+                                                                        {new Date(userPackages.propertyPackage.purchaseDate).toLocaleDateString('vi-VN')}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">{t('userPackages.expiryDate')}:</span>
                                                                 <span className={`user-package-value ${new Date(userPackages.propertyPackage.expiryDate) < new Date() ? 'expired' : ''}`}>
                                                                     {new Date(userPackages.propertyPackage.expiryDate).toLocaleDateString('vi-VN')}
-                                                                    {new Date(userPackages.propertyPackage.expiryDate) < new Date() && ' (Đã hết hạn)'}
+                                                                    {new Date(userPackages.propertyPackage.expiryDate) < new Date() && ' ' + t('userPackages.expired')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">{t('userPackages.status')}:</span>
+                                                                <span className={`user-package-status ${userPackages.propertyPackage.status || 'active'}`}>
+                                                                    {userPackages.propertyPackage.status === 'active' ? t('userPackages.statusActive') :
+                                                                     userPackages.propertyPackage.status === 'expired' ? t('userPackages.statusExpired') :
+                                                                     userPackages.propertyPackage.status === 'cancelled' ? t('userPackages.statusCancelled') : 
+                                                                     userPackages.propertyPackage.status}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <div className="user-no-package">
                                                             <i className="fas fa-info-circle"></i>
-                                                            <span>Chưa đăng ký gói nào</span>
+                                                            <span>{t('userPackages.noPackage')}</span>
                                                         </div>
                                                     )}
                                                 </div>
                                             )}
 
-                                            {/* Post Package (for tenant/user) */}
-                                            {(selectedUser.role === 'tenant' || selectedUser.role === 'user') && (
+                                            {/* Post Package (for tenant/user/admin) */}
+                                            {(selectedUser.role === 'tenant' || selectedUser.role === 'user' || selectedUser.role === 'admin') && (
                                                 <div className="user-package-card">
                                                     <h4>
-                                                        <i className="fas fa-newspaper"></i> Gói đăng tin
+                                                        <i className="fas fa-newspaper"></i> {t('userPackages.postPackage')}
                                                     </h4>
-                                                    {userPackages.postPackage ? (
+                                                    {userPackages?.postPackage ? (
                                                         <div className="user-package-info">
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Tên gói:</span>
+                                                                <span className="user-package-label">{t('userPackages.packageName')}:</span>
                                                                 <span className="user-package-value">{userPackages.postPackage.packageName}</span>
                                                             </div>
+                                                            {userPackages.postPackage.priority && (
+                                                                <div className="user-package-detail">
+                                                                    <span className="user-package-label">{t('userPackages.priority')}:</span>
+                                                                    <span className="user-package-value">
+                                                                        {'⭐'.repeat(userPackages.postPackage.stars || 0)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Số tin tối đa:</span>
-                                                                <span className="user-package-value">{userPackages.postPackage.maxPosts} tin</span>
+                                                                <span className="user-package-label">{t('userPackages.totalPosts')}:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.totalPosts} {t('userPackages.posts')}</span>
                                                             </div>
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">Số tin đã dùng:</span>
-                                                                <span className="user-package-value">{userPackages.postPackage.usedPosts || 0} tin</span>
+                                                                <span className="user-package-label">{t('userPackages.usedPosts')}:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.usedPosts || 0} {t('userPackages.posts')}</span>
                                                             </div>
                                                             <div className="user-package-detail">
-                                                                <span className="label">Ngày hết hạn:</span>
-                                                                <span className={`value ${new Date(userPackages.postPackage.expiryDate) < new Date() ? 'expired' : ''}`}>
+                                                                <span className="user-package-label">{t('userPackages.totalPushes')}:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.totalPushes || 0} {t('userPackages.times')}</span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">{t('userPackages.usedPushes')}:</span>
+                                                                <span className="user-package-value">{userPackages.postPackage.usedPushes || 0} {t('userPackages.times')}</span>
+                                                            </div>
+                                                            {userPackages.postPackage.purchaseDate && (
+                                                                <div className="user-package-detail">
+                                                                    <span className="user-package-label">{t('userPackages.purchaseDate')}:</span>
+                                                                    <span className="user-package-value">
+                                                                        {new Date(userPackages.postPackage.purchaseDate).toLocaleDateString('vi-VN')}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">{t('userPackages.expiryDate')}:</span>
+                                                                <span className={`user-package-value ${new Date(userPackages.postPackage.expiryDate) < new Date() ? 'expired' : ''}`}>
                                                                     {new Date(userPackages.postPackage.expiryDate).toLocaleDateString('vi-VN')}
-                                                                    {new Date(userPackages.postPackage.expiryDate) < new Date() && ' (Đã hết hạn)'}
+                                                                    {new Date(userPackages.postPackage.expiryDate) < new Date() && ' ' + t('userPackages.expired')}
+                                                                </span>
+                                                            </div>
+                                                            <div className="user-package-detail">
+                                                                <span className="user-package-label">{t('userPackages.status')}:</span>
+                                                                <span className={`user-package-status ${userPackages.postPackage.status || 'active'}`}>
+                                                                    {userPackages.postPackage.status === 'active' ? t('userPackages.statusActive') :
+                                                                     userPackages.postPackage.status === 'expired' ? t('userPackages.statusExpired') :
+                                                                     userPackages.postPackage.status === 'cancelled' ? t('userPackages.statusCancelled') : 
+                                                                     userPackages.postPackage.status}
                                                                 </span>
                                                             </div>
                                                         </div>
                                                     ) : (
                                                         <div className="user-no-package">
                                                             <i className="fas fa-info-circle"></i>
-                                                            <span>Chưa đăng ký gói nào</span>
+                                                            <span>{t('userPackages.noPackage')}</span>
                                                         </div>
                                                     )}
                                                 </div>
@@ -546,8 +614,7 @@ const UsersManagement = () => {
                                         </div>
                                     )}
                                 </div>
-                            )}
-                        </div>
+                            </div>
 
                         <div className="modal-footer">
                             <button className="btn-secondary-user-management" onClick={() => setShowViewModal(false)}>

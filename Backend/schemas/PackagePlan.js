@@ -15,7 +15,7 @@ const packagePlanSchema = new mongoose.Schema({
     default: 'custom' // Nếu admin tạo thêm thì mặc định là tùy chỉnh
   },
 
-  // Loại gói dành cho ai (chủ trọ hoặc khách thuê)
+  // Loại gói dành cho ai (chủ trọ hoặc Người lưu trú)
   packageFor: {
     type: String,
     enum: ['landlord', 'tenant', 'both'], // 'both' cho gói có thể dùng cho cả hai

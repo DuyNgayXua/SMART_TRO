@@ -33,7 +33,7 @@ const sebayAPI = {
    * Gửi email hóa đơn kèm QR code
    * @param {Object} emailData - Thông tin email
    * @param {string} emailData.invoiceId - ID hóa đơn
-   * @param {string} emailData.tenantEmail - Email khách thuê
+   * @param {string} emailData.tenantEmail - Email Người lưu trú
    * @param {string} emailData.qrCodeUrl - URL QR code (optional, sẽ tạo mới nếu không có)
    * @returns {Promise} Response
    */

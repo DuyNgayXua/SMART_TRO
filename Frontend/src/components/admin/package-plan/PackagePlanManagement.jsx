@@ -56,9 +56,9 @@ const PackagePlanManagement = () => {
 
     // Package For options (gói dành cho ai)
     const packageForOptions = [
-        { value: 'both', label: 'Cả Hai (Chủ trọ & Khách thuê)' },
+        { value: 'both', label: 'Cả Hai (Chủ trọ & Người lưu trú)' },
         { value: 'landlord', label: 'Chủ Trọ' },
-        { value: 'tenant', label: 'Khách Thuê' }
+        { value: 'tenant', label: 'Người lưu trú' }
     ];
 
     // Category options (phân loại gói)

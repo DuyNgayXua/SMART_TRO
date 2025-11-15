@@ -1,0 +1,286 @@
+/* Admin Dashboard Specific Styles */
+
+.package-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+}
+
+.package-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.package-stat-item:hover {
+  transform: translateX(5px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.package-stat-info {
+  flex: 1;
+}
+
+.package-stat-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 4px;
+}
+
+.package-stat-count {
+  font-size: 13px;
+  color: #6c757d;
+}
+
+.package-stat-revenue {
+  font-size: 18px;
+  font-weight: 700;
+  color: #28a745;
+}
+
+/* Top Posters */
+.top-posters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+}
+
+.top-poster-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 14px;
+  background: #f8f9fa;
+  border-radius: 10px;
+  transition: all 0.3s ease;
+}
+
+.top-poster-item:hover {
+  background: #e9ecef;
+  transform: translateX(5px);
+}
+
+.poster-rank {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 50%;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.top-poster-item:nth-child(1) .poster-rank {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.top-poster-item:nth-child(2) .poster-rank {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.top-poster-item:nth-child(3) .poster-rank {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.poster-info {
+  flex: 1;
+}
+
+.poster-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.poster-posts {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.poster-revenue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #28a745;
+}
+
+/* Activities */
+.activities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 20px;
+  max-height: 450px;
+  overflow-y: auto;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.activity-item:hover {
+  background: #e9ecef;
+}
+
+.activity-icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 16px;
+}
+
+.activity-icon.blue {
+  background: rgba(52, 152, 219, 0.1);
+  color: #3498db;
+}
+
+.activity-icon.green {
+  background: rgba(40, 167, 69, 0.1);
+  color: #28a745;
+}
+
+.activity-icon.orange {
+  background: rgba(255, 152, 0, 0.1);
+  color: #ff9800;
+}
+
+.activity-icon.purple {
+  background: rgba(156, 39, 176, 0.1);
+  color: #9c27b0;
+}
+
+.activity-icon.gray {
+  background: rgba(108, 117, 125, 0.1);
+  color: #6c757d;
+}
+
+.activity-content {
+  flex: 1;
+}
+
+.activity-action {
+  font-size: 14px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 2px;
+}
+
+.activity-user {
+  font-size: 12px;
+  color: #6c757d;
+}
+
+.activity-time {
+  font-size: 12px;
+  color: #95a5a6;
+  white-space: nowrap;
+}
+
+/* Simple Bar Chart */
+.simple-bar-chart {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-around;
+  height: 250px;
+  padding: 20px;
+  gap: 10px;
+}
+
+.bar-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar-value {
+  font-size: 12px;
+  font-weight: 600;
+  color: #2c3e50;
+  min-height: 20px;
+}
+
+.bar-wrapper {
+  width: 100%;
+  height: 180px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.bar {
+  width: 60%;
+  background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);
+  border-radius: 8px 8px 0 0;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.bar:hover {
+  background: linear-gradient(180deg, #764ba2 0%, #667eea 100%);
+  transform: scaleY(1.05);
+}
+
+.bar-label {
+  font-size: 12px;
+  color: #6c757d;
+  text-align: center;
+  margin-top: 5px;
+}
+
+/* Chart Container */
+.chart-card {
+  grid-column: span 2;
+}
+
+@media (max-width: 1200px) {
+  .chart-card {
+    grid-column: span 1;
+  }
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .package-stat-item,
+  .top-poster-item,
+  .activity-item {
+    padding: 12px;
+  }
+
+  .simple-bar-chart {
+    height: 200px;
+    padding: 15px;
+  }
+
+  .bar-wrapper {
+    height: 140px;
+  }
+
+  .bar-value {
+    font-size: 11px;
+  }
+
+  .bar-label {
+    font-size: 10px;
+  }
+}

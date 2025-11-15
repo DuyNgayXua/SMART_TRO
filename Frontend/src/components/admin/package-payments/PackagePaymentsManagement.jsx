@@ -102,7 +102,9 @@ const PackagePaymentsManagement = () => {
 
       if (response.ok) {
         const data = await response.json();
+        console.log('Package payments response:', data);
         if (data.success) {
+          console.log('Payments array:', data.data.payments);
           setPayments(data.data.payments || []);
           setPagination(prev => ({
             ...prev,
@@ -110,6 +112,8 @@ const PackagePaymentsManagement = () => {
             totalPages: data.data.pagination?.totalPages || 1
           }));
         }
+      } else {
+        console.error('Response not OK:', response.status);
       }
     } catch (error) {
       console.error('Error loading package payments:', error);
@@ -345,7 +349,13 @@ const PackagePaymentsManagement = () => {
                     </div>
                     <div className="payment-tenant">
                       <i className="fas fa-envelope"></i>
-                      <span>{payment.user?.email || '-'}</span>
+                      <span title={payment.user?.email || '-'}>
+                        {payment.user?.email ? 
+                          (payment.user.email.length > 20 ? 
+                            payment.user.email.substring(0, 20) + '...' : 
+                            payment.user.email) 
+                          : '-'}
+                      </span>
                     </div>
                   </div>
                   <span className={getStatusBadgeClass(payment.status)}>
@@ -357,7 +367,7 @@ const PackagePaymentsManagement = () => {
                   <div className="payment-period">
                     <i className="fas fa-box"></i>
                     <span>
-                      {payment.packagePlan?.name || '-'} ({payment.packagePlan?.duration || 0} ngày)
+                      {payment.packageInfo?.name || payment.packagePlan?.name || '-'}
                     </span>
                   </div>
                   
@@ -396,13 +406,6 @@ const PackagePaymentsManagement = () => {
         {/* Pagination */}
         {payments.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
-            <div className="pagination-info">
-              <span className="pagination-text">
-                Trang {pagination.currentPage} / {pagination.totalPages} 
-                ({pagination.totalItems} giao dịch)
-              </span>
-            </div>
-
             <div className="pagination-controls">
               <button
                 className="pagination-btn"

@@ -208,13 +208,13 @@ export const usersAPI = {
     }
   },
 
-  // Lấy danh sách khách thuê
+  // Lấy danh sách Người lưu trú
   getTenants: async (params = {}) => {
     try {
       const response = await api.get('/users/tenants', { params });
       return response.data;
     } catch (error) {
-      console.error('Lỗi khi lấy danh sách khách thuê:', error);
+      console.error('Lỗi khi lấy danh sách Người lưu trú:', error);
       throw error;
     }
   },

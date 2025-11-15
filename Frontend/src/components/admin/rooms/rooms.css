@@ -8297,7 +8297,7 @@ div.modal.vehicle-modal .empty-section .empty-content button.btn-primary {
 
 .billing-table thead th:nth-child(1) { width: 50px; }  /* STT */
 .billing-table thead th:nth-child(2) { width: 85px; } /* Phòng */
-.billing-table thead th:nth-child(3) { width: 115px; } /* Khách thuê */
+.billing-table thead th:nth-child(3) { width: 115px; } /* Người lưu trú */
 .billing-table thead th:nth-child(4) { width: 135px; } /* Kỳ thanh toán */
 .billing-table thead th:nth-child(5) { width: 95px; } /* Tiền phòng */
 .billing-table thead th:nth-child(6) { width: 90px; } /* Loại nước */

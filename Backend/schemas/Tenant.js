@@ -1,5 +1,5 @@
 /**
- * Tenant Schema - Quản lý thông tin khách thuê
+ * Tenant Schema - Quản lý thông tin Người lưu trú
  * Tối ưu hóa để lưu trữ theo chủ trọ, phòng và hợp đồng
  */
 import mongoose from 'mongoose';

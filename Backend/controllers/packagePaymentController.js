@@ -1,4 +1,4 @@
-import PackagePayment from '../schemas/PackagePayment.js';
+import Order from '../schemas/Order.js';
 import User from '../schemas/User.js';
 import PackagePlan from '../schemas/PackagePlan.js';
 
@@ -7,32 +7,34 @@ export const getPackagePayments = async (req, res) => {
     try {
         const { page = 1, limit = 20, status, search, fromDate, toDate } = req.query;
         
-        // Build filter
-        const filter = {};
+        // Build filter - chỉ lấy orders có packagePlanId (là thanh toán gói tin)
+        const filter = {
+            packagePlanId: { $exists: true, $ne: null }
+        };
         
         if (status && status !== 'all' && status !== '') {
-            filter.status = status;
+            filter.payment_status = status === 'paid' ? 'Paid' : status === 'pending' ? 'Unpaid' : status.charAt(0).toUpperCase() + status.slice(1);
         }
         
         // Date range filter
         if (fromDate || toDate) {
-            filter.createdAt = {};
+            filter.created_at = {};
             if (fromDate) {
-                filter.createdAt.$gte = new Date(fromDate);
+                filter.created_at.$gte = new Date(fromDate);
             }
             if (toDate) {
                 // Set to end of day
                 const endDate = new Date(toDate);
                 endDate.setHours(23, 59, 59, 999);
-                filter.createdAt.$lte = endDate;
+                filter.created_at.$lte = endDate;
             }
         }
         
         // Get payments with populated data
-        let query = PackagePayment.find(filter)
-            .populate('user', 'fullName email phone')
-            .populate('packagePlan', 'name duration price maxRooms maxPosts')
-            .sort({ createdAt: -1 })
+        let query = Order.find(filter)
+            .populate('userId', 'fullName email phone')
+            .populate('packagePlanId', 'name duration price maxRooms maxPosts')
+            .sort({ created_at: -1 })
             .skip((page - 1) * limit)
             .limit(parseInt(limit));
         
@@ -43,20 +45,48 @@ export const getPackagePayments = async (req, res) => {
         if (search) {
             const searchLower = search.toLowerCase();
             filteredPayments = payments.filter(payment => 
-                payment.user?.fullName?.toLowerCase().includes(searchLower) ||
-                payment.user?.email?.toLowerCase().includes(searchLower) ||
-                payment.transactionId?.toLowerCase().includes(searchLower) ||
+                payment.userId?.fullName?.toLowerCase().includes(searchLower) ||
+                payment.userId?.email?.toLowerCase().includes(searchLower) ||
+                payment.transactionId?.toString().toLowerCase().includes(searchLower) ||
                 payment._id.toString().includes(searchLower)
             );
         }
         
         // Get total count
-        const total = await PackagePayment.countDocuments(filter);
+        const total = await Order.countDocuments(filter);
+        
+        // Format response to match frontend expectations
+        const formattedPayments = filteredPayments.map(payment => {
+            // Map status từ Order schema sang frontend format
+            let statusFormatted = 'pending';
+            if (payment.payment_status === 'Paid') {
+                statusFormatted = 'paid';
+            } else if (payment.payment_status === 'Unpaid') {
+                statusFormatted = 'pending';
+            } else if (payment.payment_status === 'Cancelled') {
+                statusFormatted = 'cancelled';
+            } else if (payment.payment_status === 'Refunded') {
+                statusFormatted = 'refunded';
+            }
+            
+            return {
+                _id: payment._id,
+                user: payment.userId,
+                packagePlan: payment.packagePlanId,
+                amount: payment.total ? parseFloat(payment.total.toString()) : 0,
+                transactionId: payment.transactionId?.toString() || payment._id.toString(),
+                paymentMethod: payment.paymentMethod || 'vnpay',
+                status: statusFormatted,
+                createdAt: payment.created_at,
+                paidAt: payment.paid_at,
+                packageInfo: payment.packageInfo
+            };
+        });
         
         res.status(200).json({
             success: true,
             data: {
-                payments: filteredPayments,
+                payments: formattedPayments,
                 pagination: {
                     page: parseInt(page),
                     limit: parseInt(limit),
@@ -80,9 +110,9 @@ export const getPackagePaymentById = async (req, res) => {
     try {
         const { paymentId } = req.params;
         
-        const payment = await PackagePayment.findById(paymentId)
-            .populate('user', 'fullName email phone')
-            .populate('packagePlan')
+        const payment = await Order.findById(paymentId)
+            .populate('userId', 'fullName email phone')
+            .populate('packagePlanId')
             .lean();
         
         if (!payment) {
@@ -94,7 +124,18 @@ export const getPackagePaymentById = async (req, res) => {
         
         res.status(200).json({
             success: true,
-            data: payment
+            data: {
+                _id: payment._id,
+                user: payment.userId,
+                packagePlan: payment.packagePlanId,
+                amount: payment.total ? parseFloat(payment.total.toString()) : 0,
+                transactionId: payment.transactionId?.toString() || payment._id.toString(),
+                paymentMethod: payment.paymentMethod || 'vnpay',
+                status: payment.payment_status,
+                createdAt: payment.created_at,
+                paidAt: payment.paid_at,
+                packageInfo: payment.packageInfo
+            }
         });
     } catch (error) {
         console.error('Error getting payment:', error);
@@ -112,7 +153,7 @@ export const updatePaymentStatus = async (req, res) => {
         const { paymentId } = req.params;
         const { status, note } = req.body;
         
-        const payment = await PackagePayment.findById(paymentId);
+        const payment = await Order.findById(paymentId);
         
         if (!payment) {
             return res.status(404).json({
@@ -121,11 +162,19 @@ export const updatePaymentStatus = async (req, res) => {
             });
         }
         
-        payment.status = status;
-        if (note) payment.note = note;
-        if (status === 'paid' && !payment.paidAt) {
-            payment.paidAt = new Date();
+        // Map status từ frontend sang Order schema
+        if (status === 'paid') {
+            payment.payment_status = 'Paid';
+            if (!payment.paid_at) {
+                payment.paid_at = new Date();
+            }
+        } else if (status === 'pending') {
+            payment.payment_status = 'Unpaid';
+        } else if (status === 'cancelled') {
+            payment.payment_status = 'Cancelled';
         }
+        
+        if (note) payment.note = note;
         
         await payment.save();
         
@@ -147,21 +196,24 @@ export const updatePaymentStatus = async (req, res) => {
 // Get payment statistics (Admin only)
 export const getPaymentStatistics = async (req, res) => {
     try {
-        const total = await PackagePayment.countDocuments();
-        const pending = await PackagePayment.countDocuments({ status: 'pending' });
-        const paid = await PackagePayment.countDocuments({ status: 'paid' });
-        const cancelled = await PackagePayment.countDocuments({ status: 'cancelled' });
+        const filter = { packagePlanId: { $exists: true, $ne: null } };
+        
+        const total = await Order.countDocuments(filter);
+        const pending = await Order.countDocuments({ ...filter, payment_status: 'Unpaid' });
+        const paid = await Order.countDocuments({ ...filter, payment_status: 'Paid' });
+        const cancelled = await Order.countDocuments({ ...filter, payment_status: 'Cancelled' });
         
         // Calculate total revenue
-        const paidPayments = await PackagePayment.find({ status: 'paid' }).select('amount').lean();
-        const totalRevenue = paidPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        const paidPayments = await Order.find({ ...filter, payment_status: 'Paid' }).select('total').lean();
+        const totalRevenue = paidPayments.reduce((sum, p) => sum + (p.total ? parseFloat(p.total.toString()) : 0), 0);
         
         // Revenue by month (last 12 months)
-        const revenueByMonth = await PackagePayment.aggregate([
+        const revenueByMonth = await Order.aggregate([
             {
                 $match: {
-                    status: 'paid',
-                    paidAt: {
+                    packagePlanId: { $exists: true, $ne: null },
+                    payment_status: 'Paid',
+                    paid_at: {
                         $gte: new Date(new Date().setMonth(new Date().getMonth() - 12))
                     }
                 }
@@ -169,10 +221,10 @@ export const getPaymentStatistics = async (req, res) => {
             {
                 $group: {
                     _id: {
-                        year: { $year: '$paidAt' },
-                        month: { $month: '$paidAt' }
+                        year: { $year: '$paid_at' },
+                        month: { $month: '$paid_at' }
                     },
-                    revenue: { $sum: '$amount' },
+                    revenue: { $sum: { $toDouble: '$total' } },
                     count: { $sum: 1 }
                 }
             },

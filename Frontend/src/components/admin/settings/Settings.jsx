@@ -28,7 +28,7 @@ const Settings = () => {
       }
     });
 
-    navigate("/auth");
+    navigate("/");
   };
 
   const currentLanguage = i18n.language;

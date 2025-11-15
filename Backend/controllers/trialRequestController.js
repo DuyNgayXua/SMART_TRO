@@ -168,7 +168,7 @@ export const createTrialRequest = async (req, res) => {
                             <p style="margin: 0;"><strong>✨ Bạn có quyền truy cập đầy đủ:</strong></p>
                             <ul style="margin: 10px 0;">
                                 <li>Quản lý phòng trọ</li>
-                                <li>Quản lý khách thuê</li>
+                                <li>Quản lý Người lưu trú</li>
                                 <li>Quản lý hợp đồng</li>
                                 <li>Quản lý thu chi</li>
                                 <li>Báo cáo thống kê</li>

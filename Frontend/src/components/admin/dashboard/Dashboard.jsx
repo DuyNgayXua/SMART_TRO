@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "../../../contexts/AuthContext";
 import SideBar from "../../common/adminSidebar";
 import { roomsAPI } from "../../../services/roomsAPI";
 import contractsAPI from "../../../services/contractsAPI";
@@ -9,6 +11,8 @@ import "./dashboard.css";
 
 const Dashboard = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalRooms: 0,
@@ -34,6 +38,14 @@ const Dashboard = () => {
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1); // 1-12
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+
+  // Chỉ cho phép landlord truy cập Dashboard
+  useEffect(() => {
+    if (user && user.role !== 'landlord') {
+      // Redirect admin về trang chủ hoặc trang khác
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   useEffect(() => {
     fetchDashboardData();
@@ -122,7 +134,7 @@ const Dashboard = () => {
           .reduce((sum, inv) => sum + (inv.totalAmount || 0), 0);
         
         revenueByMonth.push({
-          month: monthDate.toLocaleDateString('vi-VN', { month: 'short', year: 'numeric' }),
+          month: `${monthDate.getMonth() + 1}/${monthDate.getFullYear()}`,
           revenue: monthRevenue
         });
       }
@@ -155,11 +167,11 @@ const Dashboard = () => {
 
   const formatCurrency = (amount) => {
     if (amount >= 1000000) {
-      return `₫${(amount / 1000000).toFixed(1)}M`;
+      return `${(amount / 1000000).toFixed(1)}Tr`;
     } else if (amount >= 1000) {
-      return `₫${(amount / 1000).toFixed(1)}K`;
+      return `${(amount / 1000).toFixed(1)}K`;
     }
-    return `₫${amount}`;
+    return `${amount}đ`;
   };
 
   if (loading) {
@@ -251,7 +263,7 @@ const Dashboard = () => {
               <i className="fas fa-users"></i>
             </div>
             <div className="card-content">
-              <h3 className="card-title">Tổng khách thuê</h3>
+              <h3 className="card-title">Tổng Người lưu trú</h3>
               <div className="card-number">{stats.totalTenants}</div>
               <div className="card-footer">
                 <span className="badge badge-green">

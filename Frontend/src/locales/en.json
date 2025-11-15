@@ -1382,5 +1382,27 @@
     "legal": {
       "copyright": "© 2025 SMART TRO. Designed By DUYHUY."
     }
+  },
+  "userPackages": {
+    "title": "Subscription Package",
+    "loading": "Loading package information...",
+    "noPackage": "No package registered",
+    "propertyPackage": "Property Management Package",
+    "postPackage": "Post Package",
+    "packageName": "Package Name",
+    "priority": "Priority",
+    "totalPosts": "Total Posts",
+    "usedPosts": "Used Posts",
+    "totalPushes": "Total Pushes",
+    "usedPushes": "Used Pushes",
+    "purchaseDate": "Purchase Date",
+    "expiryDate": "Expiry Date",
+    "status": "Status",
+    "statusActive": "Active",
+    "statusExpired": "Expired",
+    "statusCancelled": "Cancelled",
+    "expired": "(Expired)",
+    "posts": "posts",
+    "times": "times"
   }
 }

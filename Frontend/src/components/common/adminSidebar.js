@@ -50,7 +50,12 @@ const SideBar = () => {
 
   // Định nghĩa tất cả menu items với roles được phép truy cập
   const allMenuItems = useMemo(() => [
-    { text: t('sidebar.dashboard'), icon: <Dashboard />, path: "/admin/dashboard", roles: ['admin', 'landlord'] },
+    { 
+      text: t('sidebar.dashboard'), 
+      icon: <Dashboard />, 
+      path: role === 'admin' ? "/admin/dashboard" : "/landlord/dashboard", 
+      roles: ['admin', 'landlord'] 
+    },
     { text: t('sidebar.rooms'), icon: <House />, path: "/admin/rooms", roles: ['landlord'] },
     { text: t('sidebar.amenities'), icon: <Category />, path: "/admin/amenities", roles: ['landlord'] },
     { text: t('sidebar.tenants'), icon: <People />, path: "/admin/tenants", roles: ['landlord'] },
@@ -63,7 +68,7 @@ const SideBar = () => {
     { text: t('sidebar.package-plans'), icon: <Redeem />, path: "/admin/package-plans", roles: ['admin'] },
     { text: t('sidebar.package-payments'), icon: <Payment />, path: "/admin/package-payments", roles: ['admin'] },
     { text: t('sidebar.settings'), icon: <Settings />, path: "/admin/settings", roles: ['admin', 'landlord'] }
-  ], [t]);
+  ], [t, role]);
 
   // Lọc menu items dựa trên role của user
   const menuItems = useMemo(() => {

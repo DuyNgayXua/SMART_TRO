@@ -1280,7 +1280,7 @@ const PaymentsManagement = () => {
               <input
                 type="text"
                 className="search-input"
-                placeholder={t('payments.searchPlaceholder', 'Tìm theo phòng, khách thuê...')}
+                placeholder={t('payments.searchPlaceholder', 'Tìm theo phòng, Người lưu trú...')}
                 value={searchFilters.search}
                 onChange={e => {
                   setSearchFilters(f => ({ ...f, search: e.target.value }));
@@ -1486,12 +1486,12 @@ const PaymentsManagement = () => {
         {invoices.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
             {/* Pagination Info */}
-            <div className="pagination-info">
+            {/* <div className="pagination-info">
               <span className="pagination-text">
                 Trang {pagination.currentPage} / {pagination.totalPages} 
                 ({pagination.totalItems} hóa đơn)
               </span>
-            </div>
+            </div> */}
 
             <div className="pagination-controls">
               {/* First Page Button */}
@@ -1592,7 +1592,7 @@ const PaymentsManagement = () => {
                       <span>{t('payments.room', 'Phòng')} {selectedInvoice.room?.roomNumber}</span>
                     </div>
                     <div className="detail-row">
-                      <label><i className="fas fa-user"></i> {t('payments.tenant', 'Khách thuê')}:</label>
+                      <label><i className="fas fa-user"></i> {t('payments.tenant', 'Người lưu trú')}:</label>
                       <span>{selectedInvoice.tenant?.fullName}</span>
                     </div>
                     <div className="detail-row">

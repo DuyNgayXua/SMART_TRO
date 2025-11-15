@@ -145,7 +145,7 @@ const Register = () => {
                         <select value={role} onChange={e => setRole(e.target.value)} style={{ marginBottom: '12px', fontWeight: 'bold' }}
                             className="form-select"
                         >
-                            <option value="tenant">Khách thuê</option>
+                            <option value="tenant">Người lưu trú</option>
                             <option value="landlord">Chủ trọ</option>
                             
                         </select>

@@ -336,7 +336,7 @@ const handleRegisterClick = (planName) => {
       color: "#22c55e",
       features: [
         "Quản lý tối đa 5 phòng trọ",
-        "Quản lý khách thuê & hợp đồng cơ bản",
+        "Quản lý Người lưu trú & hợp đồng cơ bản",
         "Quản lý thanh toán đơn giản",
         "Hỗ trợ qua email"
       ]

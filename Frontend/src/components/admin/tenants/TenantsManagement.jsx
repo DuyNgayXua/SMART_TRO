@@ -257,7 +257,7 @@ const TenantsManagement = () => {
 
       // Create workbook
       const wb = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(wb, ws, 'Danh sách khách thuê');
+      window.XLSX.utils.book_append_sheet(wb, ws, 'Danh sách Người lưu trú');
 
       // Generate filename with current date
       const today = new Date();
@@ -761,11 +761,11 @@ const TenantsManagement = () => {
           try {
             const uploadRes = await tenantsAPI.uploadTenantImages(createdTenant._id, form.tenantImages);
             if (!uploadRes.success) {
-              showToast('warning', t('tenants.messages.addSuccessButImagesFailed', 'Tạo khách thuê thành công nhưng upload ảnh thất bại'));
+              showToast('warning', t('tenants.messages.addSuccessButImagesFailed', 'Tạo Người lưu trú thành công nhưng upload ảnh thất bại'));
             }
           } catch (uploadErr) {
             console.error('Error uploading images:', uploadErr);
-            showToast('warning', t('tenants.messages.addSuccessButImagesFailed', 'Tạo khách thuê thành công nhưng upload ảnh thất bại'));
+            showToast('warning', t('tenants.messages.addSuccessButImagesFailed', 'Tạo Người lưu trú thành công nhưng upload ảnh thất bại'));
           }
         }
         
@@ -845,7 +845,7 @@ const TenantsManagement = () => {
     
     setUpdating(true);
     try {
-      // Kiểm tra số lượng khách thuê trong phòng
+      // Kiểm tra số lượng Người lưu trú trong phòng
       const roomId = typeof editForm.room === 'object' ? editForm.room._id : editForm.room;
       
       const tenantsRes = await tenantsAPI.getTenantsByRoom(roomId, { status: 'active' });
@@ -993,7 +993,7 @@ const TenantsManagement = () => {
               <input
                 type="text"
                 className="search-input"
-                placeholder={t('tenants.searchPlaceholder', 'Tìm kiếm khách thuê...')}
+                placeholder={t('tenants.searchPlaceholder', 'Tìm kiếm Người lưu trú...')}
                 value={filters.search}
                 onChange={e => {
                   setFilters(f => ({...f, search: e.target.value}));
@@ -1050,7 +1050,7 @@ const TenantsManagement = () => {
         <div className="tenants-actions">
           <button className="action-btn primary" onClick={openCreate}>
             <i className="fas fa-user-plus"></i>
-            {t('tenants.addNew', 'Thêm khách thuê mới')}
+            {t('tenants.addNew', 'Thêm Người lưu trú mới')}
           </button>
           <button className="action-btn" onClick={() => setShowImportModal(true)}>
             <i className="fas fa-file-import"></i>
@@ -1067,8 +1067,8 @@ const TenantsManagement = () => {
         ) : displayedRooms.length === 0 ? (
           <div className="empty-container">
             <div className="empty-icon">👥</div>
-            <h3 className="empty-text">{filters.search || filters.status ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có phòng nào có khách thuê'}</h3>
-            <p className="empty-description">{filters.search || filters.status ? 'Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm' : 'Hiện tại chưa có phòng nào có khách thuê. Hãy thêm khách thuê vào các phòng trống để quản lý.'}</p>
+            <h3 className="empty-text">{filters.search || filters.status ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có phòng nào có Người lưu trú'}</h3>
+            <p className="empty-description">{filters.search || filters.status ? 'Hãy thử thay đổi bộ lọc hoặc từ khóa tìm kiếm' : 'Hiện tại chưa có phòng nào có Người lưu trú. Hãy thêm Người lưu trú vào các phòng trống để quản lý.'}</p>
           </div>
         ) : (
           <div className="tenants-grid">
@@ -1094,7 +1094,7 @@ const TenantsManagement = () => {
                 <div className="tenant-room-content">
                   {room.tenants.filter(tenant => tenant.status === 'active').length === 0 ? (
                     <div className="tenant-empty-state">
-                      <span>Chưa có khách thuê</span>
+                      <span>Chưa có Người lưu trú</span>
                     </div>
                   ) : (
                     <div className="tenant-list">
@@ -1136,12 +1136,12 @@ const TenantsManagement = () => {
         {filteredRooms.length > 0 && pagination.totalPages > 1 && (
           <div className="pagination">
             {/* Pagination Info */}
-            <div className="pagination-info">
+            {/* <div className="pagination-info">
               <span className="pagination-text">
                 {t('tenants.pagination.page', 'Trang')} {pagination.currentPage} / {pagination.totalPages} 
                 ({pagination.totalItems} {t('tenants.pagination.rooms', 'phòng')})
               </span>
-            </div>
+            </div> */}
 
             <div className="pagination-controls">
               {/* First Page Button */}
@@ -1518,7 +1518,7 @@ const TenantsManagement = () => {
             <div className="tenant-modal-footer">
               <button className="tenant-btn-delete" onClick={handleDeleteTenant} disabled={updating}>
                 <i className="fas fa-trash-alt"></i>
-                Xóa khách thuê
+                Xóa Người lưu trú
               </button>
               <div className="tenant-modal-footer-right">
                 <button className="tenant-btn-cancel" onClick={closeEdit}>
@@ -1541,10 +1541,10 @@ const TenantsManagement = () => {
           <div className="tenant-confirm-modal" onClick={(e) => e.stopPropagation()}>
             <div className="tenant-confirm-header">
               <i className="fas fa-exclamation-triangle tenant-confirm-icon"></i>
-              <h3>Xác nhận xóa khách thuê</h3>
+              <h3>Xác nhận xóa Người lưu trú</h3>
             </div>
             <div className="tenant-confirm-body">
-              <p>Bạn có chắc chắn muốn xóa khách thuê <strong>"{editForm.fullName}"</strong>?</p>
+              <p>Bạn có chắc chắn muốn xóa Người lưu trú <strong>"{editForm.fullName}"</strong>?</p>
               <p className="tenant-confirm-warning">
                 <i className="fas fa-info-circle"></i>
                 Lưu ý: Thao tác này sẽ xóa vĩnh viễn khỏi database và không thể khôi phục!
@@ -1609,7 +1609,7 @@ const TenantsManagement = () => {
                 <p className="import-hint" style={{ marginTop: '8px', background: '#f0fdf4', borderLeftColor: '#10b981', color: '#065f46' }}>
                   <i className="fas fa-users" style={{ color: '#10b981' }}></i>
                   <span>
-                    <strong>Mẹo:</strong> Bạn có thể thêm nhiều khách thuê vào cùng 1 phòng bằng cách thêm nhiều dòng với cùng tên phòng. 
+                    <strong>Mẹo:</strong> Bạn có thể thêm nhiều Người lưu trú vào cùng 1 phòng bằng cách thêm nhiều dòng với cùng tên phòng. 
                     Hệ thống sẽ tự động kiểm tra và trừ dần số slot còn trống.
                   </span>
                 </p>
@@ -1640,7 +1640,7 @@ const TenantsManagement = () => {
                 <div className="import-section">
                   <h4 className="preview-title">
                     <i className="fas fa-table"></i>
-                    {t('tenants.dataPreview', 'Xem trước dữ liệu')} ({importData.length} khách thuê)
+                    {t('tenants.dataPreview', 'Xem trước dữ liệu')} ({importData.length} Người lưu trú)
                   </h4>
                   <div className="import-data-grid">
                     <table className="import-table">

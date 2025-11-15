@@ -101,7 +101,7 @@ const Header = () => {
     // Delay logout và chuyển trang
     setTimeout(() => {
       logout();
-      navigate("/login");
+      navigate("/");
     }, 1500);
   }
 
@@ -230,14 +230,14 @@ const Header = () => {
                           <i className="fa fa-chart-line"></i> {t('header.pricingAnalytics')}
                         </Link>
                         {user.role === 'admin' && (
-                          <Link to="/admin/dashboard" onClick={() => setUserMenuOpen(false)}>
+                          <a href="/admin/dashboard" target="_blank" rel="noopener noreferrer" onClick={() => setUserMenuOpen(false)}>
                             <i className="fa fa-dashboard"></i> {t('header.admin')}
-                          </Link>
+                          </a>
                         )}
                          {user.role === 'landlord' && (
-                          <Link to="/admin/dashboard" onClick={() => setUserMenuOpen(false)}>
+                          <a href="/landlord/dashboard" target="_blank" rel="noopener noreferrer" onClick={() => setUserMenuOpen(false)}>
                             <i className="fa fa-briefcase"></i> {t('header.landlord')}
-                          </Link>
+                          </a>
                         )}
                         <hr />
                         <button className="logout-btn" onClick={handleLogout}>
