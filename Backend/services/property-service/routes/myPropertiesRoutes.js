@@ -4,6 +4,7 @@ import authMiddleware from '../../shared/middleware/authMiddleware.js';
 import myPropertiesController from '../controllers/myPropertiesController.js';
 import moderationMiddleware from '../../shared/middleware/moderationMiddleware.js';
 import uploadMixedWithModerationOptional from '../../shared/middleware/moderationMiddleware.js';
+import { processImageEmbeddingsOnUpdate } from '../../shared/middleware/imageEmbeddingMiddleware.js';
 
 const router = express.Router();
 
@@ -85,6 +86,7 @@ router.put(
   authMiddleware,
   moderationMiddleware.uploadMixedWithModerationOptional(),
   resizeImages, // Resize ảnh sau khi upload
+  processImageEmbeddingsOnUpdate, // Cập nhật vector embeddings cho ảnh (chạy background)
   myPropertiesController.updateProperty
 );
 

@@ -794,7 +794,7 @@
       "about": "About",
       "services": "Services",
       "blog": "Blog",
-      "pricing": "Pricing",
+      "pricing": "Services",
       "contact": "Contact"
     }
   },
@@ -1234,6 +1234,10 @@
     "title": "Properties Listing",
     "searchTitle": "Search Properties",
     "searchPlaceholder": "Search by title, description, street, address...",
+    "imageSearch": {
+      "activePlaceholder": "Searching by image...",
+      "inactivePlaceholder": "Search by title, description, street, address..."
+    },
     "heroSearch": {
       "province": "Province/City",
       "ward": "Ward",
@@ -1300,7 +1304,9 @@
       "areaRange": "Area: {{range}}",
       "amenities": "Amenities: {{count}} items",
       "from": "From",
-      "to": "To"
+      "to": "To",
+      "imageSearchWithFile": "Image Search: {{fileName}}",
+      "imageSearch": "Image Search"
     },
     "loading": {
       "searching": "Searching properties...",

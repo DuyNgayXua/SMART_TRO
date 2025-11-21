@@ -12,6 +12,8 @@ import { useFavorites } from '../../contexts/FavoritesContext';
 import { viewTrackingUtils } from '../../utils/viewTrackingUtils';
 import PropertyCard from './PropertyCard';
 import ChatBot from '../chatbot/ChatBot';
+import ImageSearch from './ImageSearch';
+import imageSearchAPI from '../../services/imageSearchAPI';
 import {
   FaMapMarkerAlt,
   FaSync,
@@ -62,12 +64,14 @@ const PropertiesListing = ({ searchResults = null, searchParams: externalSearchP
   const [amenities, setAmenities] = useState([]);
   const [showAmenitiesModal, setShowAmenitiesModal] = useState(false);
   const [tempSelectedAmenities, setTempSelectedAmenities] = useState([]);
-  
+  const [showImageSearch, setShowImageSearch] = useState(false);
   // Go to top button state
   const [showGoToTop, setShowGoToTop] = useState(false);
   const [selectedPriceIndex, setSelectedPriceIndex] = useState(0);
   const [selectedAreaIndex, setSelectedAreaIndex] = useState(0);
   const [searching, setSearching] = useState(false);
+  const [isImageSearchActive, setIsImageSearchActive] = useState(false);
+  const [imageSearchInfo, setImageSearchInfo] = useState(null);
 
   // Typing effect for placeholder
   const [currentPlaceholder, setCurrentPlaceholder] = useState('');
@@ -96,20 +100,22 @@ const PropertiesListing = ({ searchResults = null, searchParams: externalSearchP
     hasNext: false,
     hasPrev: false
   });
+
+
   // Spinner component để thống nhất loading indicator
-const LoadingSpinner = ({ size = 'medium', className = '' }) => {
-  const sizeClasses = {
-    small: 'spinner-small',
-    medium: 'spinner-medium', 
-    large: 'spinner-large'
+  const LoadingSpinner = ({ size = 'medium', className = '' }) => {
+    const sizeClasses = {
+      small: 'spinner-small',
+      medium: 'spinner-medium',
+      large: 'spinner-large'
+    };
+
+    return (
+      <i
+        className={`fa fa-spinner smooth-spinner ${sizeClasses[size]} ${className}`}
+      ></i>
+    );
   };
-  
-  return (
-    <i 
-      className={`fa fa-spinner smooth-spinner ${sizeClasses[size]} ${className}`}
-    ></i>
-  );
-};
 
   // Filters state
   const [filters, setFilters] = useState({
@@ -189,11 +195,19 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
   // Load properties when filters change
   useEffect(() => {
+    console.log('🔄 Filters useEffect triggered - isImageSearchActive:', isImageSearchActive, 'provinces:', provinces.length, 'searchResults:', !!searchResults);
+
+    // Không load nếu đang hiển thị kết quả image search
+    if (isImageSearchActive) {
+      console.log('🖼️ Image search active, skipping normal property loading');
+      return;
+    }
+
     if (provinces.length > 0 && !searchResults) { // Only load when initial data is ready and no external search results
       loadProperties(true);
       // Don't auto-update URL here to avoid conflicts with manual URL updates
     }
-  }, [filters, provinces, searchResults]);
+  }, [filters, provinces, searchResults, isImageSearchActive]);
 
   // Page changes are now handled by handlePageChange function
 
@@ -210,10 +224,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   // Typing effect for placeholder
   useEffect(() => {
     let timeout;
-    
+
     const typeText = () => {
       const currentText = placeholderTexts[placeholderIndex];
-      
+
       if (isTyping) {
         // Typing phase
         if (currentPlaceholder.length < currentText.length) {
@@ -243,21 +257,30 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     // Only run typing effect when searchInput is empty
     if (!searchInput) {
       typeText();
-        } else {
-          // Reset when user starts typing
-          setCurrentPlaceholder(t('propertiesListing.searchPlaceholder'));
-        }    return () => clearTimeout(timeout);
+    } else {
+      // Reset when user starts typing
+      setCurrentPlaceholder(t('propertiesListing.searchPlaceholder'));
+    } return () => clearTimeout(timeout);
   }, [currentPlaceholder, placeholderIndex, isTyping, searchInput, placeholderTexts]);
 
 
 
   // Xử lý kết quả tìm kiếm từ bên ngoài (từ Hero search hoặc các component khác)
   useEffect(() => {
+    console.log('🔄 useEffect triggered - isImageSearchActive:', isImageSearchActive, 'searchResults:', !!searchResults);
+
+    // Không override nếu đang hiển thị kết quả image search
+    if (isImageSearchActive) {
+      console.log('🖼️ Image search is active, skipping external search results');
+      return;
+    }
+
     if (searchResults) {
-     
+      console.log('🔍 External search results received:', searchResults);
+
       // Cập nhật danh sách tin đăng từ kết quả tìm kiếm bên ngoài
       setProperties(searchResults.properties || []);
-     
+
       setPagination(prev => ({
         ...prev,
         total: searchResults.pagination?.total || 0,
@@ -297,11 +320,11 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   const loadProperties = async (reset = false, customFilters = null, targetPage = null) => {
     try {
       setLoading(true);
-      
+
       const currentPage = targetPage || (reset ? 1 : pagination.page);
       if (reset || targetPage) {
-        setPagination(prev => ({ 
-          ...prev, 
+        setPagination(prev => ({
+          ...prev,
           page: currentPage,
           hasPrev: currentPage > 1
         }));
@@ -324,14 +347,15 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
       let response;
       // Kiểm tra xem có bộ lọc nào được áp dụng không
-      const hasFilters = searchFilters.search || searchFilters.province || 
-                        searchFilters.ward || searchFilters.category || searchFilters.minPrice || 
-                        searchFilters.maxPrice || searchFilters.minArea || searchFilters.maxArea || 
-                        (searchFilters.amenities && searchFilters.amenities.length > 0);
+      const hasFilters = searchFilters.search || searchFilters.province ||
+        searchFilters.ward || searchFilters.category || searchFilters.minPrice ||
+        searchFilters.maxPrice || searchFilters.minArea || searchFilters.maxArea ||
+        (searchFilters.amenities && searchFilters.amenities.length > 0);
 
       if (hasFilters) {
         // Sử dụng search API khi có bộ lọc được áp dụng
         response = await searchPropertiesAPI.searchProperties(params);
+        console.log('Response from searchProperties:', response);
       } else {
         // Sử dụng API tổng quát khi không có bộ lọc nào
         response = await myPropertiesAPI.getMyApprovedProperties(params);
@@ -340,7 +364,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
       if (response.success) {
         const newProperties = response.data?.properties || [];
-        
+
         // Luôn thay thế toàn bộ danh sách properties cho phân trang
         setProperties(newProperties);
 
@@ -370,11 +394,11 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       setWards([]);
       return;
     }
-    
+
     try {
       setLoadingWards(true);
       const wardsRes = await locationAPI.getWards(provinceName);
-      
+
       if (wardsRes.success) {
         setWards(wardsRes.data || []);
       } else {
@@ -392,13 +416,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   const handleHeroInputChange = (field, value) => {
     setSearchData(prev => {
       const newData = { ...prev, [field]: value };
-      
+
       // Reset ward when province changes
       if (field === 'province') {
         newData.ward = '';
         loadWards(value);
       }
-      
+
       return newData;
     });
   };
@@ -412,7 +436,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       minPrice: selectedRange.min,
       maxPrice: selectedRange.max
     }));
-    
+
     // Also update filters to sync with sidebar
     // Convert '' to null for consistency with sidebar ranges
     const maxPriceValue = selectedRange.max === '' ? null : selectedRange.max;
@@ -432,7 +456,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       minArea: selectedRange.min,
       maxArea: selectedRange.max
     }));
-    
+
     // Also update filters to sync with sidebar
     // Convert '' to null for consistency with sidebar ranges
     const maxAreaValue = selectedRange.max === '' ? null : selectedRange.max;
@@ -450,8 +474,8 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   };
 
   const handleAmenityModalToggle = (amenityId) => {
-    setTempSelectedAmenities(prev => 
-      prev.includes(amenityId) 
+    setTempSelectedAmenities(prev =>
+      prev.includes(amenityId)
         ? prev.filter(id => id !== amenityId)
         : [...prev, amenityId]
     );
@@ -472,10 +496,119 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     setShowAmenitiesModal(false);
   };
 
+  // Handle image search
+  const handleOpenImageSearch = () => {
+    setShowImageSearch(true);
+  };
+
+  const handleCloseImageSearch = () => {
+    setShowImageSearch(false);
+  };
+
+  const handleImageSearchResults = (searchResults) => {
+    console.log('🖼️ Image search results received:', searchResults);
+    console.log('🔍 Before processing - isImageSearchActive:', isImageSearchActive);
+
+    // Check if we have valid data structure from ImageSearch component
+    if (!searchResults || !searchResults.data || !searchResults.data.properties) {
+      console.warn('❌ Invalid search results format:', searchResults);
+      return;
+    }
+
+    const propertiesData = searchResults.data.properties || [];
+    console.log(`🏠 Processing ${propertiesData.length} properties from image search`);
+
+    // Update properties with search results
+    setProperties(propertiesData);
+
+    // Update pagination
+    const paginationData = searchResults.data.pagination || {};
+    setPagination(prev => ({
+      ...prev,
+      page: 1,
+      total: paginationData.total || propertiesData.length,
+      totalPages: paginationData.totalPages || 1,
+      hasNext: paginationData.hasNext || false,
+      hasPrev: false
+    }));
+
+    // Lưu info riêng cho image search (tên file + url nếu cần)
+    setImageSearchInfo({
+      fileName: searchResults.data.originalFileName || searchResults.data.uploadedImage || '',
+      uploadedImageUrl: searchResults.data.uploadedImage || ''
+    });
+
+    // Update filters to reflect image search
+    const newFilters = {
+      search: '',
+      province: '',
+      ward: '',
+      category: '',
+      minPrice: '',
+      maxPrice: '',
+      minArea: '',
+      maxArea: '',
+      amenities: [],
+      sortBy: 'createdAt',
+      sortOrder: 'desc'
+    };
+
+    setFilters(newFilters);
+
+    // Reset Hero search data but keep search indication
+    setSearchData({
+      search: '',
+      province: '',
+      ward: '',
+      category: '',
+      minPrice: '',
+      maxPrice: '',
+      minArea: '',
+      maxArea: '',
+      amenities: []
+    });
+
+    // Reset select indices
+    setSelectedPriceIndex(0);
+    setSelectedAreaIndex(0);
+    setSearchInput('');
+
+    // Update URL params to reflect image search
+    const params = new URLSearchParams();
+    params.set('mode', 'image');
+    setSearchParams(params);
+
+    // Set image search active flag
+
+    setIsImageSearchActive(true);
+
+    // Force loading to false to ensure display
+    setLoading(false);
+
+    console.log('✅ Image search results processed:', {
+      propertiesCount: propertiesData.length,
+      pagination: paginationData,
+      filters: newFilters,
+      isImageSearchActive: true,
+      flagSetSuccessfully: 'TRUE',
+      uploadedImage: searchResults.data.uploadedImage,
+      searchType: searchResults.searchType
+    });
+
+    // Verify flag is set (with timeout to see state update)
+    setTimeout(() => {
+      console.log('🔍 Verify flag after 100ms - isImageSearchActive:', isImageSearchActive);
+    }, 100);
+  };
+
   const handleResetFilters = async () => {
+    // Reset image search flag
+    console.log('🔄 RESET FILTERS: Setting isImageSearchActive to FALSE');
+    setIsImageSearchActive(false);
+
     // Reset search input
     setSearchInput('');
-    
+
     // Reset searchData (Hero form)
     const resetSearchData = {
       search: '',
@@ -488,14 +621,14 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       maxArea: '',
       amenities: []
     };
-    
+
     setSearchData(resetSearchData);
-    
+
     // Reset Hero select indices
     setSelectedPriceIndex(0);
     setSelectedAreaIndex(0);
     setWards([]);
-    
+
     // Reset filters (for sidebar and general filtering)
     const resetFilters = {
       search: '',
@@ -510,12 +643,12 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       sortBy: 'createdAt',
       sortOrder: 'desc'
     };
-    
+
     setPagination(prev => ({ ...prev, page: 1 }));
-    
+
     // Clear URL params immediately
     setSearchParams(new URLSearchParams());
-    
+
     // Call search API with reset filters immediately
     await searchWithFilters(resetFilters);
   };
@@ -523,7 +656,11 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   // Handle Hero search submit
   const handleHeroSearch = async (e) => {
     e.preventDefault();
-    
+
+    // Reset image search flag when doing normal search
+    console.log('🔄 HERO SEARCH: Setting isImageSearchActive to FALSE');
+    setIsImageSearchActive(false);
+
     const searchParams = {
       search: searchData.search || '',
       province: searchData.province || '',
@@ -539,11 +676,11 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       sortBy: 'createdAt',
       sortOrder: 'desc'
     };
-    
+
     try {
       setSearching(true);
       const response = await searchPropertiesAPI.searchProperties(searchParams);
-     
+
       if (response.success) {
         setProperties(response.data?.properties || []);
         setPagination({
@@ -553,7 +690,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           totalPages: response.data?.pagination?.totalPages || 0,
           hasNext: response.data?.pagination?.hasNext || false
         });
-        
+
         // Update filters state to match search data
         const newFilters = {
           search: searchData.search || '',
@@ -568,9 +705,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           sortBy: 'createdAt',
           sortOrder: 'desc'
         };
-        
+
         setFilters(newFilters);
-        
+
         // Update URL immediately after successful search
         const params = new URLSearchParams();
         Object.entries(newFilters).forEach(([key, value]) => {
@@ -583,7 +720,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           }
         });
         setSearchParams(params);
-        
+
       } else {
         console.error('Search failed:', response.message);
         setProperties([]);
@@ -630,15 +767,15 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
   // Search with current filters
   const searchWithFilters = async (newFilters = null) => {
-    if (!searchResults) { 
+    if (!searchResults) {
       const searchFilters = newFilters || filters;
       // Temporarily update filters state if newFilters provided
       if (newFilters) {
         setFilters(newFilters);
       }
-      
+
       await loadProperties(true, searchFilters);
-     
+
     }
   };
 
@@ -655,13 +792,17 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
   // Handle search submit
   const handleSearchSubmit = async () => {
+    // Reset image search flag when doing text search
+    console.log('🔄 TEXT SEARCH: Setting isImageSearchActive to FALSE');
+    setIsImageSearchActive(false);
+
     const newFilters = { ...filters, search: searchInput };
-    
+
     // Also update Hero search data
     setSearchData(prev => ({ ...prev, search: searchInput }));
-    
+
     setPagination(prev => ({ ...prev, page: 1 }));
-    
+
     // Update URL immediately
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
@@ -674,7 +815,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       }
     });
     setSearchParams(params);
-    
+
     // Search immediately with new filters
     await searchWithFilters(newFilters);
   };
@@ -686,13 +827,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       minPrice: range.min || '',
       maxPrice: range.max || ''
     }));
-    
+
     setSearchData(prev => ({
       ...prev,
       minPrice: range.min || '',
       maxPrice: range.max === null ? '' : range.max || ''
     }));
-    
+
     // Update selectedPriceIndex to sync Hero select
     // Handle the conversion between null (sidebar) and '' (Hero) for max values
     const heroPriceIndex = heroPriceRanges.findIndex(heroRange => {
@@ -700,13 +841,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       const heroRangeMaxValue = heroRange.max === null ? '' : heroRange.max;
       return heroRange.min === range.min && heroRangeMaxValue === rangeMaxValue;
     });
-    
+
     if (heroPriceIndex !== -1) {
       setSelectedPriceIndex(heroPriceIndex);
     }
-    
+
     setPagination(prev => ({ ...prev, page: 1 }));
-    
+
     // Call search API immediately with updated params
     const searchParams = {
       search: filters.search || '',
@@ -723,13 +864,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       sortBy: filters.sortBy || 'createdAt',
       sortOrder: filters.sortOrder || 'desc'
     };
-    
+
     try {
       setLoading(true);
       console.log('Price range search params:', searchParams);
 
       const response = await searchPropertiesAPI.searchProperties(searchParams);
-      
+
       if (response.success) {
         setProperties(response.data?.properties || []);
         setPagination(prev => ({
@@ -739,7 +880,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           totalPages: response.data?.pagination?.totalPages || 0,
           hasNext: response.data?.pagination?.hasNext || false
         }));
-        
+
         // Update URL immediately after successful search
         const urlParams = new URLSearchParams();
         Object.entries(filters).forEach(([key, value]) => {
@@ -754,9 +895,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         // Make sure to include the new price values
         if (range.min) urlParams.set('minPrice', range.min);
         if (range.max) urlParams.set('maxPrice', range.max);
-        
+
         setSearchParams(urlParams);
-        
+
       } else {
         console.error('Search failed:', response.message);
         setProperties([]);
@@ -779,13 +920,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       minArea: range.min || '',
       maxArea: range.max || ''
     }));
-    
+
     setSearchData(prev => ({
       ...prev,
       minArea: range.min || '',
       maxArea: range.max || ''
     }));
-    
+
     // Update selectedAreaIndex to sync Hero select
     // Need to handle the difference between null and '' for max values
     const heroAreaIndex = heroAreaRanges.findIndex(heroRange => {
@@ -793,13 +934,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       const heroRangeMaxValue = heroRange.max === null ? '' : heroRange.max;
       return heroRange.min === range.min && heroRangeMaxValue === rangeMaxValue;
     });
-    
+
     if (heroAreaIndex !== -1) {
       setSelectedAreaIndex(heroAreaIndex);
     }
-    
+
     setPagination(prev => ({ ...prev, page: 1 }));
-    
+
     // Call search API immediately with updated params
     const searchParams = {
       search: filters.search || '',
@@ -816,13 +957,14 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       sortBy: filters.sortBy || 'createdAt',
       sortOrder: filters.sortOrder || 'desc'
     };
-    
+
     try {
       setLoading(true);
       console.log('Area range search params:', searchParams);
 
       const response = await searchPropertiesAPI.searchProperties(searchParams);
-      
+
+
       if (response.success) {
         setProperties(response.data?.properties || []);
         setPagination(prev => ({
@@ -832,7 +974,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
           totalPages: response.data?.pagination?.totalPages || 0,
           hasNext: response.data?.pagination?.hasNext || false
         }));
-        
+
         // Update URL immediately after successful search
         const urlParams = new URLSearchParams();
         Object.entries(filters).forEach(([key, value]) => {
@@ -847,9 +989,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         // Make sure to include the new area values
         if (range.min) urlParams.set('minArea', range.min);
         if (range.max) urlParams.set('maxArea', range.max);
-        
+
         setSearchParams(urlParams);
-        
+
       } else {
         console.error('Search failed:', response.message);
         setProperties([]);
@@ -869,9 +1011,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     let resetSearchData = { ...searchData };
     let resetSelectedPriceIndex = selectedPriceIndex;
     let resetSelectedAreaIndex = selectedAreaIndex;
-    
+
     const newFilters = { ...filters };
-    
+
     switch (filterType) {
       case 'search':
         newFilters.search = '';
@@ -906,20 +1048,28 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         newFilters.amenities = [];
         resetSearchData.amenities = [];
         break;
+      case 'imageSearch':
+        // Tắt chế độ image search và load lại danh sách bình thường
+        setIsImageSearchActive(false);
+        setImageSearchInfo(null);
+
+        // Có thể gọi lại handleResetFilters() hoặc searchWithFilters với filters trống
+        await handleResetFilters();
+        return; // nhớ return để không chạy tiếp
       default:
         break;
     }
-    
+
     // Update filters state
     setFilters(newFilters);
-    
+
     // Update Hero search data to sync
     setSearchData(resetSearchData);
     setSelectedPriceIndex(resetSelectedPriceIndex);
     setSelectedAreaIndex(resetSelectedAreaIndex);
-    
+
     setPagination(prev => ({ ...prev, page: 1 }));
-    
+
     // Update URL immediately
     const params = new URLSearchParams();
     Object.entries(newFilters).forEach(([key, value]) => {
@@ -932,7 +1082,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       }
     });
     setSearchParams(params);
-    
+
     // Search immediately with new filters
     await searchWithFilters(newFilters);
   };
@@ -941,13 +1091,26 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
   const getActiveFilters = () => {
     const activeFilters = [];
 
+    // Filter riêng cho image search
+    if (isImageSearchActive && imageSearchInfo) {
+      activeFilters.push({
+        type: 'imageSearch',
+        label: imageSearchInfo.fileName
+          ? t('propertiesListing.filters.imageSearchWithFile', { fileName: imageSearchInfo.fileName })
+          // ví dụ: "Tìm kiếm bằng hình ảnh: 1.jpg"
+          : t('propertiesListing.filters.imageSearch'),
+        // ví dụ: "Tìm kiếm bằng hình ảnh"
+        value: imageSearchInfo.fileName || 'image_search'
+      });
+    }
+
     if (filters.search) {
       activeFilters.push({
         type: 'search',
         label: t('propertiesListing.filters.search', { keyword: filters.search }),
         value: filters.search
       });
-     
+
     }
 
     if (filters.province || filters.ward) {
@@ -958,7 +1121,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       if (filters.province) {
         locationParts.push(filters.province);
       }
-      
+
       if (locationParts.length > 0) {
         activeFilters.push({
           type: 'location',
@@ -986,7 +1149,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       } else if (filters.maxPrice) {
         priceRange = `${t('propertiesListing.filters.to')} ${formatPrice(filters.maxPrice)}`;
       }
-      
+
       activeFilters.push({
         type: 'price',
         label: t('propertiesListing.filters.priceRange', { range: priceRange }),
@@ -1003,7 +1166,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       } else if (filters.maxArea) {
         areaRange = `${t('propertiesListing.filters.to')} ${filters.maxArea}m²`;
       }
-      
+
       activeFilters.push({
         type: 'area',
         label: t('propertiesListing.filters.areaRange', { range: areaRange }),
@@ -1022,7 +1185,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
     return activeFilters;
   };
 
- 
+
 
 
   // Handle favorite toggle
@@ -1066,10 +1229,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         hasPrev: newPage > 1,
         hasNext: newPage < pagination.totalPages
       }));
-      
+
       // Load properties for the new page
       loadProperties(true, null, newPage);
-      
+
       // Scroll to top when changing page
       window.scrollTo({ top: 0, behavior: 'smooth' });
     }
@@ -1097,7 +1260,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
         <section className='hero'>
           {/* Canvas Background Animation - Nằm phía sau tất cả */}
           <HeroCanvasBackground />
-          
+
           <div className='container'>
             {/* Form tìm kiếm Hero - Cho phép tìm kiếm theo địa điểm, loại hình, giá, diện tích */}
             <form className='hero-search-form' onSubmit={handleHeroSearch}>
@@ -1127,11 +1290,11 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     disabled={!searchData.province || loadingWards}
                   >
                     <option key="default-ward" value="">
-                      {!searchData.province 
+                      {!searchData.province
                         ? t('propertiesListing.heroSearch.selectWardFirst')
-                        : loadingWards 
-                        ? t('propertiesListing.heroSearch.loading')
-                        : t('propertiesListing.heroSearch.selectWard')
+                        : loadingWards
+                          ? t('propertiesListing.heroSearch.loading')
+                          : t('propertiesListing.heroSearch.selectWard')
                       }
                     </option>
                     {wards.map((ward, index) => (
@@ -1190,13 +1353,13 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 {/* Nút mở modal chọn tiện ích */}
                 <div className='search-box-hero'>
                   <label>{t('propertiesListing.heroSearch.amenities')}</label>
-                  <button 
+                  <button
                     type="button"
                     className="amenities-modal-btn-hero"
                     onClick={handleOpenAmenitiesModal}
                   >
                     <i className="fa fa-sliders"></i>
-                    {searchData.amenities.length > 0 
+                    {searchData.amenities.length > 0
                       ? t('propertiesListing.heroSearch.selectedAmenities', { count: searchData.amenities.length })
                       : t('propertiesListing.heroSearch.selectAmenities')
                     }
@@ -1225,7 +1388,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 </button>
               </div>
             </form>
-           
+
           </div>
         </section>
       )}
@@ -1240,29 +1403,47 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
               </h3>
             </div>
             <div className="search-input-group-listing">
-              <i className="fa fa-search"></i>
+              <div className="icon-search-input-group-listing">
+                <i className="fa fa-search"></i>
+                <button
+                  className="camera-search-btn"
+                  onClick={handleOpenImageSearch}
+                  title="Tìm kiếm bằng hình ảnh"
+                  type="button"
+                >
+                  <i className="fa fa-camera"></i>
+                </button>
+              </div>
               <input
                 type="text"
-                placeholder={searchInput ? t('propertiesListing.searchPlaceholder') : `${currentPlaceholder}|`}
+                placeholder={
+                  isImageSearchActive
+                    ? t('propertiesListing.imageSearch.activePlaceholder')
+                    // ví dụ: "Đang hiển thị kết quả từ hình ảnh (bấm Enter để tìm theo từ khóa mới)"
+                    : (searchInput
+                      ? t('propertiesListing.searchPlaceholder')
+                      : `${currentPlaceholder}|`)
+                }
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 onKeyPress={handleSearchInputKeyPress}
                 className="typing-placeholder"
               />
-              
-              
+
+
+
               {searchInput && (
                 <button
                   className="clear-search-properties-listing"
                   onClick={async () => {
                     setSearchInput('');
                     const newFilters = { ...filters, search: '' };
-                    
+
                     // Also reset Hero search data
                     setSearchData(prev => ({ ...prev, search: '' }));
-                    
+
                     setPagination(prev => ({ ...prev, page: 1 }));
-                    
+
                     // Update URL immediately
                     const params = new URLSearchParams();
                     Object.entries(newFilters).forEach(([key, value]) => {
@@ -1275,7 +1456,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                       }
                     });
                     setSearchParams(params);
-                    
+
                     // Search immediately with new filters
                     await searchWithFilters(newFilters);
                   }}
@@ -1352,7 +1533,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                     <i className="fa fa-filter" style={{ marginRight: '8px', color: '#00b095ff' }}></i>
                     {t('propertiesListing.filters.activeFilters')}
                   </span>
-                  <button 
+                  <button
                     style={{
                       background: '#dc3545',
                       color: 'white',
@@ -1378,9 +1559,10 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                         maxArea: '',
                         amenities: [],
                         sortBy: 'createdAt',
-                        sortOrder: 'desc'
+                        sortOrder: 'desc',
+                        imageSearch: null
                       };
-                      
+
                       // Reset Hero search data
                       setSearchData({
                         search: '',
@@ -1391,18 +1573,22 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                         maxPrice: '',
                         minArea: '',
                         maxArea: '',
-                        amenities: []
+                        amenities: [],
+                        imageSearch: null
+
                       });
-                      
+
                       // Reset Hero select indices
                       setSelectedPriceIndex(0);
                       setSelectedAreaIndex(0);
-                      
+                      setImageSearchInfo(null);
+                      setIsImageSearchActive(false);
+
                       setPagination(prev => ({ ...prev, page: 1 }));
-                      
+
                       // Clear URL params immediately
                       setSearchParams(new URLSearchParams());
-                      
+
                       // Search immediately with reset filters
                       await searchWithFilters(resetFilters);
                     }}
@@ -1429,9 +1615,9 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                       boxShadow: '0 2px 8px rgba(0,123,255,0.2)'
                     }}>
                       <span style={{ fontWeight: '500' }}>{filter.label}</span>
-                      <button 
-                      className="remove-filter-btn"
-                       
+                      <button
+                        className="remove-filter-btn"
+
                         onClick={() => removeFilter(filter.type)}
                         title="Xóa bộ lọc này"
                       >
@@ -1445,6 +1631,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
             {/* Properties Grid */}
             <div className="properties-results">
+
               {loading ? (
                 <div className="loading-state">
                   <LoadingSpinner size="large" />
@@ -1475,7 +1662,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   {/* Pagination Controls */}
                   {pagination.totalPages > 1 && (
                     <div className="pagination-container-properties-listing">
-                 
+
                       <div className="pagination-controls">
                         {/* Previous Button */}
                         <button
@@ -1577,15 +1764,15 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   // Check if this range is active (matches either filters or searchData)
                   // Handle null vs '' difference for max values
                   const normalizeMaxValue = (val) => val === null || val === '' ? null : Number(val);
-                  
-                  const isActiveFromFilters = Number(filters.minPrice) === range.min && 
+
+                  const isActiveFromFilters = Number(filters.minPrice) === range.min &&
                     normalizeMaxValue(filters.maxPrice) === normalizeMaxValue(range.max);
-                  
-                  const isActiveFromSearchData = Number(searchData.minPrice) === range.min && 
+
+                  const isActiveFromSearchData = Number(searchData.minPrice) === range.min &&
                     normalizeMaxValue(searchData.maxPrice) === normalizeMaxValue(range.max);
-                  
+
                   const isActive = isActiveFromFilters || isActiveFromSearchData;
-                  
+
                   return (
                     <button
                       key={`sidebar-price-${index}`}
@@ -1610,15 +1797,15 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                   // Check if this range is active (matches either filters or searchData)
                   // Handle null vs '' difference for max values
                   const normalizeMaxValue = (val) => val === null || val === '' ? null : Number(val);
-                  
-                  const isActiveFromFilters = Number(filters.minArea) === range.min && 
+
+                  const isActiveFromFilters = Number(filters.minArea) === range.min &&
                     normalizeMaxValue(filters.maxArea) === normalizeMaxValue(range.max);
-                  
-                  const isActiveFromSearchData = Number(searchData.minArea) === range.min && 
+
+                  const isActiveFromSearchData = Number(searchData.minArea) === range.min &&
                     normalizeMaxValue(searchData.maxArea) === normalizeMaxValue(range.max);
-                  
+
                   const isActive = isActiveFromFilters || isActiveFromSearchData;
-                  
+
                   return (
                     <button
                       key={`sidebar-area-${index}`}
@@ -1748,51 +1935,51 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
             </div>
           </div>
         </div>
-           {/* Support Staff Section */}
-              <div className="support-staff-section-fotter">
-                <div className="support-staff-container">
-                  <div className="support-staff-image">
-                    <img
-                      src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757675058/contact-us-pana-orange_hfmwec.svg"
-                      alt="Nhân viên hỗ trợ"
-                      className="staff-avatar"
-                    />
-                  </div>
-                  <div className="support-staff-content">
-                    <h3>{t('propertiesListing.sidebar.support.title')}</h3>
-                    <p>{t('propertiesListing.sidebar.support.description')}</p>
-                    <div className="support-contact">
+        {/* Support Staff Section */}
+        <div className="support-staff-section-fotter">
+          <div className="support-staff-container">
+            <div className="support-staff-image">
+              <img
+                src="https://res.cloudinary.com/dapvuniyx/image/upload/v1757675058/contact-us-pana-orange_hfmwec.svg"
+                alt="Nhân viên hỗ trợ"
+                className="staff-avatar"
+              />
+            </div>
+            <div className="support-staff-content">
+              <h3>{t('propertiesListing.sidebar.support.title')}</h3>
+              <p>{t('propertiesListing.sidebar.support.description')}</p>
+              <div className="support-contact">
 
 
-                      <a
-                        href={`tel:0355958399`}
-                        className="contact-btn phone-btn"
-                      >
-                        <FaPhone />
-                        0355958399
-                      </a>
+                <a
+                  href={`tel:0355958399`}
+                  className="contact-btn phone-btn"
+                >
+                  <FaPhone />
+                  0355958399
+                </a>
 
-                      <a
-                        href={`https://zalo.me/0355958399`}
-                        className="contact-btn email-btn"
-                      >
-                        <FaEnvelope />
-                        ZALO: 0355958399
-                      </a>
-                    </div>
-                  </div>
-                </div>
+                <a
+                  href={`https://zalo.me/0355958399`}
+                  className="contact-btn email-btn"
+                >
+                  <FaEnvelope />
+                  ZALO: 0355958399
+                </a>
               </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Amenities Modal */}
       {showAmenitiesModal && (
-        <div 
-          className="modal-overlay-hero" 
+        <div
+          className="modal-overlay-hero"
           onClick={handleCloseAmenitiesModal}
         >
-          <div 
-            className="amenities-modal-hero" 
+          <div
+            className="amenities-modal-hero"
             onClick={e => e.stopPropagation()}
           >
             <div className="modal-header-hero">
@@ -1800,7 +1987,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 <i className="fa fa-star"></i>
                 {t('propertiesListing.amenitiesModal.title')}
               </h3>
-              <button 
+              <button
                 className="close-btn-hero"
                 onClick={handleCancelAmenities}
                 title={t('propertiesListing.amenitiesModal.close')}
@@ -1808,14 +1995,14 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 <i className="fa fa-times"></i>
               </button>
             </div>
-            
+
             <div className="modal-body-hero">
               <div className="amenities-grid-hero">
                 {amenities.map(amenity => {
                   const isSelected = tempSelectedAmenities.includes(amenity._id);
                   return (
-                    <label 
-                      key={amenity._id} 
+                    <label
+                      key={amenity._id}
                       className={`amenity-checkbox-hero ${isSelected ? 'checked' : ''}`}
                     >
                       <input
@@ -1836,16 +2023,16 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
                 })}
               </div>
             </div>
-            
+
             <div className="modal-footer-hero">
-              <button 
+              <button
                 className="btn btn-outline-hero"
                 onClick={handleCancelAmenities}
               >
                 <i className="fa fa-times"></i>
                 {t('propertiesListing.amenitiesModal.cancel')}
               </button>
-              <button 
+              <button
                 className="btn btn-primary-hero"
                 onClick={handleApplyAmenities}
               >
@@ -1858,7 +2045,7 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
       )}
 
       {/* ChatBot Component */}
-      <ChatBot 
+      <ChatBot
         onPropertySearch={(properties) => {
           // Handle property search results from chatbot
           console.log('Properties from chatbot:', properties);
@@ -1868,16 +2055,21 @@ const LoadingSpinner = ({ size = 'medium', className = '' }) => {
 
       {/* Go to Top Button */}
       {showGoToTop && (
-        <button 
+        <button
           className="go-to-top-btn"
           onClick={scrollToTop}
           aria-label="Go to top"
         >
-         <FaArrowUp  size={20} className="text-black" />
+          <FaArrowUp size={20} className="text-black" />
         </button>
       )}
 
-      
+      {/* Image Search Modal */}
+      <ImageSearch
+        isOpen={showImageSearch}
+        onClose={handleCloseImageSearch}
+        onSearchResults={handleImageSearchResults}
+      />
 
     </div>
   );

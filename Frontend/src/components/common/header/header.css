@@ -33,8 +33,9 @@ header .nav ul {
 header .button {
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 20px; /* Tăng gap để tạo khoảng cách đều hơn */
   flex-shrink: 0;
+  height: 40px; /* Đặt chiều cao cố định để tất cả element cùng chiều cao */
 }
 header a {
   margin-left: 0;
@@ -62,14 +63,26 @@ header h4 {
 }
 
 /* Favorites link styling */
+.favorites-link {
+  display: flex;
+  align-items: center;
+  height: 40px; /* Đồng bộ chiều cao với button container */
+  padding: 0 8px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+}
+
 .favorites-link h4 {
   display: flex;
   align-items: center;
   gap: 6px; /* tạo khoảng cách đều giữa icon và chữ */
   margin: 0;
+  font-size: 15px; /* Đồng bộ font size */
+  font-weight: 500;
 }
 
 .favorites-link:hover {
+  background: #f5f5f5;
   transform: translateY(-1px);
 }
 
@@ -109,19 +122,24 @@ header .language-switcher {
   display: flex;
   gap: 2px;
   border: 1px solid #ddd;
-  border-radius: 4px;
+  border-radius: 6px;
   overflow: hidden;
   flex-shrink: 0;
+  height: 36px; /* Đồng bộ chiều cao */
+  align-items: center;
 }
 header .lang-btn {
   background: #fff;
   color: #666;
   border: none;
-  padding: 6px 12px;
-  font-size: 12px;
+  padding: 10px 14px; /* Tăng padding để cân đối với chiều cao mới */
+  font-size: 13px; /* Tăng font size cho dễ đọc hơn */
   font-weight: 600;
   cursor: pointer;
   transition: all 0.3s ease;
+  height: 70%; /* Chiếm full chiều cao container */
+  display: flex;
+  align-items: center;
 }
 header .lang-btn:hover {
   background: #f5f5f5;
@@ -133,21 +151,26 @@ header .lang-btn.active {
 }
 header .auth-buttons {
   display: flex;
-  gap: 10px;
+  gap: 12px; /* Tăng gap cho đồng đều */
   align-items: center;
   flex-shrink: 0;
+  height: 40px; /* Đồng bộ chiều cao */
 }
 header .btn2 {
   background: #fff;
   color: #27ae60;
   border: 2px solid #27ae60;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 10px 18px; /* Tăng padding để cân đối */
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
+  height: 40px; /* Đồng bộ chiều cao */
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 header .btn2:hover {
   background: #27ae60;
@@ -157,34 +180,48 @@ header .btn1 {
   background: #27ae60;
   color: #fff;
   border: 2px solid #27ae60;
-  padding: 8px 16px;
-  border-radius: 4px;
+  padding: 10px 18px; /* Tăng padding để cân đối */
+  border-radius: 6px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
   white-space: nowrap;
+  height: 40px; /* Đồng bộ chiều cao */
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 header .btn1:hover {
   background: #fff;
   color: #27ae60;
 }
 /* User Profile Styles */
+header .user-section {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Khoảng cách đều giữa notification và user profile */
+  height: 40px; /* Đồng bộ chiều cao */
+}
+
 header .user-profile {
   position: relative;
   cursor: pointer;
+  height: 100%; /* Chiếm full chiều cao user-section */
 }
+
 header .user-info {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
+  gap: 10px; /* Tăng gap để cân đối */
+  padding: 6px 12px; /* Điều chỉnh padding */
   border-radius: 6px;
   transition: background 0.2s;
   font-size: 14px !important;
- 
-
+  height: 40px; /* Đồng bộ chiều cao */
+  min-height: 40px;
 }
+
 header .user-info:hover {
   background: #f5f5f5;
 }
@@ -199,11 +236,12 @@ header .user-avatar {
 }
 header .user-name {
   font-weight: 500;
-  color: #ffffff;
+  color: #333; /* Đổi màu để dễ đọc hơn */
   max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 14px; /* Đồng bộ font size */
 }
 header .user-dropdown {
   position: absolute;
@@ -438,6 +476,7 @@ header .toggle {
   display: flex;
   align-items: center;
   justify-content: center;
+  height: 40px; /* Đồng bộ chiều cao với các element khác */
 }
 
 /* Nút chuông */
@@ -446,8 +485,8 @@ header .toggle {
   background: #ffffff;
   border: 1px solid #27ae60;
   border-radius: 50%;
-  width: 44px;
-  height: 44px;
+  width: 40px; /* Giảm width để cân đối với chiều cao mới */
+  height: 40px; /* Đồng bộ chiều cao */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -601,8 +640,14 @@ header .toggle {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
+  header .button {
+    gap: 12px; /* Giảm gap trên mobile */
+    height: 36px; /* Giảm chiều cao trên mobile */
+  }
+  
   .user-section {
-    gap: 10px;
+    gap: 8px;
+    height: 36px;
   }
   
   .notification-btn {
@@ -619,5 +664,45 @@ header .toggle {
     min-width: 16px;
     height: 16px;
     padding: 1px 4px;
+  }
+  
+  .favorites-link {
+    height: 36px;
+    padding: 0 6px;
+  }
+  
+  .favorites-link h4 {
+    font-size: 13px;
+  }
+  
+  header .language-switcher {
+    height: 36px;
+  }
+  
+  header .lang-btn {
+    padding: 8px 10px;
+    font-size: 12px;
+  }
+  
+  header .btn1, header .btn2 {
+    height: 36px;
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+  
+  header .user-info {
+    height: 36px;
+    padding: 4px 8px;
+    gap: 8px;
+  }
+  
+  header .user-avatar {
+    width: 28px;
+    height: 28px;
+  }
+  
+  header .user-name {
+    font-size: 13px;
+    max-width: 100px;
   }
 }

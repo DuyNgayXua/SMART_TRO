@@ -7,6 +7,8 @@ import sharp from 'sharp';
 import propertyController from '../controllers/propertyController.js';
 import authMiddleware from '../../shared/middleware/authMiddleware.js';
 import { uploadMixedWithModeration } from '../../shared/middleware/moderationMiddleware.js';
+import { processImageEmbeddings } from '../../shared/middleware/imageEmbeddingMiddleware.js';
+
 
 const router = express.Router();
 
@@ -99,11 +101,12 @@ const resizeImages = async (req, res, next) => {
 };
 
 
-// Landlord only routes với AI Moderation cho cả images và video
+
 router.post('/', 
     authMiddleware,
     uploadMixedWithModeration(5, 1), // AI check cho 5 ảnh + 1 video, tự động reject ảnh vi phạm
     resizeImages, // Resize ảnh sau khi upload
+    processImageEmbeddings, // Tạo vector embeddings cho ảnh (chạy background)
     propertyController.createProperty
 );
 

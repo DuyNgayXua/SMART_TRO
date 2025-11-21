@@ -261,6 +261,7 @@
   transition: all 0.3s ease;
   padding: 0 !important;
 }
+
 .clear-search-properties-listing i {
   margin-left: 6px;
 }
@@ -2122,8 +2123,8 @@
 
 .search-input-group-listing input {
   flex: 1;
-  padding: 12px 75px 12px 40px;
-  /* Tăng padding-right để có chỗ cho cả 2 nút */
+  padding: 12px 75px 12px 80px;
+  /* Tăng padding-left để có chỗ cho cả 2 icon */
   border: 1px solid rgba(0, 176, 149, 0.2);
   border-radius: 25px;
   font-size: 14px;
@@ -2144,6 +2145,49 @@
     0 4px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-1px);
 }
+
+.icon-search-input-group-listing {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 12px;
+  z-index: 2;
+}
+
+.icon-search-input-group-listing i {
+  color: #00b095ff;
+  font-size: 18px;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+
+
+.icon-search-input-group-listing i:hover {
+  color: #008c7a;
+  transform: scale(1.1);
+}
+
+/* Camera Search Button */
+.camera-search-btn {
+  background: none;
+  border: none;
+  color: #00b095ff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 4px;
+  margin-left: 30px;
+  border-radius: 4px;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
 
 .search-input-group-listing input::placeholder {
   color: #888;
@@ -2173,7 +2217,6 @@
   left: 14px;
   color: #00b095ff;
   z-index: 2;
-  font-size: 14px;
   transition: all 0.3s ease;
 }
 

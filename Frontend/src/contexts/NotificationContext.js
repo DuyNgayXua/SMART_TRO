@@ -128,27 +128,66 @@ useEffect(() => {
     }
   }, [user]);
 
+  // Check backend health before connecting WebSocket
+  const checkBackendHealth = useCallback(async () => {
+    try {
+      const backendUrl = process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
+      const response = await fetch(`${backendUrl}/health`, {
+        method: 'GET',
+        timeout: 5000
+      });
+      
+      if (response.ok) {
+        console.log('Backend health check passed');
+        return true;
+      } else {
+        console.warn('Backend health check failed:', response.status);
+        return false;
+      }
+    } catch (error) {
+      console.error('Backend health check error:', error.message);
+      return false;
+    }
+  }, []);
+
   // WebSocket connection setup - remove user dependency to prevent reconnections
-  const connectWebSocket = useCallback(() => {
+  const connectWebSocket = useCallback(async () => {
     if (!user?._id || isConnectingRef.current || (wsRef.current && wsRef.current.readyState === WebSocket.OPEN)) {
-      // console.log('Skipping WebSocket connection:', {
-      //   hasUser: !!user?._id,
-      //   isConnecting: isConnectingRef.current,
-      //   currentWsState: wsRef.current?.readyState
-      // });
+      return;
+    }
+
+    // Check backend health first
+    const isBackendHealthy = await checkBackendHealth();
+    if (!isBackendHealthy) {
+      console.warn('Backend is not healthy, skipping WebSocket connection');
       return;
     }
 
     try {
       isConnectingRef.current = true;
-      const wsUrl = `${process.env.REACT_APP_WS_URL || 'ws://localhost:5000'}/notifications?userId=${user._id}`;
+      
+      // Check if backend is running first
+      const backendUrl = process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
+      const wsUrl = `${backendUrl.replace('http', 'ws')}/notifications?userId=${user._id}`;
+      
+      // console.log('Attempting WebSocket connection to:', wsUrl);
     
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
+      // Set connection timeout
+      const connectionTimeout = setTimeout(() => {
+        if (ws.readyState === WebSocket.CONNECTING) {
+          console.warn('WebSocket connection timeout');
+          ws.close();
+          isConnectingRef.current = false;
+        }
+      }, 10000); // 10 second timeout
+
       ws.onopen = () => {
-        console.log('WebSocket connected for notifications at', new Date().toISOString());
-        console.log('Connected user:', user._id);
+        // console.log('WebSocket connected for notifications at', new Date().toISOString());
+        // console.log('Connected user:', user._id);
+        clearTimeout(connectionTimeout);
         setWsConnection(ws);
         isConnectingRef.current = false;
 
@@ -234,30 +273,51 @@ useEffect(() => {
       };
 
       ws.onerror = (error) => {
-        console.error(' WebSocket error:', error);
+        console.error('WebSocket error:', error);
+        console.error('WebSocket URL:', wsUrl);
+        console.error('WebSocket readyState:', ws.readyState);
         isConnectingRef.current = false;
+        
+        // Show user-friendly error message
+        if (error.type === 'error') {
+          console.warn('WebSocket connection failed. Notifications will work but real-time updates may be limited.');
+        }
       };
 
       ws.onclose = (event) => {
-        // console.log('🔌 WebSocket disconnected at', new Date().toISOString(), ':', event.code, event.reason);
+        console.log('🔌 WebSocket disconnected at', new Date().toISOString());
+        console.log('Close code:', event.code, 'Reason:', event.reason);
         setWsConnection(null);
         wsRef.current = null;
         isConnectingRef.current = false;
+        clearTimeout(connectionTimeout);
 
         // Only attempt to reconnect if it wasn't a manual close and user is still logged in
-        if (event.code !== 1000 && user && !reconnectTimeoutRef.current) {
-          // console.log('Will attempt to reconnect in 3 seconds...');
+        // And if it's not a connection refused error (code 1006)
+        if (event.code !== 1000 && event.code !== 1006 && user && !reconnectTimeoutRef.current) {
+          console.log('Will attempt to reconnect in 5 seconds...');
           reconnectTimeoutRef.current = setTimeout(() => {
-            // console.log('Attempting to reconnect WebSocket...');
+            console.log('Attempting to reconnect WebSocket...');
             reconnectTimeoutRef.current = null;
             connectWebSocket();
-          }, 3000);
+          }, 5000); // Increased to 5 seconds
+        } else if (event.code === 1006) {
+          console.warn('WebSocket connection refused. Backend may not be running.');
         }
       };
 
     } catch (error) {
-      console.error('Error connecting WebSocket:', error);
+      console.error(' Error creating WebSocket connection:', error);
       isConnectingRef.current = false;
+      
+      // Try to reconnect after a longer delay if there's an error creating the connection
+      if (user && !reconnectTimeoutRef.current) {
+        console.log('Will retry WebSocket connection in 10 seconds...');
+        reconnectTimeoutRef.current = setTimeout(() => {
+          reconnectTimeoutRef.current = null;
+          connectWebSocket();
+        }, 10000);
+      }
     }
   }, [user?._id]); // Only depend on user ID, not entire user object
 
@@ -370,7 +430,7 @@ useEffect(() => {
         throw new Error(response.message || 'Failed to delete notification');
       }
     } catch (error) {
-      console.error('❌ Error deleting notification:', error);
+      console.error('Error deleting notification:', error);
       throw error;
     }
   };
@@ -457,7 +517,7 @@ useEffect(() => {
     refreshNotifications: () => {
       console.log('Manual notification refresh requested');
       loadNotifications();
-    },
+    }
 
   }), [
     notifications,

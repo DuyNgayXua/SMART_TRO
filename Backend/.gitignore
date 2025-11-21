@@ -127,3 +127,12 @@ public/uploads/
 # Local configuration files
 config/local.js
 config/local.json
+
+# Python caches & virtual env
+
+__pycache__/
+venv/
+venv311/
+Backend/services/python-image-service/__pycache__/
+Backend/services/python-image-service/venv311/
+

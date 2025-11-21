@@ -398,64 +398,68 @@ const handleRegisterClick = (planName) => {
               </div>
 
               <div className="management-body">
-                <h4 className="features-title">Tính năng chính:</h4>
-                <ul className="features-list">
-                  {plan.features.map((feature, idx) => (
-                    <li key={idx} className="feature-item-pricing">
-                      <i className="fas fa-check-circle" style={{ color: plan.color }}></i>
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
+                <div className="management-body-content">
+                  <h4 className="features-title">Tính năng chính:</h4>
+                  <ul className="features-list">
+                    {plan.features.map((feature, idx) => (
+                      <li key={idx} className="feature-item-pricing">
+                        <i className="fas fa-check-circle" style={{ color: plan.color }}></i>
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
 
-                {plan.limitations && (
-                  <>
-                    <h4 className="limitations-title">Giới hạn:</h4>
-                    <ul className="limitations-list">
-                      {plan.limitations.map((limitation, idx) => (
-                        <li key={idx} className="limitation-item">
-                          <i className="fas fa-times-circle"></i>
-                          <span>{limitation}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </>
-                )}
+                  {plan.limitations && (
+                    <>
+                      <h4 className="limitations-title">Giới hạn:</h4>
+                      <ul className="limitations-list">
+                        {plan.limitations.map((limitation, idx) => (
+                          <li key={idx} className="limitation-item">
+                            <i className="fas fa-times-circle"></i>
+                            <span>{limitation}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                </div>
 
-                {/* Ẩn nút nếu user đã đăng ký gói trial */}
-                {!(userInfo && userInfo.freeTrial && userInfo.freeTrial.hasRegistered && plan.price === 0) && (
-                  <button
-                    className="btn-choose-plan"
-                    style={{
-                      backgroundColor: plan.color,
-                      boxShadow: `0 4px 12px ${plan.color}40`
-                    }}
-                    onClick={() => {
-                      if (plan.name === 'free') {
-                        handleOpenTrialModal(plan.name);
-                      } else if (plan.name === 'premium') {
-                        handleRegisterClick(plan.name);
-                      }
-                    }}
-                  >
-                    {plan.price === 0 ? 'Bắt Đầu Miễn Phí' : 'Đăng Ký Ngay'}
-                  </button>
-                )}
+                <div className="management-body-footer">
+                  {/* Ẩn nút nếu user đã đăng ký gói trial */}
+                  {!(userInfo && userInfo.freeTrial && userInfo.freeTrial.hasRegistered && plan.price === 0) && (
+                    <button
+                      className="btn-choose-plan"
+                      style={{
+                        backgroundColor: plan.color,
+                        boxShadow: `0 4px 12px ${plan.color}40`
+                      }}
+                      onClick={() => {
+                        if (plan.name === 'free') {
+                          handleOpenTrialModal(plan.name);
+                        } else if (plan.name === 'premium') {
+                          handleRegisterClick(plan.name);
+                        }
+                      }}
+                    >
+                      {plan.price === 0 ? 'Bắt Đầu Miễn Phí' : 'Đăng Ký Ngay'}
+                    </button>
+                  )}
 
-                {/* Hiển thị thông báo đã đăng ký */}
-                {userInfo && userInfo.freeTrial && userInfo.freeTrial.hasRegistered && plan.price === 0 && (
-                  <div style={{
-                    padding: '12px',
-                    background: '#f0fdf4',
-                    border: '2px solid #22c55e',
-                    borderRadius: '8px',
-                    textAlign: 'center',
-                    color: '#16a34a',
-                    fontWeight: 'bold'
-                  }}>
-                    ✅ Đã đăng ký
-                  </div>
-                )}
+                  {/* Hiển thị thông báo đã đăng ký */}
+                  {userInfo && userInfo.freeTrial && userInfo.freeTrial.hasRegistered && plan.price === 0 && (
+                    <div style={{
+                      padding: '12px',
+                      background: '#f0fdf4',
+                      border: '2px solid #22c55e',
+                      borderRadius: '8px',
+                      textAlign: 'center',
+                      color: '#16a34a',
+                      fontWeight: 'bold'
+                    }}>
+                      ✅ Đã đăng ký
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           ))}

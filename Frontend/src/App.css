@@ -34,7 +34,7 @@ body {
 a {
   text-decoration: none;
   color: #000;
-  text-transform: capitalize;
+  /* text-transform: capitalize; */
 }
 ul {
   list-style-type: none;

@@ -4,14 +4,15 @@ export const nav = [
     path: "/",
   },
   {
-    text: "services",
-    path: "/services",
-  },
-
-  {
     text: "pricing",
     path: "/pricing",
   },
+  {
+    text: "blog",
+    path: "/blog",
+  },
+
+  
   {
     text: "contact",
     path: "/contact",

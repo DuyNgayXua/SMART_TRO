@@ -16,6 +16,7 @@ import Comment from './Comment.js';
 import Invoice from './Invoice.js';
 import PropertyPackage from './PropertiesPackage.js';
 import Notification from './Notification.js';
+import ImageEmbedding from './ImageEmbedding.js';
 
 
 export default {
@@ -33,7 +34,8 @@ export default {
     Comment,
     Invoice,
     PropertyPackage,
-    Notification
+    Notification,
+    ImageEmbedding
 };
 
 export {
@@ -51,5 +53,6 @@ export {
     Comment,
     Invoice,
     PropertyPackage,
-    Notification
+    Notification,
+    ImageEmbedding
 };

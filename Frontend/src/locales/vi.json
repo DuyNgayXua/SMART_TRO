@@ -817,7 +817,7 @@
       "about": "Giới thiệu",
       "services": "Dịch vụ",
       "blog": "Tin tức",
-      "pricing": "Giá dịch vụ",
+      "pricing": "Dịch vụ",
       "contact": "Liên hệ"
     }
   },
@@ -1257,6 +1257,10 @@
     "title": "Danh sách bất động sản",
     "searchTitle": "Tìm kiếm tin đăng",
     "searchPlaceholder": "Tìm kiếm theo tiêu đề, mô tả, hẻm, tên đường...",
+    "imageSearch": {
+      "activePlaceholder": "Đang tìm kiếm theo hình ảnh...",
+      "inactivePlaceholder": "Tìm kiếm theo tiêu đề, mô tả, hẻm, tên đường..."
+    },
     "heroSearch": {
       "province": "Tỉnh/Thành phố",
       "ward": "Phường, Xã",
@@ -1323,7 +1327,9 @@
       "areaRange": "Diện tích: {{range}}",
       "amenities": "Tiện ích: {{count}} mục",
       "from": "Từ",
-      "to": "Đến"
+      "to": "Đến",
+      "imageSearchWithFile": "Tìm kiếm bằng hình ảnh với: {{fileName}}",
+      "imageSearch": "Tìm kiếm bằng hình ảnh"
     },
     "loading": {
       "searching": "Đang tìm kiếm tin đăng...",

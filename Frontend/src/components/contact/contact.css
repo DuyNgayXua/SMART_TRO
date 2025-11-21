@@ -1,28 +1,292 @@
-.contact form div {
+.contact-section {
+  background: #f8f9fb;
+  padding: 80px 0; /* Thêm padding top và bottom cân đối */
+}
+
+.container-contact {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px; /* Thêm padding cho container */
+}
+
+.contact-wrapper {
+  margin-top: 0; /* Bỏ margin-top để không cách quá xa */
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 40px;
+  align-items: start; /* Căn chỉnh các item từ đầu */
+}
+.title-contact {
+  text-align: center;        /* căn giữa chữ */
+  padding: 40px 0;           /* padding trên dưới cho thoáng */
+}
+
+.title-contact h1 {
+  font-size: 28px;
+  font-weight: 700;
+  color: #333;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+
+/* INFO CARD */
+.contact-info-card {
+  background: #fff;
+  padding: 35px 30px; /* Tăng padding để cân đối hơn */
+  border-radius: 16px; /* Bo tròn nhiều hơn */
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08); /* Shadow đậm hơn */
+  border-left: 5px solid #00b894; /* Border dày hơn */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-info-card:hover {
+  transform: translateY(-5px); /* Hiệu ứng hover */
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+}
+
+.contact-info-card h2 {
+  margin-bottom: 25px;
+  font-size: 26px; /* Tăng font size */
+  color: #2c3e50;
+  font-weight: 600;
+  position: relative;
+}
+
+.contact-info-card h2::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: #00b894;
+  border-radius: 2px;
+}
+
+.info-item {
   display: flex;
+  gap: 18px;
+  margin-bottom: 25px; /* Tăng khoảng cách */
+  padding: 15px 0;
+  border-bottom: 1px solid #f0f0f0; /* Thêm divider */
+  transition: all 0.3s ease;
 }
-.contact textarea {
-  border: 1px solid rgba(0, 0, 0, 0.1);
+
+.info-item:last-child {
+  border-bottom: none; /* Bỏ border item cuối */
+}
+
+.info-item:hover {
+  background: #f8f9fa; /* Hover effect */
+  margin: 0 -15px 25px -15px;
+  padding: 15px 15px;
+  border-radius: 8px;
+}
+
+.info-icon {
+  font-size: 28px; /* Tăng size icon */
+  color: #00b894;
+  min-width: 28px; /* Đảm bảo width cố định */
+  transition: transform 0.3s ease;
+}
+
+.info-item:hover .info-icon {
+  transform: scale(1.1); /* Phóng to icon khi hover */
+}
+
+.info-item p {
+  color: #555;
+  line-height: 1.6;
+  margin: 0;
+  font-size: 15px;
+}
+
+.info-item strong {
+  color: #2c3e50;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.info-item a {
+  color: #00b894;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.info-item a:hover {
+  color: #009e7a;
+  text-decoration: underline;
+}
+
+/* FORM */
+.contact-form {
+  background: #fff;
+  padding: 35px 30px; /* Tăng padding để cân đối với info card */
+  border-radius: 16px; /* Bo tròn nhiều hơn */
+  box-shadow: 0 8px 30px rgba(0,0,0,0.08); /* Shadow đậm hơn */
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.contact-form:hover {
+  transform: translateY(-5px); /* Hiệu ứng hover */
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12);
+}
+
+.contact-form h3 {
+  margin-bottom: 12px;
+  font-size: 26px; /* Tăng font size */
+  color: #2c3e50;
+  font-weight: 600;
+  position: relative;
+}
+
+.contact-form h3::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 50px;
+  height: 3px;
+  background: #00b894;
+  border-radius: 2px;
+}
+
+.contact-form p {
+  margin-bottom: 30px; /* Tăng margin */
+  color: #666;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.form-row {
+  display: flex;
+  gap: 18px; /* Tăng gap */
+  margin-bottom: 22px;
+}
+
+.contact-form input,
+.contact-form textarea {
   width: 100%;
-  border-radius: 5px;
-  margin-bottom: 20px;
+  padding: 14px 16px; /* Tăng padding */
+  font-size: 15px;
+  border-radius: 10px; /* Bo tròn nhiều hơn */
+  border: 2px solid #e1e5e9; /* Border dày hơn */
+  outline: none;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+  font-family: inherit;
 }
-.contact input {
-  margin-bottom: 20px;
-  margin-right: 10px;
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: #00b894;
+  box-shadow: 0 0 0 3px rgba(0,184,148,0.1); /* Shadow đẹp hơn */
+  background: #fff;
+  transform: translateY(-2px); /* Hiệu ứng nhẹ */
 }
-.contact form {
-  padding: 30px;
+
+.contact-form input::placeholder,
+.contact-form textarea::placeholder {
+  color: #999;
+  font-weight: 400;
 }
-@media screen and (max-width: 768px) {
-  .contact h4 {
-    width: 100%;
-    margin-bottom: 30px;
+
+.contact-form input {
+  margin-bottom: 22px;
+}
+
+.contact-form textarea {
+  margin-bottom: 25px;
+  resize: vertical; /* Chỉ cho phép resize theo chiều dọc */
+  min-height: 120px;
+}
+
+.contact-btn-support {
+  width: 100%;
+  padding: 16px 24px; /* Tăng padding */
+  background: linear-gradient(135deg, #00b894, #009e7a); /* Gradient đẹp */
+  border: none;
+  color: white;
+  font-size: 16px;
+  font-weight: 600;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 15px rgba(0,184,148,0.3);
+}
+
+.contact-btn-support:hover {
+  background: linear-gradient(135deg, #009e7a, #00875f);
+  transform: translateY(-3px); /* Hiệu ứng nâng lên */
+  box-shadow: 0 8px 25px rgba(0,184,148,0.4);
+}
+
+.contact-btn:active {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 15px rgba(0,184,148,0.3);
+}
+
+/* RESPONSIVE */
+@media (max-width: 900px) {
+  .contact-section {
+    padding: 60px 0; /* Giảm padding trên mobile */
   }
-  .contact form div {
+
+  .container-contact {
+    padding: 0 15px; /* Giảm padding container trên mobile */
+  }
+
+  .contact-wrapper {
+    grid-template-columns: 1fr;
+    gap: 30px; /* Giảm gap trên mobile */
+  }
+
+  .contact-info-card,
+  .contact-form {
+    padding: 25px 20px; /* Giảm padding trên mobile */
+  }
+
+  .contact-info-card h2,
+  .contact-form h3 {
+    font-size: 22px; /* Giảm font size trên mobile */
+  }
+
+  .form-row {
     flex-direction: column;
+    gap: 0; /* Bỏ gap khi stack vertical */
   }
-  .contact input {
-    width: 100%;
+
+  .info-item:hover {
+    margin: 0 -10px 25px -10px;
+    padding: 15px 10px;
+  }
+
+  .contact-btn {
+    padding: 14px 20px; /* Giảm padding button trên mobile */
+    font-size: 15px;
+  }
+}
+
+@media (max-width: 600px) {
+  .contact-section {
+    padding: 40px 0;
+  }
+  
+  .contact-info-card,
+  .contact-form {
+    padding: 20px 15px;
+  }
+  
+  .info-item {
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+  
+  .info-icon {
+    font-size: 24px;
   }
 }
