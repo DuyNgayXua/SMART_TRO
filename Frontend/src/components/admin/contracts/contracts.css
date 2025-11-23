@@ -976,6 +976,12 @@
   font-weight: 600;
   color: #1e293b;
 }
+.date-filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 160px;
+}
 
 .print-select-all input[type="checkbox"] {
   width: 18px;

@@ -16,6 +16,7 @@ const AdminDashboard = () => {
     totalUsers: 0,
     totalLandlords: 0,
     totalTenants: 0,
+    newUsersThisMonth: 0,
     totalProperties: 0,
     totalPackagePlans: 0,
     totalPackagePayments: 0,
@@ -55,6 +56,7 @@ const AdminDashboard = () => {
           totalUsers: response.data.totalUsers || 0,
           totalLandlords: response.data.totalLandlords || 0,
           totalTenants: response.data.totalTenants || 0,
+          newUsersThisMonth: response.data.newUsersThisMonth || 0,
           totalProperties: response.data.totalProperties || 0,
           activeProperties: response.data.activeProperties || 0,
           totalPackagePlans: response.data.totalPackagePlans || 0,
@@ -190,14 +192,14 @@ const AdminDashboard = () => {
 
           <div className="modern-card green-card">
             <div className="card-icon-bg green">
-              <i className="fas fa-building"></i>
+              <i className="fas fa-user-plus"></i>
             </div>
             <div className="card-content">
-              <h3 className="card-title">Tin đăng</h3>
-              <div className="card-number">{stats.totalProperties}</div>
+              <h3 className="card-title">Người dùng mới</h3>
+              <div className="card-number">{stats.newUsersThisMonth}</div>
               <div className="card-footer">
                 <span className="badge badge-success">
-                  <i className="fas fa-arrow-up"></i> Đang hoạt động
+                  <i className="fas fa-calendar-check"></i> Tháng này
                 </span>
               </div>
             </div>
@@ -205,14 +207,14 @@ const AdminDashboard = () => {
 
           <div className="modern-card orange-card">
             <div className="card-icon-bg orange">
-              <i className="fas fa-box"></i>
+              <i className="fas fa-building"></i>
             </div>
             <div className="card-content">
-              <h3 className="card-title">Gói tin đã bán</h3>
-              <div className="card-number">{stats.totalPackagePayments}</div>
+              <h3 className="card-title">Tin đăng</h3>
+              <div className="card-number">{stats.totalProperties}</div>
               <div className="card-footer">
                 <span className="badge badge-warning">
-                  <i className="fas fa-shopping-cart"></i> Tháng này
+                  <i className="fas fa-arrow-up"></i> Đang hoạt động
                 </span>
               </div>
             </div>
@@ -220,45 +222,52 @@ const AdminDashboard = () => {
 
           <div className="modern-card purple-card">
             <div className="card-icon-bg purple">
-              <i className="fas fa-dollar-sign"></i>
+              <i className="fas fa-box"></i>
             </div>
             <div className="card-content">
-              <h3 className="card-title">Doanh thu tháng</h3>
-              <div className="card-number">{formatCurrency(stats.monthlyRevenue)}</div>
+              <h3 className="card-title">Gói tin đã bán</h3>
+              <div className="card-number">{stats.totalPackagePayments}</div>
               <div className="card-footer">
                 <span className="badge badge-success">
-                  <i className="fas fa-chart-line"></i> Tổng: {formatCurrency(stats.totalRevenue)}
+                  <i className="fas fa-shopping-cart"></i> Tổng cộng
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Charts and Tables Section */}
-        <div className="dashboard-grid">
-          {/* Revenue Chart */}
-          <div className="dashboard-card chart-card">
-            <div className="card-header">
-              <h3>
-                <i className="fas fa-chart-line"></i> Doanh thu theo tháng
-              </h3>
+        {/* Charts Section - New Design */}
+        <div className="charts-wrapper">
+          <div className="chart-container revenue-chart-card">
+            <div className="chart-card-header">
+              <div className="chart-title-group">
+                <div className="chart-icon-wrapper">
+                  <i className="fas fa-chart-line"></i>
+                </div>
+                <div>
+                  <h3 className="chart-main-title">Doanh thu theo tháng</h3>
+                  <p className="chart-subtitle">6 tháng gần nhất</p>
+                </div>
+              </div>
             </div>
-            <div className="chart-container">
-              <div className="simple-bar-chart">
+            <div className="chart-body">
+              <div className="revenue-bar-chart">
                 {stats.revenueByMonth.map((item, index) => {
-                  const maxRevenue = Math.max(...stats.revenueByMonth.map(r => r.revenue));
-                  const height = (item.revenue / maxRevenue) * 100;
+                  const maxRevenue = Math.max(...stats.revenueByMonth.map(m => m.revenue));
+                  const heightPercent = maxRevenue > 0 ? (item.revenue / maxRevenue) * 100 : 0;
+                  
                   return (
                     <div key={index} className="bar-item">
-                      <div className="bar-value">{formatCurrency(item.revenue)}</div>
                       <div className="bar-wrapper">
                         <div 
-                          className="bar" 
-                          style={{ height: `${height}%` }}
+                          className="bar-fill" 
+                          style={{ height: `${heightPercent}%` }}
                           title={formatCurrency(item.revenue)}
-                        ></div>
+                        >
+                          <span className="bar-tooltip">{formatCurrency(item.revenue)}</span>
+                        </div>
                       </div>
-                      <div className="bar-label">{item.month}</div>
+                      <div className="bar-month">{item.month}</div>
                     </div>
                   );
                 })}
@@ -266,92 +275,106 @@ const AdminDashboard = () => {
             </div>
           </div>
 
-          {/* Package Stats */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3>
-                <i className="fas fa-box"></i> Thống kê gói tin
-              </h3>
-            </div>
-            <div className="package-stats-list">
-              {stats.packageStats && stats.packageStats.length > 0 ? (
-                stats.packageStats.map((pkg, index) => (
-                  <div key={index} className="package-stat-item">
-                    <div className="package-stat-info">
-                      <div className="package-stat-name">{pkg.name}</div>
-                      <div className="package-stat-count">{pkg.count} gói đã bán</div>
-                    </div>
-                    <div className="package-stat-revenue">
-                      {formatCurrency(pkg.revenue)}
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#6c757d' }}>
-                  <i className="fas fa-inbox" style={{ fontSize: '48px', marginBottom: '10px', opacity: 0.3 }}></i>
-                  <p>Chưa có gói tin nào được bán</p>
+          <div className="chart-container room-chart-card">
+            <div className="chart-card-header">
+              <div className="chart-title-group">
+                <div className="chart-icon-wrapper">
+                  <i className="fas fa-chart-pie"></i>
                 </div>
-              )}
+                <div>
+                  <h3 className="chart-main-title">Thống kê gói tin</h3>
+                  <p className="chart-subtitle">Tình trạng hiện tại</p>
+                </div>
+              </div>
+            </div>
+            <div className="chart-body">
+              <div className="package-stats-list">
+                {stats.packageStats && stats.packageStats.length > 0 ? (
+                  stats.packageStats.map((pkg, index) => (
+                    <div key={index} className="package-stat-item">
+                      <div className="package-stat-info">
+                        <div className="package-stat-name">✨ {pkg.name}</div>
+                        <div className="package-stat-count">{pkg.count} gói đã bán</div>
+                      </div>
+                      <div className="package-stat-revenue">
+                        {formatCurrency(pkg.revenue)}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="empty-state">
+                    <i className="fas fa-inbox"></i>
+                    <p>Chưa có gói tin nào được bán</p>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
+        </div>
 
-          {/* Top Posters */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3>
-                <i className="fas fa-trophy"></i> Top người đăng tin
-              </h3>
+        {/* Alerts & Summary - New Design */}
+        <div className="bottom-section">
+          <div className="alerts-box">
+            <div className="alerts-box-header">
+              <div className="header-icon warning">
+                <i className="fas fa-trophy"></i>
+              </div>
+              <h3 className="alerts-box-title">Top người đăng tin</h3>
             </div>
-            <div className="top-posters-list">
+            <div className="alerts-list">
               {stats.topPosters && stats.topPosters.length > 0 ? (
                 stats.topPosters.map((poster, index) => (
-                  <div key={index} className="top-poster-item">
-                    <div className="poster-rank">{index + 1}</div>
-                    <div className="poster-info">
-                      <div className="poster-name">{poster.name || poster.email}</div>
-                      <div className="poster-posts">{poster.posts} tin đăng</div>
+                  <div key={index} className="alert-notification info">
+                    <div className="alert-icon-circle">
+                      <span className="poster-rank-badge">{index + 1}</span>
                     </div>
-                    <div className="poster-revenue">
-                      {formatCurrency(poster.revenue)}
+                    <div className="alert-text">
+                      <h4 className="alert-heading">
+                        {index === 0 && '🏆 '}
+                        {index === 1 && '🥈 '}
+                        {index === 2 && '🥉 '}
+                        {poster.name || poster.email}
+                      </h4>
+                      <p className="alert-description">{poster.posts} tin đăng</p>
                     </div>
                   </div>
                 ))
               ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#6c757d' }}>
-                  <i className="fas fa-user-slash" style={{ fontSize: '48px', marginBottom: '10px', opacity: 0.3 }}></i>
+                <div className="empty-state">
+                  <i className="fas fa-user-slash"></i>
                   <p>Chưa có người dùng nào đăng tin</p>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Recent Activities */}
-          <div className="dashboard-card">
-            <div className="card-header">
-              <h3>
-                <i className="fas fa-history"></i> Hoạt động gần đây
-              </h3>
+          <div className="summary-box">
+            <div className="summary-box-header">
+              <div className="header-icon info">
+                <i className="fas fa-history"></i>
+              </div>
+              <h3 className="summary-box-title">Hoạt động gần đây</h3>
             </div>
-            <div className="activities-list">
+            <div className="activities-list-compact">
               {stats.recentActivities && stats.recentActivities.length > 0 ? (
                 stats.recentActivities.map((activity, index) => (
-                  <div key={index} className="activity-item">
-                    <div className={`activity-icon ${getActivityColor(activity.type)}`}>
+                  <div key={index} className="summary-stat">
+                    <div className={`summary-stat-icon ${getActivityColor(activity.type)}`}>
                       <i className={`fas ${getActivityIcon(activity.type)}`}></i>
                     </div>
-                    <div className="activity-content">
-                      <div className="activity-action">{activity.action}</div>
-                      <div className="activity-user">
+                    <div className="summary-stat-text">
+                      <div className="summary-stat-value">{activity.action}</div>
+                      <div className="summary-stat-label">
                         {activity.userName || activity.user}
                         {activity.propertyTitle && ` - ${activity.propertyTitle}`}
                       </div>
                     </div>
-                    <div className="activity-time">{activity.time}</div>
+                    <div className="activity-time-badge">⏱️ {activity.time}</div>
                   </div>
                 ))
               ) : (
-                <div style={{ padding: '20px', textAlign: 'center', color: '#6c757d' }}>
-                  <i className="fas fa-clock" style={{ fontSize: '48px', marginBottom: '10px', opacity: 0.3 }}></i>
+                <div className="empty-state">
+                  <i className="fas fa-clock"></i>
                   <p>Chưa có hoạt động nào</p>
                 </div>
               )}

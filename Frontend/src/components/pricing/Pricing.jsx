@@ -491,7 +491,6 @@ const handleRegisterClick = (planName) => {
                     value={trialFormData.fullName}
                     onChange={handleTrialInputChange}
                     placeholder="Nguyễn Văn A"
-                    disabled={!!userInfo}
                     required
                   />
                 </div>
@@ -508,7 +507,6 @@ const handleRegisterClick = (planName) => {
                     value={trialFormData.email}
                     onChange={handleTrialInputChange}
                     placeholder="example@email.com"
-                    disabled={!!userInfo}
                     required
                   />
                 </div>
@@ -526,7 +524,6 @@ const handleRegisterClick = (planName) => {
                     onChange={handleTrialInputChange}
                     placeholder="0123456789"
                     maxLength="10"
-                    disabled={!!userInfo}
                     required
                   />
                 </div>

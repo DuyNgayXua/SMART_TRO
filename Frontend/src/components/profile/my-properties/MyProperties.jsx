@@ -1852,7 +1852,7 @@ const MyProperties = () => {
                                 </div>
                               )}
                             </div>
-                            <span className="usage-numbers">{limit.used || 0}/{limit.limit}</span>
+                            <span className="usage-numbers">{limit.used || 0} tin đăng</span>
                           </div>
                           <div className="usage-bar">
                             <div

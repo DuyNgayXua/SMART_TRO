@@ -11,48 +11,114 @@ export const getDashboardStats = async (req, res) => {
     const selectedMonth = month ? parseInt(month) : currentDate.getMonth() + 1;
     const selectedYear = year ? parseInt(year) : currentDate.getFullYear();
 
-    // 1. Thống kê người dùng
-    const totalUsers = await User.countDocuments();
+    // 1. Thống kê người dùng (không tính admin)
+    const totalUsers = await User.countDocuments({ role: { $ne: 'admin' } });
     const totalLandlords = await User.countDocuments({ role: 'landlord' });
-    const totalTenants = await User.countDocuments({ role: { $in: ['user', 'tenant'] } });
+    const totalTenants = await User.countDocuments({ role: { $in: ['tenant'] } });
 
-    // 2. Thống kê tin đăng
-    const totalProperties = await Property.countDocuments();
-    const activeProperties = await Property.countDocuments({ status: 'approved' });
+    // 2. Thống kê tin đăng - Logic giống như tìm kiếm
+    // Chỉ đếm tin đăng: approved, available, chưa xóa, gói còn hiệu lực, đã đến ngày hiển thị
+    const now = new Date();
+    const totalProperties = await Property.countDocuments({ 
+      approvalStatus: 'approved',
+      status: 'available',
+      isDeleted: { $ne: true },
+      $and: [
+        {
+          $or: [
+            { 'packageInfo.expiryDate': { $gt: now } }, // Gói còn hiệu lực
+            { 'packageInfo.expiryDate': { $exists: false } }, // Không có gói
+            { 'packageInfo.expiryDate': null }
+          ]
+        },
+        {
+          $or: [
+            { 'packageInfo.isActive': true }, // Gói đang active
+            { 'packageInfo.isActive': { $exists: false } }, 
+            { 'packageInfo.isActive': null }
+          ]
+        },
+        {
+          $or: [
+            { availableDate: { $lte: now } }, // Đã đến ngày hiển thị
+            { availableDate: { $exists: false } },
+            { availableDate: null }
+          ]
+        }
+      ]
+    });
+    const activeProperties = totalProperties;
+    
+    console.log('📝 Active properties (matching search criteria):', totalProperties);
+    console.log('✅ Properties shown on homepage:', activeProperties);
 
-    // 3. Thống kê gói tin
+    // Thiết lập khoảng thời gian cho tháng được chọn
+    const selectedMonthStart = new Date(selectedYear, selectedMonth - 1, 1);
+    const selectedMonthEnd = new Date(selectedYear, selectedMonth, 1);
+
+    // 3. Thống kê người dùng mới trong tháng (không tính admin)
+    const newUsersThisMonth = await User.countDocuments({
+      role: { $ne: 'admin' },
+      createdAt: {
+        $gte: selectedMonthStart,
+        $lt: selectedMonthEnd
+      }
+    });
+    
+    console.log('👤 New users this month:', newUsersThisMonth);
+
+    // 4. Thống kê gói tin
     const totalPackagePlans = await PackagePlan.countDocuments();
     
-    // 4. Thống kê thanh toán gói tin
+    // 5. Thống kê thanh toán gói tin
     const allOrders = await Order.find({ packagePlanId: { $exists: true, $ne: null } })
-      .populate('userId', 'fullName email')
-      .populate('packagePlanId', 'name price')
-      .sort({ created_at: -1 });
+      .sort({ created_at: -1 })
+      .lean();
+
+    console.log('📊 Total orders found:', allOrders.length);
+    if (allOrders.length > 0) {
+      console.log('📄 Sample order:', JSON.stringify(allOrders[0], null, 2));
+    }
 
     const totalPackagePayments = allOrders.length;
     const paidOrders = allOrders.filter(o => o.payment_status === 'Paid');
+    
+    console.log('✅ Paid orders:', paidOrders.length);
 
     // Tính tổng doanh thu
     const totalRevenue = paidOrders.reduce((sum, order) => {
-      const amount = order.total?.$numberDecimal 
-        ? parseFloat(order.total.$numberDecimal) 
-        : (typeof order.total === 'number' ? order.total : 0);
+      let amount = 0;
+      if (order.total) {
+        if (order.total.$numberDecimal) {
+          amount = parseFloat(order.total.$numberDecimal);
+        } else if (typeof order.total === 'object' && order.total.valueOf) {
+          amount = parseFloat(order.total.valueOf());
+        } else if (typeof order.total === 'number') {
+          amount = order.total;
+        }
+      }
       return sum + amount;
     }, 0);
 
+    console.log('💰 Total Revenue:', totalRevenue);
+
     // Tính doanh thu tháng được chọn
-    const selectedMonthStart = new Date(selectedYear, selectedMonth - 1, 1);
-    const selectedMonthEnd = new Date(selectedYear, selectedMonth, 1);
-    
     const monthlyRevenue = paidOrders
       .filter(order => {
         const paidDate = order.paid_at ? new Date(order.paid_at) : null;
         return paidDate && paidDate >= selectedMonthStart && paidDate < selectedMonthEnd;
       })
       .reduce((sum, order) => {
-        const amount = order.total?.$numberDecimal 
-          ? parseFloat(order.total.$numberDecimal) 
-          : (typeof order.total === 'number' ? order.total : 0);
+        let amount = 0;
+        if (order.total) {
+          if (order.total.$numberDecimal) {
+            amount = parseFloat(order.total.$numberDecimal);
+          } else if (typeof order.total === 'object' && order.total.valueOf) {
+            amount = parseFloat(order.total.valueOf());
+          } else if (typeof order.total === 'number') {
+            amount = order.total;
+          }
+        }
         return sum + amount;
       }, 0);
 
@@ -68,9 +134,16 @@ export const getDashboardStats = async (req, res) => {
           return paidDate && paidDate >= monthDate && paidDate < nextMonthDate;
         })
         .reduce((sum, order) => {
-          const amount = order.total?.$numberDecimal 
-            ? parseFloat(order.total.$numberDecimal) 
-            : (typeof order.total === 'number' ? order.total : 0);
+          let amount = 0;
+          if (order.total) {
+            if (order.total.$numberDecimal) {
+              amount = parseFloat(order.total.$numberDecimal);
+            } else if (typeof order.total === 'object' && order.total.valueOf) {
+              amount = parseFloat(order.total.valueOf());
+            } else if (typeof order.total === 'number') {
+              amount = order.total;
+            }
+          }
           return sum + amount;
         }, 0);
       
@@ -93,23 +166,33 @@ export const getDashboardStats = async (req, res) => {
           from: 'packageplans',
           localField: 'packagePlanId',
           foreignField: '_id',
-          as: 'package'
+          as: 'packagePlan'
         }
       },
       {
-        $unwind: '$package'
+        $unwind: {
+          path: '$packagePlan',
+          preserveNullAndEmptyArrays: true
+        }
+      },
+      {
+        $addFields: {
+          packageName: {
+            $ifNull: ['$packagePlan.name', '$packageInfo.name', 'Gói không xác định']
+          }
+        }
       },
       {
         $group: {
           _id: '$packagePlanId',
-          name: { $first: '$package.name' },
+          name: { $first: '$packageName' },
           count: { $sum: 1 },
           revenue: {
             $sum: {
               $cond: {
                 if: { $eq: [{ $type: '$total' }, 'decimal'] },
                 then: { $toDouble: '$total' },
-                else: '$total'
+                else: { $ifNull: ['$total', 0] }
               }
             }
           }
@@ -120,14 +203,19 @@ export const getDashboardStats = async (req, res) => {
       }
     ]);
 
-    // 7. Top người đăng tin nhiều nhất
+    // 7. Top người đăng tin nhiều nhất - Dựa trên owner trong Property
+    console.log('🔍 Fetching top posters...');
     const topPosters = await Property.aggregate([
       {
-        $match: { status: 'approved' }
+        $match: { 
+          approvalStatus: 'approved',
+          isDeleted: { $ne: true },
+          owner: { $exists: true, $ne: null }
+        }
       },
       {
         $group: {
-          _id: '$userId',
+          _id: '$owner',
           postCount: { $sum: 1 }
         }
       },
@@ -146,56 +234,30 @@ export const getDashboardStats = async (req, res) => {
         }
       },
       {
-        $unwind: '$user'
-      },
-      {
-        $lookup: {
-          from: 'orders',
-          let: { userId: '$_id' },
-          pipeline: [
-            {
-              $match: {
-                $expr: { $eq: ['$userId', '$$userId'] },
-                payment_status: 'Paid',
-                packagePlanId: { $exists: true, $ne: null }
-              }
-            }
-          ],
-          as: 'orders'
+        $unwind: {
+          path: '$user',
+          preserveNullAndEmptyArrays: true
         }
       },
       {
         $project: {
-          name: '$user.fullName',
-          email: '$user.email',
-          posts: '$postCount',
-          revenue: {
-            $reduce: {
-              input: '$orders',
-              initialValue: 0,
-              in: {
-                $add: [
-                  '$$value',
-                  {
-                    $cond: {
-                      if: { $eq: [{ $type: '$$this.total' }, 'decimal'] },
-                      then: { $toDouble: '$$this.total' },
-                      else: { $ifNull: ['$$this.total', 0] }
-                    }
-                  }
-                ]
-              }
-            }
-          }
+          name: { $ifNull: ['$user.fullName', 'Người dùng không xác định'] },
+          email: { $ifNull: ['$user.email', 'N/A'] },
+          posts: '$postCount'
         }
       }
     ]);
+    
+    console.log('👥 Top posters found:', topPosters.length);
+    if (topPosters.length > 0) {
+      console.log('Sample top poster:', topPosters[0]);
+    }
 
     // 8. Hoạt động gần đây (kết hợp users mới, payments, properties mới)
     const recentActivities = [];
 
-    // Người dùng mới đăng ký (5 gần nhất)
-    const recentUsers = await User.find()
+    // Người dùng mới đăng ký (5 gần nhất, không tính admin)
+    const recentUsers = await User.find({ role: { $ne: 'admin' } })
       .sort({ createdAt: -1 })
       .limit(5)
       .select('email fullName createdAt');
@@ -210,38 +272,67 @@ export const getDashboardStats = async (req, res) => {
       });
     });
 
-    // Thanh toán gần đây (5 gần nhất)
-    const recentPayments = await Order.find({
-      packagePlanId: { $exists: true, $ne: null },
-      payment_status: 'Paid'
-    })
-      .populate('userId', 'email fullName')
-      .populate('packagePlanId', 'name')
-      .sort({ paid_at: -1 })
-      .limit(5);
+    // Thanh toán gần đây (5 gần nhất) - dùng aggregate
+    const recentPayments = await Order.aggregate([
+      {
+        $match: {
+          packagePlanId: { $exists: true, $ne: null },
+          payment_status: 'Paid'
+        }
+      },
+      { $sort: { paid_at: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'userId',
+          foreignField: '_id',
+          as: 'user'
+        }
+      },
+      {
+        $lookup: {
+          from: 'packageplans',
+          localField: 'packagePlanId',
+          foreignField: '_id',
+          as: 'package'
+        }
+      },
+      { $unwind: { path: '$user', preserveNullAndEmptyArrays: true } },
+      { $unwind: { path: '$package', preserveNullAndEmptyArrays: true } }
+    ]);
 
     recentPayments.forEach(payment => {
       recentActivities.push({
         type: 'payment',
-        action: `Thanh toán ${payment.packagePlanId?.name || 'gói tin'}`,
-        user: payment.userId?.email || 'N/A',
-        userName: payment.userId?.fullName,
+        action: `Thanh toán ${payment.package?.name || 'gói tin'}`,
+        user: payment.user?.email || 'N/A',
+        userName: payment.user?.fullName,
         time: getTimeAgo(payment.paid_at)
       });
     });
 
-    // Tin đăng mới (5 gần nhất)
-    const recentProperties = await Property.find()
-      .populate('userId', 'email fullName')
-      .sort({ createdAt: -1 })
-      .limit(5);
+    // Tin đăng mới (5 gần nhất) - dùng aggregate
+    const recentProperties = await Property.aggregate([
+      { $sort: { createdAt: -1 } },
+      { $limit: 5 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'owner',
+          foreignField: '_id',
+          as: 'ownerInfo'
+        }
+      },
+      { $unwind: { path: '$ownerInfo', preserveNullAndEmptyArrays: true } }
+    ]);
 
     recentProperties.forEach(property => {
       recentActivities.push({
         type: 'property',
         action: 'Đăng tin mới',
-        user: property.userId?.email || 'N/A',
-        userName: property.userId?.fullName,
+        user: property.ownerInfo?.email || 'N/A',
+        userName: property.ownerInfo?.fullName,
         propertyTitle: property.title,
         time: getTimeAgo(property.createdAt)
       });
@@ -263,6 +354,7 @@ export const getDashboardStats = async (req, res) => {
         totalUsers,
         totalLandlords,
         totalTenants,
+        newUsersThisMonth,
         totalProperties,
         activeProperties,
         totalPackagePlans,

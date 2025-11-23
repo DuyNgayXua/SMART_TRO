@@ -534,10 +534,23 @@ class UserController {
                     console.log('First time Google login for existing user:', user._id);
                 }
 
-                // Cập nhật googleId nếu chưa có
+                // Cập nhật googleId và avatar nếu chưa có hoặc đã thay đổi
+                let needUpdate = false;
+                
                 if (!user.googleId) {
                     user.googleId = googleId;
+                    needUpdate = true;
+                }
+                
+                // Cập nhật avatar từ Google nếu có và khác với avatar hiện tại
+                if (picture && user.avatar !== picture) {
+                    user.avatar = picture;
+                    needUpdate = true;
+                }
+                
+                if (needUpdate) {
                     await user.save();
+                    console.log('Updated user googleId and/or avatar:', user._id);
                 }
             }
 
