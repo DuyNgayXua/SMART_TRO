@@ -379,7 +379,7 @@ class PropertyController {
             }
 
             // Bắt lỗi ngay sau khi parse
-            if (!amenities.length) validationErrors.amenities = 'Vui lòng chọn ít nhất 1 tiện ích';
+            // Amenities có thể rỗng, không bắt buộc
             if (!houseRules.length) validationErrors.houseRules = 'Vui lòng chọn ít nhất 1 nội quy';
             if (!req.body.timeRules || req.body.timeRules.toString().trim() === '')
                 validationErrors.timeRules = 'Vui lòng nhập quy định giờ giấc';

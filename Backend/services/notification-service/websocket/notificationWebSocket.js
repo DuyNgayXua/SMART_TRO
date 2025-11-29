@@ -28,9 +28,9 @@ class NotificationWebSocketServer {
 
         // Store the connection
         this.clients.set(userId, ws);
-        console.log(`🔌 [${new Date().toISOString()}] WebSocket connected for user: ${userId}`);
-        console.log(`👥 Total connected clients: ${this.clients.size}`);
-        console.log(`📋 All connected users:`, Array.from(this.clients.keys()));
+        console.log(`[${new Date().toISOString()}] WebSocket connected for user: ${userId}`);
+        console.log(`Total connected clients: ${this.clients.size}`);
+        console.log(`All connected users:`, Array.from(this.clients.keys()));
         
         // Send connection confirmation
         ws.send(JSON.stringify({
@@ -41,9 +41,9 @@ class NotificationWebSocketServer {
 
         // Handle connection close
         ws.on('close', () => {
-          console.log(`🔌 [${new Date().toISOString()}] WebSocket disconnected for user: ${userId}`);
+          console.log(`[${new Date().toISOString()}] WebSocket disconnected for user: ${userId}`);
           this.clients.delete(userId);
-          console.log(`👥 Remaining connected clients: ${this.clients.size}`);
+          console.log(`Remaining connected clients: ${this.clients.size}`);
         });
 
         // Handle connection errors
@@ -84,9 +84,9 @@ class NotificationWebSocketServer {
       // Extract string ID if userId is an object
       const userIdString = (userId && userId._id) ? userId._id.toString() : userId.toString();
       
-      console.log(`🔔 [${new Date().toISOString()}] Attempting to send notification to user ${userIdString}`);
-      console.log(`📋 Notification data:`, notification);
-      console.log(`👥 Connected clients:`, Array.from(this.clients.keys()));
+      console.log(`[${new Date().toISOString()}] Attempting to send notification to user ${userIdString}`);
+      console.log(`Notification data:`, notification);
+      console.log(`Connected clients:`, Array.from(this.clients.keys()));
       
       const ws = this.clients.get(userIdString);
       
@@ -97,21 +97,21 @@ class NotificationWebSocketServer {
           timestamp: new Date().toISOString()
         };
         
-        console.log(`📤 Sending message to user ${userIdString}:`, message);
+        console.log(`Sending message to user ${userIdString}:`, message);
         ws.send(JSON.stringify(message));
-        console.log(`✅ Notification sent successfully to user ${userIdString}:`, notification.title);
+        console.log(`Notification sent successfully to user ${userIdString}:`, notification.title);
         return true;
       } else {
         if (!ws) {
-          console.log(`❌ User ${userIdString} not found in connected clients`);
+          console.log(`User ${userIdString} not found in connected clients`);
         } else {
-          console.log(`❌ User ${userIdString} WebSocket not open. ReadyState:`, ws.readyState);
+          console.log(`User ${userIdString} WebSocket not open. ReadyState:`, ws.readyState);
           console.log(`ReadyState meanings: 0=CONNECTING, 1=OPEN, 2=CLOSING, 3=CLOSED`);
         }
         return false;
       }
     } catch (error) {
-      console.error(`❌ Error sending notification to user ${userId}:`, error);
+      console.error(`Error sending notification to user ${userId}:`, error);
       return false;
     }
   }

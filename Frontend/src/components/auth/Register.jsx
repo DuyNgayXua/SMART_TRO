@@ -12,7 +12,6 @@ const Register = () => {
     const [email, setEmail] = useState("");
     const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
-    const [role, setRole] = useState("tenant");
     const [avatar, setAvatar] = useState(null);
     const [avatarPreview, setAvatarPreview] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -39,7 +38,6 @@ const Register = () => {
             formData.append("email", email);
             formData.append("phone", phone);
             formData.append("password", password);
-            formData.append("role", role);
             if (avatar) formData.append("avatar", avatar);
             
             const res = await authAPI.register(formData);
@@ -142,13 +140,6 @@ const Register = () => {
                                 />
                             )}
                         </div>
-                        <select value={role} onChange={e => setRole(e.target.value)} style={{ marginBottom: '12px', fontWeight: 'bold' }}
-                            className="form-select"
-                        >
-                            <option value="tenant">Người lưu trú</option>
-                            <option value="landlord">Chủ trọ</option>
-                            
-                        </select>
                         {error && <div style={{color:'#dc2626',fontSize:'14px',marginBottom:'8px'}}>{error}</div>}
                         {success && <div style={{color:'#16a34a',fontSize:'14px',marginBottom:'8px'}}>{success}</div>}
                         <button type="submit" className="btn-primary-register" disabled={loading}>
