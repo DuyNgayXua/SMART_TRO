@@ -2039,7 +2039,7 @@ const myPropertiesController = {
                       description: limit.packageType.description,
                       stars: limit.packageType.stars
                     },
-                    limit: 0, // Tất cả giới hạn về 0 để không thể đăng tin mới
+                    limit: limit.limit, // Giữ nguyên limit gốc để hiển thị "Tổng số tin đăng"
                     used: currentUsed, // Giữ nguyên used count để hiển thị số tin đã đăng
                     backupUsedCount: currentUsed, // Lưu lại used count hiện tại để khôi phục khi gia hạn
                     _id: limit._id

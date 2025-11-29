@@ -926,22 +926,20 @@ const ContractsManagement = () => {
 
         {/* Action Buttons */}
         <div className="contracts-actions">
-          <button className="action-btn primary" onClick={openCreate}>
-            <i className="fas fa-file-contract"></i>
-            {t('contracts.addNew', 'Thêm hợp đồng mới')}
-          </button>
-          <button className="action-btn" onClick={handlePrintContract}>
+          <button className="action-btn primary" onClick={handlePrintContract}>
             <i className="fas fa-file-download"></i>
             {t('contracts.downloadContract', 'Tải hợp đồng')}
           </button>
-          <button className="action-btn" onClick={() => {}}>
-            <i className="fas fa-file-import"></i>
-            {t('contracts.importExcel', 'Import Excel')}
-          </button>
-          <button className="action-btn" onClick={() => {}}>
-            <i className="fas fa-file-excel"></i>
-            {t('contracts.exportExcel', 'Xuất Excel')}
-          </button>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>
+            <div className="date-filter-group">
+            </div>  
         </div>
 
         {loading ? (

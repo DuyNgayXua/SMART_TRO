@@ -334,7 +334,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 28px;
   flex-shrink: 0;
   color: white;
   position: relative;
@@ -800,16 +800,20 @@
 
 /* Room Distribution Chart */
 .room-stats-grid {
-  display: flex;
-  gap: 32px;
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 24px;
   align-items: center;
+  padding-left: 0;
+  margin-left: -10px;
 }
 
 .room-donut {
-  width: 160px;
-  height: 160px;
+  width: 120px;
+  height: 120px;
   position: relative;
   flex-shrink: 0;
+  margin-left: -10px;
 }
 
 .donut-svg {
@@ -827,46 +831,48 @@
 }
 
 .donut-percent {
-  font-size: 32px;
+  font-size: 22px;
   font-weight: 800;
   color: #10b981;
   line-height: 1;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .donut-text {
-  font-size: 12px;
+  font-size: 9px;
   color: #64748b;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
 }
 
 .room-legend-list {
-  flex: 1;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
 }
 
 .legend-item-box {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px;
+  padding: 10px 14px;
   background: #f8fafc;
   border-radius: 10px;
   transition: all 0.2s ease;
+  border: 1px solid #e2e8f0;
+  margin-left: -10px;
 }
 
 .legend-item-box:hover {
   background: #f1f5f9;
-  transform: translateX(2px);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
 }
 
 .legend-color-box {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 4px;
   flex-shrink: 0;
 }
@@ -893,6 +899,7 @@
 
 .legend-info {
   flex: 1;
+  min-width: 0;
 }
 
 .legend-value {
@@ -907,6 +914,7 @@
   color: #64748b;
   margin-top: 2px;
   font-weight: 500;
+  white-space: nowrap;
 }
 
 /* Bottom Section - Alerts & Summary */
@@ -998,32 +1006,42 @@
 
 .alert-notification:hover {
   transform: translateX(4px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  border-width: 2px;
 }
 
 .alert-icon-circle {
-  width: 44px;
-  height: 44px;
+  width: 55px;
+  height: 55px;
   border-radius: 50%;
   background: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 22px;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
 }
 
 .alert-notification.warning .alert-icon-circle {
-  color: #d97706;
+  color: #ffffff;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
 }
 
 .alert-notification.info .alert-icon-circle {
-  color: #2563eb;
+  color: #ffffff;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
 }
 
 .alert-notification.danger .alert-icon-circle {
-  color: #dc2626;
+  color: #ffffff;
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+}
+
+.alert-notification:hover .alert-icon-circle {
+  transform: scale(1.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
 }
 
 .alert-text {

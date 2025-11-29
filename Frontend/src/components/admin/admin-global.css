@@ -1,31 +1,39 @@
 /* Admin Global CSS - Apply Inter font to all admin pages */
 
-/* CSS Variables for consistent theming */
+/* CSS Variables for consistent theming - Enhanced Modern Colors */
 :root {
-  --primary-color: #1e40af;
-  --primary-light: #3b82f6;
-  --primary-dark: #1e3a8a;
+  --primary-color: #667eea;
+  --primary-light: #818cf8;
+  --primary-dark: #5a67d8;
+  --secondary-color: #764ba2;
+  --accent-color: #f093fb;
   --success-color: #10b981;
   --warning-color: #f59e0b;
   --danger-color: #ef4444;
   --info-color: #3b82f6;
-  --gray-100: #f3f4f6;
-  --gray-200: #e5e7eb;
-  --gray-300: #d1d5db;
+  --gray-100: #f7f8fc;
+  --gray-200: #e8ebf5;
+  --gray-300: #d1d5e0;
   --gray-400: #9ca3af;
   --gray-500: #6b7280;
   --gray-600: #4b5563;
   --gray-700: #374151;
   --gray-800: #1f2937;
-  --gray-900: #111827;
-  --text-primary: #111827;
-  --text-secondary: #6b7280;
+  --gray-900: #0f1419;
+  --text-primary: #1a202c;
+  --text-secondary: #64748b;
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
+  --bg-tertiary: #f0f2ff;
   --border-color: #e2e8f0;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  --shadow-sm: 0 2px 4px 0 rgba(102, 126, 234, 0.08);
+  --shadow: 0 6px 16px -2px rgba(102, 126, 234, 0.12);
+  --shadow-lg: 0 15px 35px -5px rgba(102, 126, 234, 0.15);
+  --shadow-xl: 0 25px 50px -12px rgba(102, 126, 234, 0.2);
+  --gradient-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  --gradient-warning: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
 /* Base font family for all admin pages */
@@ -44,9 +52,11 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
-  background-color: var(--bg-secondary);
+  background: linear-gradient(135deg, #f8fafc 0%, #f0f2ff 50%, #fafbfc 100%);
+  background-attachment: fixed;
   color: var(--text-primary);
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition: all 0.4s ease;
+  min-height: 100vh;
 }
 
 /* Apply Inter font to all child elements in admin pages, but exclude icon fonts */

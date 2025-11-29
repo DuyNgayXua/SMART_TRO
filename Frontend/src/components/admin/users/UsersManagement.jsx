@@ -493,10 +493,6 @@ const UsersManagement = () => {
                                                                 </div>
                                                             )}
                                                             <div className="user-package-detail">
-                                                                <span className="user-package-label">{t('userPackages.totalPosts')}:</span>
-                                                                <span className="user-package-value">{userPackages.propertyPackage.totalPosts} {t('userPackages.posts')}</span>
-                                                            </div>
-                                                            <div className="user-package-detail">
                                                                 <span className="user-package-label">{t('userPackages.usedPosts')}:</span>
                                                                 <span className="user-package-value">{userPackages.propertyPackage.usedPosts || 0} {t('userPackages.posts')}</span>
                                                             </div>
