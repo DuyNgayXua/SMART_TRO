@@ -53,7 +53,7 @@ const PackagePaymentsManagement = () => {
       });
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/package-payments?${params}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/admin/package-payments?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`
@@ -92,7 +92,7 @@ const PackagePaymentsManagement = () => {
       });
 
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/package-payments?${params}`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/admin/package-payments?${params}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`

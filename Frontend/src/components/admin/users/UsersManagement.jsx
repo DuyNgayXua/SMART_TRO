@@ -41,7 +41,7 @@ const UsersManagement = () => {
             });
 
             const response = await fetch(
-                `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users?${params}`,
+                `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/admin/users?${params}`,
                 {
                     headers: {
                         'Authorization': `Bearer ${token}`
@@ -79,7 +79,7 @@ const UsersManagement = () => {
         try {
             const token = localStorage.getItem('token');
             const response = await fetch(
-                `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${userId}`,
+                `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/admin/users/${userId}`,
                 {
                     method: 'DELETE',
                     headers: {
@@ -114,7 +114,7 @@ const UsersManagement = () => {
         setLoadingPackages(true);
         try {
             const token = localStorage.getItem('token');
-            const url = `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/admin/users/${user._id}/packages`;
+            const url = `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/admin/users/${user._id}/packages`;
             
             const response = await fetch(url, {
                 headers: {

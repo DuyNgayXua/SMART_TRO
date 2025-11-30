@@ -106,14 +106,14 @@ const SideBar = () => {
     (async () => {
       try {
         // Always try to call API, even without token (for bypass mode)
-        const res = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`, {
+        const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/users/profile`, {
           headers: token ? { 'Authorization': `Bearer ${token}` } : {}
         });
 
         if (!res.ok) {
           // If we had a token but request failed, try without token
           if (token) {
-            const fallbackRes = await fetch(`${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/users/profile`);
+            const fallbackRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/users/profile`);
             if (fallbackRes.ok) {
               const fallbackData = await fallbackRes.json();
               if (fallbackData.success && fallbackData.data) {

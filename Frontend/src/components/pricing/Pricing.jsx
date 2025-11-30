@@ -147,7 +147,7 @@ const handleRegisterClick = (planName) => {
       const token = localStorage.getItem('token');
       
       const response = await fetch(
-        `${process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api'}/management/trial-request`,
+        `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/management/trial-request`,
         {
           method: 'POST',
           headers: {
