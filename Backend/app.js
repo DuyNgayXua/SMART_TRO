@@ -45,12 +45,12 @@ app.get('/health', (req, res) => {
 app.get('/api/status', async (req, res) => {
     try {
         const dbStatus = Database.getConnectionStatus();
-        
+
         // Get collection statistics
         const collections = [];
         if (Database.isConnected()) {
             const modelNames = Object.keys(schemas);
-            
+
             for (const modelName of modelNames) {
                 try {
                     const Model = schemas[modelName];
@@ -108,15 +108,15 @@ app.get('/api/database/info', async (req, res) => {
 
         const db = Database.connection.db;
         const admin = db.admin();
-        
+
         // Get database stats
         const stats = await db.stats();
         const serverStatus = await admin.serverStatus();
-        
+
         // Get collections info
         const collections = await db.listCollections().toArray();
         const collectionDetails = [];
-        
+
         for (const collection of collections) {
             try {
                 const collStats = await db.collection(collection.name).stats();
@@ -164,7 +164,7 @@ app.get('/api/database/info', async (req, res) => {
 // Error handling middleware
 app.use((error, req, res, next) => {
     console.error('Error:', error);
-    
+
     res.status(error.status || 500).json({
         status: 'error',
         message: error.message || 'Internal server error',
@@ -186,7 +186,7 @@ async function startServer() {
     try {
         // Connect to database
         await Database.connect();
-        
+
         // Run chatbot migration
         console.log('\nRunning chatbot migration...');
         try {
@@ -201,7 +201,7 @@ async function startServer() {
             console.error('Migration error:', migrationError.message);
             console.log('Continuing without migration...');
         }
-        
+
         // Initialize Payment Services
         console.log('\nInitializing payment services...');
         initPaymentServices();
@@ -212,27 +212,23 @@ async function startServer() {
 
         // Create HTTP server
         const server = createServer(app);
-        
+
         // Initialize WebSocket server
         console.log('\nInitializing WebSocket notification server...');
         notificationWSServer.initialize(server);
-        
+
         // Start server
         server.listen(PORT, () => {
             console.log(`\n🚀 Server running on port ${PORT}`);
-            console.log(`📊 Health check: http://localhost:${PORT}/health`);
-            console.log(`📋 API status: http://localhost:${PORT}/api/status`);
-            console.log(`🗄️  Database info: http://localhost:${PORT}/api/database/info`);
-            console.log(`📚 API documentation: http://localhost:${PORT}/api`);
-            console.log(`🔔 WebSocket notifications: ws://localhost:${PORT}/notifications`);
-            console.log(`\n🔗 API Endpoints:`);
-            console.log(`   👤 Users: http://localhost:${PORT}/api/users`);
-            console.log(`   🏠 Properties: http://localhost:${PORT}/api/properties`);
-            console.log(`   🚪 Rooms: http://localhost:${PORT}/api/rooms`);
-            console.log(`   🔔 Notifications: http://localhost:${PORT}/api/notifications`);
+            console.log(`📊 Health check: /health or /api/health`);
+            console.log(`📋 API status: /api/status`);
+            console.log(`🗄️  Database info: /api/database/info`);
+            console.log(`📚 API documentation: /api`);
+            console.log(`🔔 WebSocket notifications: /notifications`);
             console.log(`\n💡 Ready to handle requests!`);
         });
-        
+
+
     } catch (error) {
         console.error('❌ Failed to start server:', error);
         process.exit(1);

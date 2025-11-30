@@ -13,7 +13,6 @@ const GOOGLE_CLIENT_ID =
   "522368004135-fsujl8qhea0i433i3n766a9stpggdeme.apps.googleusercontent.com"
 
 function App() {
-  console.log("Google Client ID (frontend):", GOOGLE_CLIENT_ID)
 
   return (
     <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
