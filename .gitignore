@@ -1,0 +1,54 @@
+# ===========================
+# GLOBAL IGNORE
+# ===========================
+node_modules/
+npm-debug.log
+yarn-debug.log*
+yarn-error.log*
+dist/
+build/
+.DS_Store
+*.log
+*.tmp
+
+# ===========================
+# ENV FILES
+# ===========================
+.env
+.env.local
+.env.development
+.env.production
+.env.test
+Backend/.env
+Frontend/.env
+
+# ===========================
+# DOCKER & CLOUD RUN
+# ===========================
+.dockerignore
+Backend/.dockerignore
+Frontend/.dockerignore
+
+docker-compose.yml
+docker-compose.prod.yml
+docker-compose.override.yml
+
+# Cloud Run config folders (chỉ để dùng local, không lên Git)
+cloud-run-configs/
+
+# nginx local reverse proxy (local only)
+nginx/
+
+# ===========================
+# EXCLUDE GENERATED BUILD OR ARTIFACTS
+# ===========================
+Frontend/build/
+Backend/logs/
+
+# ===========================
+# OS / EDITOR
+# ===========================
+.vscode/
+.idea/
+*.swp
+Thumbs.db
