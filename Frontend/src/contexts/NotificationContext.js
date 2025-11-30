@@ -131,7 +131,7 @@ useEffect(() => {
   // Check backend health before connecting WebSocket
   const checkBackendHealth = useCallback(async () => {
     try {
-      const backendUrl = process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
+      const backendUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
       const response = await fetch(`${backendUrl}/health`, {
         method: 'GET',
         timeout: 5000
@@ -167,7 +167,7 @@ useEffect(() => {
       isConnectingRef.current = true;
       
       // Check if backend is running first
-      const backendUrl = process.env.REACT_APP_API_BASE_URL?.replace('/api', '') || 'http://localhost:5000';
+      const backendUrl = process.env.REACT_APP_API_URL?.replace('/api', '') || 'http://localhost:5000';
       const wsUrl = `${backendUrl.replace('http', 'ws')}/notifications?userId=${user._id}`;
       
       // console.log('Attempting WebSocket connection to:', wsUrl);

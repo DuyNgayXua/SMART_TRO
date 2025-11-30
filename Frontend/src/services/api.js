@@ -9,7 +9,7 @@ export const setGlobalLogoutHandler = (handler) => {
 };
 
 // Cấu hình base URL cho API
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://smart-tro-backend-468987037048.asia-southeast1.run.app/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'https://smart-tro-backend-468987037048.asia-southeast1.run.app/api';
 
 // Tạo instance axios với cấu hình mặc định
 const api = axios.create({
