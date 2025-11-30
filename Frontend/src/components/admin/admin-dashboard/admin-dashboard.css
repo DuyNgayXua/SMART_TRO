@@ -1356,3 +1356,51 @@
     max-width: 35px;
   }
 }
+
+.package-stats-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.package-stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #f1f1f3;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.03);
+  transition: all 0.2s ease;
+}
+
+.package-stat-item:hover {
+  background: #f9f9ff;
+  border-color: #dcdcff;
+}
+
+.package-stat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.package-stat-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #3b3b97; /* tím nhạt giống UI hình */
+}
+
+.package-stat-count {
+  font-size: 14px;
+  color: #666;
+}
+
+.package-stat-revenue {
+  font-size: 16px;
+  font-weight: 700;
+  color: #222;
+}
+

@@ -153,6 +153,7 @@ export const getDashboardStats = async (req, res) => {
       });
     }
 
+    console.log('📈 Revenue by month:', revenueByMonth);
     // 6. Thống kê theo gói tin
     const packageStats = await Order.aggregate([
       {
