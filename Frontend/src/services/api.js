@@ -9,7 +9,12 @@ export const setGlobalLogoutHandler = (handler) => {
 };
 
 // Cấu hình base URL cho API
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api';
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL ||
+  (window.location.hostname === 'localhost'
+    ? 'http://localhost:5000/api' // khi dev local
+    : 'https://smart-tro-backend-468987037048.asia-southeast1.run.app/api'); // khi chạy trên Cloud Run
+
 
 // Tạo instance axios với cấu hình mặc định
 const api = axios.create({

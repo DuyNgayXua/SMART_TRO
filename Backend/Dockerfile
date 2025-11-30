@@ -11,7 +11,6 @@ COPY package*.json ./
 RUN npm install --only=production --legacy-peer-deps
 
 # Copy toàn bộ source backend vào container
-# (NHỚ không copy .env bằng .dockerignore, ở dưới mình sẽ nhắc)
 COPY . .
 
 # Tạo user không phải root
