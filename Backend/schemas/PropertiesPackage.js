@@ -34,7 +34,7 @@ const propertiesPackageSchema = new mongoose.Schema({
 
   textStyle: {
     type: String,
-    enum: ['uppercase', 'normal'],
+    enum: ['uppercase', 'normal', 'bold'],
     default: 'normal'
   },
 
