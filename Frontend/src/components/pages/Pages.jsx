@@ -222,7 +222,7 @@ const Pages = () => {
         pauseOnHover
         draggable
         theme="light"
-        style={{ zIndex: 9999, marginTop: '70px' }}
+        style={{ zIndex: 99999, marginTop: '70px' }}
       />
     </>
   )

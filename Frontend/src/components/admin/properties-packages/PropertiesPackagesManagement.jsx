@@ -229,7 +229,7 @@ const PropertiesPackagesManagement = () => {
         if (response && response.errors) {
           // Show validation errors
           const errorMessages = response.errors.map(err => err.msg).join(', ');
-          toast.error(`Lỗi validation: ${errorMessages}`);
+          toast.error(`Lỗi: ${errorMessages}`);
         } else {
           toast.error(response?.message || 'Có lỗi xảy ra khi lưu loại tin đăng');
         }

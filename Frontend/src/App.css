@@ -186,3 +186,8 @@ img {
     height: 30vh;
   }
 }
+
+/* Ensure toast notifications appear above modals */
+.Toastify__toast-container {
+  z-index: 99999 !important;
+}
