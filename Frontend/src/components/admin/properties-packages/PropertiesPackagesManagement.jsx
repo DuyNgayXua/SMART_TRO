@@ -44,8 +44,7 @@ const PropertiesPackagesManagement = () => {
   // Text style options
   const textStyleOptions = [
     { value: 'normal', label: 'Bình thường' },
-    { value: 'uppercase', label: 'Chữ hoa' },
-    { value: 'bold', label: 'Đậm' }
+    { value: 'uppercase', label: 'Chữ hoa' }
   ];
 
   // Load packages on component mount
