@@ -1,7 +1,6 @@
 header {
   background-color: #fff;
   height: auto;
-  min-height: 10vh;
   box-shadow: 0 5px 30px rgb(0 22 84 / 10%);
   padding: 15px 0;
   position: sticky;
@@ -337,38 +336,6 @@ header .logout-btn:hover {
 header .toggle {
   display: none;
 }
-@media screen and (max-width: 768px) {
-  header {
-    padding: 0;
-  }
-  header img {
-    margin-top: 30px;
-  }
-  header .button {
-    display: none;
-  }
-  header .nav .flex {
-    display: none;
-  }
-  header .toggle {
-    display: block;
-    margin-top: 20px;
-  }
-  header .small {
-    position: absolute;
-    top: 10vh;
-    left: 0;
-    width: 100%;
-    background-color: #27ae60;
-    padding: 20px;
-    z-index: 1000;
-  }
-  header li a {
-    display: inline-block;
-    margin-bottom: 20px;
-    color: #fff;
-  }
-}
 
 /* Logout Modal Styles */
 .modal-overlay {
@@ -638,71 +605,131 @@ header .toggle {
   }
 }
 
-/* Responsive adjustments */
+/* ====================== MOBILE HEADER (<= 768px) ====================== */
 @media (max-width: 768px) {
+
+  header {
+    padding: 8px 0;
+  }
+
+  /* 2 hàng: [toggle | logo | buttons] + [nav] */
+  header .container {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas:
+      "toggle logo buttons"
+      "nav    nav  nav";
+    align-items: center;
+    position: relative;            /* để .small bám theo */
+    min-height: 8px;
+
+  }
+
+  /* Logo ở giữa hàng 1 */
+  header .logo {
+    grid-area: logo;
+    justify-self: center;
+  }
+
+  header img {
+    width: 120px;
+  }
+
+  /* Nút 3 gạch bên trái hàng 1 */
+  header .toggle {
+    grid-area: toggle;
+    display: block;
+    justify-self: flex-start;
+    position: relative;
+    z-index: 1001;                 /* luôn nằm trên menu */
+  }
+
+  header .toggle button {
+    width: 38px;
+    height: 38px;
+    border-radius: 8px;
+    background: #27ae60;
+    color: #fff;
+    border: none;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  /* Đăng ký / Đăng nhập bên phải hàng 1 */
   header .button {
-    gap: 12px; /* Giảm gap trên mobile */
-    height: 36px; /* Giảm chiều cao trên mobile */
+    grid-area: buttons;
+    display: flex;
+    align-items: center;
+    justify-self: flex-end;
+    gap: 6px;
   }
-  
-  .user-section {
-    gap: 8px;
-    height: 36px;
-  }
-  
-  .notification-btn {
-    width: 36px;
-    height: 36px;
-  }
-  
-  .notification-btn i {
-    font-size: 14px;
-  }
-  
-  .notification-badge {
-    font-size: 10px;
-    min-width: 16px;
-    height: 16px;
-    padding: 1px 4px;
-  }
-  
-  .favorites-link {
-    height: 36px;
-    padding: 0 6px;
-  }
-  
-  .favorites-link h4 {
-    font-size: 13px;
-  }
-  
-  header .language-switcher {
-    height: 36px;
-  }
-  
-  header .lang-btn {
-    padding: 8px 10px;
+
+  header .btn1,
+  header .btn2 {
+    height: 34px;
+    padding: 5px 10px;
     font-size: 12px;
+    white-space: nowrap;
   }
-  
-  header .btn1, header .btn2 {
-    height: 36px;
-    padding: 8px 14px;
-    font-size: 13px;
+
+  /* Ẩn các phần rườm rà trên mobile */
+  header .language-switcher,
+  .favorites-link,
+  .user-section {
+    display: none !important;
   }
-  
-  header .user-info {
-    height: 36px;
-    padding: 4px 8px;
-    gap: 8px;
+
+  /* Nav chiếm hàng 2, full chiều ngang */
+  header .nav {
+    grid-area: nav;
+    width: 100%;
   }
-  
-  header .user-avatar {
-    width: 28px;
-    height: 28px;
+
+  /* Mặc định ẩn nav kiểu desktop */
+  header .nav .flex {
+    display: none !important;
   }
-  
-  header .user-name {
-    font-size: 13px;
-    max-width: 100px;
+
+  /* Reset ul trong nav */
+  header .nav ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  /* Menu DROPDOWN khi navList = true → className="small" */
+  header .small {
+    position: absolute;
+    top: 100%;                     /* ngay dưới header */
+    left: 0;
+    width: 100%;
+    margin-top: 4px;
+    padding: 14px 18px;
+    background: #27ae60;
+    border-radius: 0 0 12px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 1000;
+  }
+
+  header .small li a {
+    color: #fff;
+    font-size: 15px;
+    padding: 6px 0;
+    display: block;
+    text-align: center;
+    border-bottom: 1px solid rgba(255,255,255,0.2);
+  }
+
+  header .small li:last-child a {
+    border-bottom: none;
   }
 }
+
+
+

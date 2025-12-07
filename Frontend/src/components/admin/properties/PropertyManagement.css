@@ -2462,3 +2462,257 @@
     gap: 4px;
     margin-top: 6px;
 }
+
+/* ========= MOBILE ≤ 768px ========= */
+@media (max-width: 768px) {
+  .hero {
+    height: auto;
+    max-height: none;
+    padding: 16px 0 8px;
+    align-items: flex-start;
+  }
+
+  .hero .container {
+    padding: 0 12px 12px;
+  }
+
+  .hero-search-form {
+    padding: 10px 10px 14px;
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.65);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: 0 14px 35px rgba(15, 23, 42, 0.5);
+  }
+
+  /* Search grid mobile: 1 cột, full width */
+  .search-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    padding: 10px 10px 12px;
+    background: rgba(15, 23, 42, 0.7);
+    border-radius: 14px;
+    margin-bottom: 12px;
+  }
+
+  .search-box-hero label {
+    font-size: 12px;
+  }
+
+  .search-box-hero input,
+  .search-box-hero select {
+    padding: 9px 11px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  .amenities-modal-btn-hero {
+    padding: 9px 11px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
+
+  /* Hàng nút tìm kiếm */
+  .search-buttons-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  .btn-search,
+  .btn-reset-hero {
+    width: 100%;
+    height: 42px;
+    border-radius: 999px;
+    font-size: 14px;
+    justify-content: center;
+  }
+
+  .btn-search {
+    background: linear-gradient(135deg, #00b095ff, #1cb9a1ff);
+  }
+
+  .btn-search:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(0, 176, 149, 0.45);
+  }
+
+  .btn-reset-hero {
+    background: #ef4444;
+  }
+
+  .btn-reset-hero:hover {
+    background: #b91c1c;
+    box-shadow: 0 6px 16px rgba(239, 68, 68, 0.45);
+  }
+}
+
+/* ========= MOBILE SIÊU NHỎ ≤ 480px ========= */
+@media (max-width: 480px) {
+  .hero-search-form {
+    padding: 10px;
+    border-radius: 12px;
+  }
+
+  .search-grid {
+    padding: 8px 8px 10px;
+    border-radius: 12px;
+    gap: 8px;
+  }
+
+  .search-box-hero input,
+  .search-box-hero select,
+  .amenities-modal-btn-hero {
+    padding: 8px 10px;
+    font-size: 11.5px;
+  }
+
+  .btn-search,
+  .btn-reset-hero {
+    height: 40px;
+    font-size: 13px;
+  }
+}
+
+/* QUICK SEARCH LISTING – MOBILE */
+@media (max-width: 768px) {
+  .properties-wrapper .quick-search-listing {
+    max-width: 100%;
+    width: 100%;
+    padding: 12px 14px;
+    margin-top: 10px;
+    margin-bottom: 12px;
+    top: 0;
+    border-radius: 12px;
+    background: #ffffff;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+    box-shadow:
+      0 10px 25px rgba(15, 23, 42, 0.12),
+      0 0 0 1px rgba(148, 163, 184, 0.1);
+    position: relative;
+    z-index: 5;
+  }
+
+  .search-header {
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .search-title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #0f172a;
+  }
+
+  .search-title-icon {
+    font-size: 16px;
+    color: #00b095;
+  }
+
+  /* Nhóm input search */
+  .search-input-group-listing {
+    position: relative;
+    width: 100%;
+  }
+
+  .icon-search-input-group-listing {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    pointer-events: none; /* để click vào input vẫn được */
+  }
+
+  .icon-search-input-group-listing .fa-search {
+    font-size: 14px;
+    opacity: 0.8;
+  }
+
+  .camera-search-btn {
+    pointer-events: auto;
+    border: none;
+    outline: none;
+    background: rgba(15, 23, 42, 0.04);
+    border-radius: 999px;
+    width: 30px;
+    height: 30px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .camera-search-btn i {
+    font-size: 13px;
+    opacity: 0.85;
+  }
+
+  .camera-search-btn:hover {
+    background: rgba(15, 23, 42, 0.08);
+    transform: translateY(-1px);
+  }
+
+  /* Input gõ từ khóa */
+  .search-input-group-listing .typing-placeholder {
+    width: 100%;
+    border-radius: 999px;
+    border: 1px solid rgba(148, 163, 184, 0.7);
+    padding: 10px 88px 10px 42px; /* trái chừa icon, phải chừa nút clear */
+    font-size: 13px;
+    outline: none;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+  }
+
+  .search-input-group-listing .typing-placeholder:focus {
+    border-color: #00b095;
+    background: #ffffff;
+    box-shadow:
+      0 0 0 2px rgba(0, 176, 149, 0.2),
+      0 6px 18px rgba(15, 23, 42, 0.14);
+  }
+
+  /* Nút clear search */
+  .clear-search-properties-listing {
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: rgba(248, 250, 252, 0.95);
+    border-radius: 999px;
+    padding: 5px 9px;
+    font-size: 11px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    color: #64748b;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.16);
+  }
+
+  .clear-search-properties-listing i {
+    margin-left: 0;
+    font-size: 11px;
+  }
+
+  .clear-search-properties-listing:hover {
+    background: rgba(248, 113, 113, 0.08);
+    color: #dc2626;
+    transform: translateY(-50%) scale(1.05);
+    box-shadow: 0 3px 10px rgba(248, 113, 113, 0.35);
+  }
+}
