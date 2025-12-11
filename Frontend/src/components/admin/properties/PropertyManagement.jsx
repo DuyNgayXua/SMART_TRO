@@ -718,7 +718,7 @@ const PropertyManagement = () => {
                                         <i className="fa fa-chevron-right"></i>
                                     </button>
 
-                                    <div className="pagination-info">
+                                    <div className="pagination-info-property-management">
                                         <span>
                                             Trang {currentPage} / {totalPages} (Tổng: {totalProperties} bài đăng)
                                         </span>

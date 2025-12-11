@@ -7,8 +7,10 @@ class AdminPropertyRepository {
     const skip = (page - 1) * limit;
 
     // Admin có thể xem cả tin đăng đã ẩn, chỉ exclude những tin thực sự đã bị xóa vĩnh viễn
-    // Không thêm isDeleted: false để admin có thể quản lý cả tin ẩn
-    const finalFilter = { ...filter };
+    const finalFilter = { 
+      ...filter, 
+      isDeleted: false 
+    };
 
     const properties = await Property.find(finalFilter)
       .populate('owner', 'fullName email avatar phone')
@@ -77,7 +79,7 @@ class AdminPropertyRepository {
   async getPropertyStats() {
     const stats = await Property.aggregate([
       {
-        $match: { isDeleted: { $ne: true } }
+        $match: { isDeleted: false }
       },
       {
         $group: {
@@ -107,7 +109,7 @@ class AdminPropertyRepository {
 
   // Lấy properties theo status
   async getPropertiesByStatus(status) {
-    return await Property.find({ approvalStatus: status, isDeleted: { $ne: true } })
+    return await Property.find({ approvalStatus: status, isDeleted: false })
       .populate('owner', 'fullName email avatar phone')
       .sort({ createdAt: -1 });
   }

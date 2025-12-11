@@ -1173,8 +1173,9 @@
     transition: all 0.3s ease;
     font-size: 14px;
     font-weight: 500;
-
-
+    display: flex;
+    align-items: center;
+    gap: 5px;
 }
 
 .pagination-btn-container:disabled {
@@ -1221,10 +1222,17 @@
     box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
 }
 
-.pagination-info {
-    margin-top: 15px;
-    color: #7f8c8d;
+.pagination-info-property-management {
     font-size: 14px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+    border-radius: 20px;
+    box-shadow: 0 2px 8px #667eea4d;
+    color: #fff;
+    font-size: 15px;
+    font-weight: 600;
+    min-width: 150px;
+    padding: 12px 24px;
+    text-align: center;
 }
 
 /* Modal Styles */
