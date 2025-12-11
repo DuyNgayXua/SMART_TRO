@@ -56,7 +56,7 @@ const Pricing = () => {
       // Kiểm tra xem user đã đăng nhập chưa
       if (!userInfo) {
         toast.info('Vui lòng đăng nhập để đăng ký gói miễn phí');
-        navigate('/dang-nhap');
+        navigate('/login');
         return;
       }
 
@@ -186,7 +186,7 @@ const handleRegisterClick = (planName) => {
         if (data.requireLogin) {
           toast.info('Vui lòng đăng nhập để đăng ký gói miễn phí');
           handleCloseTrialModal();
-          navigate('/dang-nhap');
+          navigate('/login');
         } else {
           toast.error(data.message || 'Đăng ký thất bại. Vui lòng thử lại.');
         }

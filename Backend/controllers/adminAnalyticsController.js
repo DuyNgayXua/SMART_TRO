@@ -154,12 +154,16 @@ export const getDashboardStats = async (req, res) => {
     }
 
     console.log('📈 Revenue by month:', revenueByMonth);
-    // 6. Thống kê theo gói tin
+    // 6. Thống kê theo gói tin - Lọc theo tháng được chọn
     const packageStats = await Order.aggregate([
       {
         $match: {
           packagePlanId: { $exists: true, $ne: null },
-          payment_status: 'Paid'
+          payment_status: 'Paid',
+          paid_at: {
+            $gte: selectedMonthStart,
+            $lt: selectedMonthEnd
+          }
         }
       },
       {

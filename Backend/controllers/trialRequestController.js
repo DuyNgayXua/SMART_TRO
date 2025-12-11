@@ -510,7 +510,7 @@ export const registerTrialUser = async (req, res) => {
                             <p>✅ Truy cập đầy đủ tính năng quản lý trọ</p>
                         </div>
                         
-                        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/dang-nhap" 
+                        <a href="${process.env.FRONTEND_URL || 'http://localhost:3000'}/login" 
                            style="display: inline-block; padding: 14px 28px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0;">
                             Đăng nhập ngay
                         </a>

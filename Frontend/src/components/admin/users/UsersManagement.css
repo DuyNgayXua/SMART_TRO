@@ -536,126 +536,37 @@
     text-align: center;
 }
 
-/* Action Menu - Scoped to Users Management */
-.users-management .action-menu-container {
-    position: relative;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    width: 100%;
-    min-width: 80px;
-    z-index: 1000;
-}
-
-.users-management .action-menu-container.active {
-    z-index: 2147483646;
-}
-
-.users-management .action-menu-trigger {
-    background: #f1f5f9;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    padding: 6px 10px;
-    cursor: pointer;
-    font-size: 13px;
-    color: #6b7280;
-    transition: all 0.2s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-width: 32px;
-    white-space: nowrap;
-    height: 36px;
-}
-
-.users-management .action-menu-trigger:hover {
-    background: #f8fafc;
-    color: #1f2937;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.users-management .action-menu-dropdown {
-    position: absolute;
-    background: white;
-    border: 1px solid #e2e8f0;
-    border-radius: 8px;
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-    z-index: 2147483647;
-    min-width: 180px;
-    max-height: calc(100vh - 20px);
-    overflow-y: auto;
-    overflow-x: hidden;
-    animation: slideDownUsers 0.2s ease;
-    transform: translateZ(0);
-    will-change: transform;
-    top: 100%;
-    right: 0;
-    margin-top: 4px;
-}
-
-/* Fixed position variant for better visibility */
-.users-management .action-menu-dropdown.fixed-position {
-    position: fixed !important;
-    /* top and left will be set via inline styles */
-}
-
-@keyframes slideDownUsers {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.users-management .action-menu-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    width: 100%;
-    padding: 10px 12px;
+/* Action View Button */
+.users-management .action-view-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
-    background: white;
-    color: #1f2937;
-    font-size: 14px;
+    border-radius: 8px;
+    padding: 8px 16px;
     cursor: pointer;
-    transition: all 0.2s ease;
-    text-align: left;
+    font-size: 16px;
+    color: white;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 36px;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
 }
 
-.users-management .action-menu-item:hover {
-    background: #f8fafc;
+.users-management .action-view-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #5568d3 0%, #6a4190 100%);
 }
 
-.users-management .action-menu-item i {
-    width: 16px;
-    font-size: 12px;
+.users-management .action-view-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(102, 126, 234, 0.3);
 }
 
-.users-management .action-menu-item.warning {
-    color: #f59e0b;
-}
-
-.users-management .action-menu-item.warning:hover {
-    background: #fffbeb;
-}
-
-.users-management .action-menu-item.success {
-    color: #10b981;
-}
-
-.users-management .action-menu-item.success:hover {
-    background: #f0fdf4;
-}
-
-.users-management .action-menu-item.danger {
-    color: #ef4444;
-}
-
-.users-management .action-menu-item.danger:hover {
-    background: #fef2f2;
+.users-management .action-view-btn i {
+    font-size: 16px;
 }
 
 /* Responsive */
@@ -686,11 +597,6 @@
 
     .users-table {
         min-width: 800px;
-    }
-    
-    .users-management .action-menu-dropdown {
-        right: auto;
-        left: 0;
     }
 }
 

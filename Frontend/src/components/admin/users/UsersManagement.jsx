@@ -13,7 +13,6 @@ const UsersManagement = () => {
     const [roleFilter, setRoleFilter] = useState('all'); // all, landlord, tenant
     const [currentPage, setCurrentPage] = useState(1);
     const [totalPages, setTotalPages] = useState(1);
-    const [openActionMenu, setOpenActionMenu] = useState(null);
     const [showViewModal, setShowViewModal] = useState(false);
     const [selectedUser, setSelectedUser] = useState(null);
     const [userPackages, setUserPackages] = useState({ propertyPackage: null, postPackage: null });
@@ -68,47 +67,12 @@ const UsersManagement = () => {
         }
     };
 
-    // Handle delete user
-    const handleDeleteUser = async (userId, userName) => {
-        const confirmMessage = `Bạn có chắc chắn muốn xóa người dùng "${userName}"?\n\nHành động này không thể hoàn tác!`;
-        
-        if (!window.confirm(confirmMessage)) {
-            return;
-        }
 
-        try {
-            const token = localStorage.getItem('token');
-            const response = await fetch(
-                `${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/admin/users/${userId}`,
-                {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                throw new Error('Failed to delete user');
-            }
-
-            const data = await response.json();
-            if (data.success) {
-                toast.success(`Đã xóa người dùng "${userName}"`);
-                loadUsers(currentPage, roleFilter, searchTerm);
-            }
-        } catch (error) {
-            console.error('Error deleting user:', error);
-            toast.error('Lỗi khi xóa người dùng');
-        }
-        setOpenActionMenu(null);
-    };
 
     // Handle view user
     const handleViewUser = async (user) => {
         setSelectedUser(user);
         setShowViewModal(true);
-        setOpenActionMenu(null);
         
         // Load user packages
         setLoadingPackages(true);
@@ -157,18 +121,6 @@ const UsersManagement = () => {
         setCurrentPage(1);
         loadUsers(1, role, searchTerm);
     };
-
-    // Close menu when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (e) => {
-            if (!e.target.closest('.action-menu-container')) {
-                setOpenActionMenu(null);
-            }
-        };
-        
-        document.addEventListener('click', handleClickOutside);
-        return () => document.removeEventListener('click', handleClickOutside);
-    }, []);
 
     // Load users on mount
     useEffect(() => {
@@ -340,38 +292,13 @@ const UsersManagement = () => {
                                                 </td>
                                                 <td>{formatDate(user.createdAt)}</td>
                                                 <td>
-                                                    <div className={`action-menu-container ${openActionMenu === user._id ? 'active' : ''}`}>
-                                                        <button
-                                                            className="action-menu-trigger"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                setOpenActionMenu(openActionMenu === user._id ? null : user._id);
-                                                            }}
-                                                        >
-                                                            <i className="fas fa-ellipsis-v"></i>
-                                                        </button>
-                                                        {openActionMenu === user._id && (
-                                                            <div className="action-menu-dropdown">
-                                                                <button
-                                                                    className="action-menu-item"
-                                                                    onClick={() => handleViewUser(user)}
-                                                                >
-                                                                    <i className="fas fa-eye"></i>
-                                                                    Xem chi tiết
-                                                                </button>
-                                                                <button
-                                                                    className="action-menu-item danger"
-                                                                    onClick={() => {
-                                                                        handleDeleteUser(user._id, user.fullName);
-                                                                        setOpenActionMenu(null);
-                                                                    }}
-                                                                >
-                                                                    <i className="fas fa-trash"></i>
-                                                                    Xóa người dùng
-                                                                </button>
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <button
+                                                        className="action-view-btn"
+                                                        onClick={() => handleViewUser(user)}
+                                                        title="Xem chi tiết"
+                                                    >
+                                                        <i className="fas fa-eye"></i>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ))}

@@ -35,7 +35,7 @@ const Hero = () => {
           setCoords({ lat: latitude, lng: longitude })
 
           try {
-            const res = await fetch("http://localhost:5000/api/location", {
+            const res = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/location`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lat: latitude, lng: longitude }),
@@ -43,7 +43,7 @@ const Hero = () => {
             const data = await res.json()
             setLocation(data.address)
 
-            const hostelRes = await fetch("http://localhost:5000/api/location/nearby-hostels", {
+            const hostelRes = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/location/nearby-hostels`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ lat: latitude, lng: longitude }),

@@ -488,20 +488,32 @@ const RoomsManagement = () => {
     setPagination(prev => ({ ...prev, currentPage: 1 }));
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
     try {
       if (!window.XLSX) {
         showToast('error', 'Thư viện Excel chưa được tải');
         return;
       }
 
-      if (rooms.length === 0) {
+      // Fetch all rooms without pagination
+      showToast('info', 'Đang tải dữ liệu...');
+      const params = {
+        page: 1,
+        limit: 10000, // Fetch all rooms
+        search: searchFilters.search || undefined,
+        status: activeTab !== 'all' ? activeTab : undefined
+      };
+      
+      const res = await roomsAPI.searchRooms(params);
+      if (!res.success || !res.data.rooms || res.data.rooms.length === 0) {
         showToast('error', 'Không có dữ liệu để xuất');
         return;
       }
 
+      const allRooms = res.data.rooms;
+
       // Prepare data for export
-      const exportData = rooms.map((room, index) => {
+      const exportData = allRooms.map((room, index) => {
         // Process amenities - more robust handling
         let amenitiesText = '-';
         if (room.amenities) {
@@ -1394,7 +1406,7 @@ const RoomsManagement = () => {
 
           console.log('Invoice data:', invoiceData);
 
-          const response = await fetch('http://localhost:5000/api/invoices', {
+          const response = await fetch(`${process.env.REACT_APP_API_URL || 'http://localhost:5000/api'}/invoices`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
