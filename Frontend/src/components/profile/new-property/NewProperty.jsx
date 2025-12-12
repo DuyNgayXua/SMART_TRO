@@ -311,10 +311,10 @@ const NewProperty = () => {
   useEffect(() => {
     if (showModal) {
       document.body.classList.add('modal-open');
-      // Initialize map after modal is rendered
+      // Initialize map after modal is rendered - increased delay to 1s to ensure DOM is fully ready
       const timer = setTimeout(() => {
         initializeMap();
-      }, 100);
+      }, 1000);
       return () => clearTimeout(timer);
     } else {
       document.body.classList.remove('modal-open');

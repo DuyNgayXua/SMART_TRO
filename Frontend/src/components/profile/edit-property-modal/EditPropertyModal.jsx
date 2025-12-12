@@ -1159,7 +1159,7 @@ const EditPropertyModal = ({ property, onClose, onSuccess }) => {
       // Initialize map after a short delay to ensure modal is rendered
       const timer = setTimeout(() => {
         initializeMap();
-      }, 100);
+      }, 1000);
       return () => clearTimeout(timer);
     }
 
