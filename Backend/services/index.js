@@ -41,7 +41,7 @@ router.use('/api/properties', propertyRoutes);
 router.use('/api/rooms', roomRoutes);
 router.use('/api/tenants', tenantRoutes);
 router.use('/api/payments', paymentRoutes);
-router.use('/api/payments/sebay', sebayRoutes);
+router.use('/api/payments/sepay', sebayRoutes); // Đổi từ 'sebay' sang 'sepay'
 router.use('/api/contracts', contractRoutes);
 router.use('/api/auth', authRoutes);
 router.use('/api/amenities', amenityRoutes);
