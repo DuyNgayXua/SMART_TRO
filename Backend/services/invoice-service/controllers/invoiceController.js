@@ -155,9 +155,9 @@ class InvoiceController {
                         console.warn('⚠️ Tenant has no email, skipping notification');
                     } else {
                         // Tạo QR code thanh toán
-                        const bankCode = process.env.SEPAY_BANK_CODE || 'MBBank';
-                        const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER || '0382173105';
-                        const accountName = process.env.SEPAY_ACCOUNT_NAME || 'TRUONG CONG DUY';
+                        const bankCode = process.env.SEPAY_BANK_CODE_INVOICE || 'MBBank';
+                        const accountNumber = process.env.SEPAY_ACCOUNT_NUMBER_INVOICE || '0382173105';
+                        const accountName = process.env.SEPAY_ACCOUNT_NAME_INVOICE || 'TRUONG CONG DUY';
                         
                         // Format nội dung chuyển khoản
                         const transferContent = `THANH TOAN HOA DON PHONG ${roomInfo.roomNumber} - ${new Date(finalPeriodStart).toLocaleDateString('vi-VN')} DEN ${new Date(finalPeriodEnd).toLocaleDateString('vi-VN')}`;

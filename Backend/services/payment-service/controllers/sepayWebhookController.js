@@ -13,7 +13,7 @@ import crypto from 'crypto';
  */
 const verifyWebhookSignature = (payload, signature) => {
   try {
-    const apiKey = process.env.SEPAY_API_KEY;
+    const apiKey = process.env.SEPAY_API_KEY_INVOICE;
     if (!apiKey) return true; // Skip verify nếu chưa config API key (dev mode)
     
     // Tạo hash từ payload + API key
